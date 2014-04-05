@@ -34,8 +34,7 @@ public interface CCM<T> {
 
 class CCMImpl<T> implements CCM<T> {
 
-	List<Transaction>
-;
+	List<Transaction> transactions;
 
 	// thread pool
 
