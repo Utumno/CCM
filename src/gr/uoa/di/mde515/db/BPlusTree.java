@@ -147,7 +147,7 @@ public class BPlusTree {
 	}
 
 	// Recursive search method.
-	public Object search(Node node, int key) {
+	public Object searchRecursive(Node node, int key) {
 		int i = 0;
 		while (i < node.mNumKeys && key > node.mKeys[i]) {
 			i++;
@@ -157,17 +157,17 @@ public class BPlusTree {
 		}
 		if (node.mIsLeafNode) {
 			return null;
-		} else {
-			return search(node.mChildNodes[i], key);
 		}
+		return (node.mIsLeafNode) ? null : searchRecursive(node.mChildNodes[i],
+			key);
 	}
 
 	public Object search(int key) {
-		return search(mRootNode, key);
+		return searchRecursive(mRootNode, key);
 	}
 
         // Iterative search method.
-        public Object search2(Node node, int key) {
+	public Object searchIterative(Node node, int key) {
                 while (node != null) {
                         int i = 0;
                         while (i < node.mNumKeys && key > node.mKeys[i]) {
@@ -178,15 +178,14 @@ public class BPlusTree {
                         }
                         if (node.mIsLeafNode) {
                                 return null;
-                        } else {
-                                node = node.mChildNodes[i];
                         }
+			node = node.mChildNodes[i];
                 }
                 return null;
         }
 
         public Object search2(int key) {
-                return search2(mRootNode, key);
+		return searchIterative(mRootNode, key);
         }
 
         // Inorder walk over the tree.
@@ -238,9 +237,8 @@ public class BPlusTree {
                         }
                         if (node.mIsLeafNode) {
                                 return null;
-                        } else {
-                                node = node.mChildNodes[i];
                         }
+			node = node.mChildNodes[i];
                 }
                 return null;
         }
