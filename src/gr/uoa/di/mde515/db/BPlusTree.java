@@ -1,28 +1,22 @@
 package gr.uoa.di.mde515.db;
 
 /*
- * Unlike a binary search tree, each node of a B+-tree may have a variable number of keys and children.
- * The keys are stored in non-decreasing order. Each node either is a leaf node or
- * it has some associated children that are the root nodes of subtrees.
- * The left child node of a node's element contains all nodes (elements) with keys less than or equal to the node element's key
- * but greater than the preceding node element's key (except for duplicate internal node elements).
- * If a node becomes full, a split operation is performed during the insert operation.
- * The split operation transforms a full node with 2*T-1 elements into two nodes with T-1 and T elements
- * and moves the median key of the two nodes into its parent node.
- * The elements left of the median (middle) element of the splitted node remain in the original node.
- * The new node becomes the child node immediately to the right of the median element that was moved to the parent node.
- *
- * Example (T = 4):
- * 1.  R = | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
- *
- * 2.  Add key 8
- *
- * 3.  R =         | 4 |
- *                 /   \
- *     | 1 | 2 | 3 | -> | 4 | 5 | 6 | 7 | 8 |
- *
+ * Unlike a binary search tree, each node of a B+-tree may have a variable
+ * number of keys and children. The keys are stored in non-decreasing order.
+ * Each node either is a leaf node or it has some associated children that are
+ * the root nodes of subtrees. The left child node of a node's element contains
+ * all nodes (elements) with keys less than or equal to the node element's key
+ * but greater than the preceding node element's key (except for duplicate
+ * internal node elements). If a node becomes full, a split operation is
+ * performed during the insert operation. The split operation transforms a full
+ * node with 2*T-1 elements into two nodes with T-1 and T elements and moves the
+ * median key of the two nodes into its parent node. The elements left of the
+ * median (middle) element of the splitted node remain in the original node. The
+ * new node becomes the child node immediately to the right of the median
+ * element that was moved to the parent node. Example (T = 4): 1. R = | 1 | 2 |
+ * 3 | 4 | 5 | 6 | 7 | 2. Add key 8 3. R = | 4 | / \ | 1 | 2 | 3 | -> | 4 | 5 |
+ * 6 | 7 | 8 |
  */
-
 public class BPlusTree {
 
 	private Node mRootNode;
@@ -166,104 +160,103 @@ public class BPlusTree {
 		return searchRecursive(mRootNode, key);
 	}
 
-        // Iterative search method.
+	// Iterative search method.
 	public Object searchIterative(Node node, int key) {
-                while (node != null) {
-                        int i = 0;
-                        while (i < node.mNumKeys && key > node.mKeys[i]) {
-                                i++;
-                        }
-                        if (i < node.mNumKeys && key == node.mKeys[i]) {
-                                return node.mObjects[i];
-                        }
-                        if (node.mIsLeafNode) {
-                                return null;
-                        }
+		while (node != null) {
+			int i = 0;
+			while (i < node.mNumKeys && key > node.mKeys[i]) {
+				i++;
+			}
+			if (i < node.mNumKeys && key == node.mKeys[i]) {
+				return node.mObjects[i];
+			}
+			if (node.mIsLeafNode) {
+				return null;
+			}
 			node = node.mChildNodes[i];
-                }
-                return null;
-        }
+		}
+		return null;
+	}
 
-        public Object search2(int key) {
+	public Object search2(int key) {
 		return searchIterative(mRootNode, key);
-        }
+	}
 
-        // Inorder walk over the tree.
-        @Override
-		public String toString() {
-                String string = "";
-                Node node = mRootNode;
-                while (!node.mIsLeafNode) {
-                        node = node.mChildNodes[0];
-                }
-                while (node != null) {
-                        for (int i = 0; i < node.mNumKeys; i++) {
-                                string += node.mObjects[i] + ", ";
-                        }
-                        node = node.mNextNode;
-                }
-                return string;
-        }
+	// Inorder walk over the tree.
+	@Override
+	public String toString() {
+		String string = "";
+		Node node = mRootNode;
+		while (!node.mIsLeafNode) {
+			node = node.mChildNodes[0];
+		}
+		while (node != null) {
+			for (int i = 0; i < node.mNumKeys; i++) {
+				string += node.mObjects[i] + ", ";
+			}
+			node = node.mNextNode;
+		}
+		return string;
+	}
 
-        // Inorder walk over parts of the tree.
-        public String toString(int fromKey, int toKey) {
-                String string = "";
-                Node node = getLeafNodeForKey(fromKey);
-                while (node != null) {
-                        for (int j = 0; j < node.mNumKeys; j++) {
-                                string += node.mObjects[j] + ", ";
-                                if (node.mKeys[j] == toKey) {
-                                        return string;
-                                }
-                        }
-                        node = node.mNextNode;
-                }
-                return string;
-        }
+	// Inorder walk over parts of the tree.
+	public String toString(int fromKey, int toKey) {
+		String string = "";
+		Node node = getLeafNodeForKey(fromKey);
+		while (node != null) {
+			for (int j = 0; j < node.mNumKeys; j++) {
+				string += node.mObjects[j] + ", ";
+				if (node.mKeys[j] == toKey) {
+					return string;
+				}
+			}
+			node = node.mNextNode;
+		}
+		return string;
+	}
 
-        Node getLeafNodeForKey(int key) {
-                Node node = mRootNode;
-                while (node != null) {
-                        int i = 0;
-                        while (i < node.mNumKeys && key > node.mKeys[i]) {
-                                i++;
-                        }
-                        if (i < node.mNumKeys && key == node.mKeys[i]) {
-                                node = node.mChildNodes[i + 1];
-                                while (!node.mIsLeafNode) {
-                                        node = node.mChildNodes[0];
-                                }
-                                return node;
-                        }
-                        if (node.mIsLeafNode) {
-                                return null;
-                        }
+	Node getLeafNodeForKey(int key) {
+		Node node = mRootNode;
+		while (node != null) {
+			int i = 0;
+			while (i < node.mNumKeys && key > node.mKeys[i]) {
+				i++;
+			}
+			if (i < node.mNumKeys && key == node.mKeys[i]) {
+				node = node.mChildNodes[i + 1];
+				while (!node.mIsLeafNode) {
+					node = node.mChildNodes[0];
+				}
+				return node;
+			}
+			if (node.mIsLeafNode) {
+				return null;
+			}
 			node = node.mChildNodes[i];
-                }
-                return null;
-        }
+		}
+		return null;
+	}
 
-        public static void main(String[] args) {
-                BPlusTree bPlusTree = new BPlusTree();
-                int primeNumbers[] = new int[] { 2, 3, 5, 7, 11, 13, 19, 23, 37, 41, 43, 47, 53, 59, 67, 71, 61, 73, 79, 89,
-                                97, 101, 103, 109, 29, 31, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 17, 83, 107 };
-
-                for (int i = 0; i < primeNumbers.length; i++) {
-                        bPlusTree.add(primeNumbers[i], String.valueOf(primeNumbers[i]));
-                }
-
-                for (int i = 0; i < primeNumbers.length; i++) {
-                        String value = String.valueOf(primeNumbers[i]);
-                        Object searchResult = bPlusTree.search(primeNumbers[i]);
-                        if (!value.equals(searchResult)) {
-                                System.out.println("Oops: Key " + primeNumbers[i] + " retrieved object " + searchResult);
-                        }
-                }
-
-                System.out.println(bPlusTree.search(11));
-                System.out.println(bPlusTree.search(17));
-                System.out.println(bPlusTree.toString());
-                System.out.println(bPlusTree.toString(19, 71));
-        }
+	public static void main(String[] args) {
+		BPlusTree bPlusTree = new BPlusTree();
+		int primeNumbers[] = new int[] { 2, 3, 5, 7, 11, 13, 19, 23, 37, 41,
+				43, 47, 53, 59, 67, 71, 61, 73, 79, 89, 97, 101, 103, 109, 29,
+				31, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179,
+				17, 83, 107 };
+		for (int i = 0; i < primeNumbers.length; i++) {
+			bPlusTree.add(primeNumbers[i], String.valueOf(primeNumbers[i]));
+		}
+		for (int i = 0; i < primeNumbers.length; i++) {
+			String value = String.valueOf(primeNumbers[i]);
+			Object searchResult = bPlusTree.search(primeNumbers[i]);
+			if (!value.equals(searchResult)) {
+				System.out.println("Oops: Key " + primeNumbers[i]
+					+ " retrieved object " + searchResult);
+			}
+		}
+		System.out.println(bPlusTree.search(11));
+		System.out.println(bPlusTree.search(17));
+		System.out.println(bPlusTree.toString());
+		System.out.println(bPlusTree.toString(19, 71));
+	}
 }
-
