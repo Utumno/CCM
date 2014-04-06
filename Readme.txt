@@ -1,4 +1,4 @@
-Lock --> Does it lock a page ?
+Lock --> Does it lock a page ? (node of B+ or page of the Data File)
 
 
 APIs:
