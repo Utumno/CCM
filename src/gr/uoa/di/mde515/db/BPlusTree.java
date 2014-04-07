@@ -1,5 +1,8 @@
 package gr.uoa.di.mde515.db;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /*
  * Each node of a B+-tree may have a variable number of keys and children. The
  * keys are stored in non-decreasing order. Each node is either a leaf node or
@@ -15,20 +18,40 @@ package gr.uoa.di.mde515.db;
  * immediately to the right of the median element that was moved to the parent
  * node.
  */
-public class BPlusTree {
+public class BPlusTree<R extends Record<K, V>, K extends Comparable<K>, V> {
 
 	private Node mRootNode;
-	private static final int T = 4; // FINAL INTEGER F
-	// T is for friggin Types
+	private static final int MEDIAN = 4;
 
 	class Node {
 
 		public int mNumKeys = 0;
-		public int[] mKeys = new int[2 * T - 1];
-		public Object[] mObjects = new Object[2 * T - 1];
-		public Node[] mChildNodes = new Node[2 * T];
+		public int[] mKeys = new int[2 * MEDIAN - 1];
+		List<K> keys = new ArrayList<>();
+
+		int mNumKeys() {
+			return keys.size();
+		}
+
+		public Object[] mObjects = new Object[2 * MEDIAN - 1];
+		public List<Node> mChildNodes = new ArrayList<>();
 		public boolean mIsLeafNode;
 		public Node mNextNode;
+	}
+
+	class LeafNode {
+
+		public int mNumKeys = 0;
+		public int[] mKeys = new int[2 * MEDIAN - 1];
+		List<K> keys = new ArrayList<>();
+
+		int mNumKeys() {
+			return keys.size();
+		}
+
+		public Object[] mObjects = new Object[2 * MEDIAN - 1];
+		public static final boolean mIsLeafNode = true;
+		public LeafNode mNextNode;
 	}
 
 	public BPlusTree() {
@@ -53,11 +76,11 @@ public class BPlusTree {
 	 */
 	public void add(int key, Object object) {
 		Node rootNode = mRootNode;
-		if (rootNode.mNumKeys == (2 * T - 1)) {
+		if (rootNode.mNumKeys == (2 * MEDIAN - 1)) {
 			Node newRootNode = new Node();
 			mRootNode = newRootNode;
 			newRootNode.mIsLeafNode = false;
-			mRootNode.mChildNodes[0] = rootNode;
+			mRootNode.mChildNodes.add(rootNode);
 			splitChildNode(newRootNode, 0, rootNode); // Split
 			// rootNode and move its median (middle) key up into newRootNode.
 			insertIntoNonFullNode(newRootNode, key, object); // Insert
@@ -68,45 +91,40 @@ public class BPlusTree {
 		}
 	}
 
-	// Split the node, node, of a B-Tree into two nodes that contain T-1
-	// (and T) elements and move node's median key up to the parentNode.
+	// Split the node, of a B-Tree into two nodes that contain N-1
+	// and N elements and move node's median key up to the parentNode.
 	// This method will only be called if node is full; node is the i-th
 	// child of parentNode.
 	// All internal keys (elements) will have duplicates within the leaf
 	// nodes.
 	void splitChildNode(Node parentNode, int i, Node node) {
+		assert (parentNode.mNumKeys == 2 * MEDIAN - 1);
 		Node newNode = new Node();
 		newNode.mIsLeafNode = node.mIsLeafNode;
-		newNode.mNumKeys = T;
-		for (int j = 0; j < T; j++) { // Copy the last T elements of
+		newNode.mNumKeys = MEDIAN;
+		for (int j = 0; j < MEDIAN; j++) { // Copy the last N elements of
 			// node into newNode. Keep the median key as duplicate in
 			// the first key of newNode.
-			newNode.mKeys[j] = node.mKeys[j + T - 1];
-			newNode.mObjects[j] = node.mObjects[j + T - 1];
+			newNode.mKeys[j] = node.mKeys[j + MEDIAN - 1];
+			newNode.mObjects[j] = node.mObjects[j + MEDIAN - 1];
 		}
 		if (!newNode.mIsLeafNode) {
-			for (int j = 0; j < T + 1; j++) { // Copy the last T + 1
-				// pointers of node into newNode.
-				newNode.mChildNodes[j] = node.mChildNodes[j + T - 1];
-			}
-			for (int j = T; j <= node.mNumKeys; j++) {
-				node.mChildNodes[j] = null;
-			}
+			newNode.mChildNodes = node.mChildNodes.subList(MEDIAN - 1,
+				node.mChildNodes.size());
+			node.mChildNodes.removeAll(newNode.mChildNodes);
 		} else {
-			// Manage the linked list that is used e.g. for doing
-			// fast range queries.
 			newNode.mNextNode = node.mNextNode;
 			node.mNextNode = newNode;
 		}
-		for (int j = T - 1; j < node.mNumKeys; j++) {
+		for (int j = MEDIAN - 1; j < node.mNumKeys; j++) {
 			node.mKeys[j] = 0;
 			node.mObjects[j] = null;
 		}
-		node.mNumKeys = T - 1;
+		node.mNumKeys = MEDIAN - 1;
 		// Insert a (child) pointer to node newNode into the
 		// parentNode, moving other keys and pointers as necessary.
 		for (int j = parentNode.mNumKeys; j >= i + 1; j--) {
-			parentNode.mChildNodes[j + 1] = parentNode.mChildNodes[j];
+			parentNode.mChildNodes.set(j + 1, parentNode.mChildNodes.get(j));
 		}
 		parentNode.mChildNodes[i + 1] = newNode;
 		for (int j = parentNode.mNumKeys - 1; j >= i; j--) {
@@ -143,7 +161,7 @@ public class BPlusTree {
 				i--;
 			}
 			i++;
-			if (node.mChildNodes[i].mNumKeys == (2 * T - 1)) {
+			if (node.mChildNodes[i].mNumKeys == (2 * MEDIAN - 1)) {
 				splitChildNode(node, i, node.mChildNodes[i]);
 				if (key > node.mKeys[i]) {
 					i++;
