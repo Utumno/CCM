@@ -1,21 +1,19 @@
 package gr.uoa.di.mde515.db;
 
 /*
- * Unlike a binary search tree, each node of a B+-tree may have a variable
- * number of keys and children. The keys are stored in non-decreasing order.
- * Each node either is a leaf node or it has some associated children that are
- * the root nodes of subtrees. The left child node of a node's element contains
- * all nodes (elements) with keys less than or equal to the node element's key
- * but greater than the preceding node element's key (except for duplicate
- * internal node elements). If a node becomes full, a split operation is
- * performed during the insert operation. The split operation transforms a full
- * node with 2*T-1 elements into two nodes with T-1 and T elements and moves the
- * median key of the two nodes into its parent node. The elements left of the
- * median (middle) element of the splitted node remain in the original node. The
- * new node becomes the child node immediately to the right of the median
- * element that was moved to the parent node. Example (T = 4): 1. R = | 1 | 2 |
- * 3 | 4 | 5 | 6 | 7 | 2. Add key 8 3. R = | 4 | / \ | 1 | 2 | 3 | -> | 4 | 5 |
- * 6 | 7 | 8 |
+ * Each node of a B+-tree may have a variable number of keys and children. The
+ * keys are stored in non-decreasing order. Each node is either a leaf node or
+ * it has some associated children that are the root nodes of subtrees. The left
+ * child node of a node's element contains all nodes (elements) with keys less
+ * than or equal to the node element's key but greater than the preceding node
+ * element's key (except for duplicate internal node elements). If a node
+ * becomes full, a split operation is performed during the insert operation. The
+ * split operation transforms a full node with 2*T-1 elements into two nodes
+ * with T-1 and T elements and moves the median key of the two nodes into its
+ * parent node. The elements left of the median (middle) element of the splitted
+ * node remain in the original node. The new node becomes the child node
+ * immediately to the right of the median element that was moved to the parent
+ * node.
  */
 public class BPlusTree {
 
@@ -38,6 +36,21 @@ public class BPlusTree {
 		mRootNode.mIsLeafNode = true;
 	}
 
+	/**
+	 * <pre>
+	 * Example (T = 4):
+	 * 1.  R = | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+	 *
+	 * 2.  Add key 8
+	 *
+	 * 3.  R =         | 4 |
+	 *                 /   \
+	 *     | 1 | 2 | 3 | -> | 4 | 5 | 6 | 7 | 8 |
+	 * </pre>
+	 *
+	 * @param key
+	 * @param object
+	 */
 	public void add(int key, Object object) {
 		Node rootNode = mRootNode;
 		if (rootNode.mNumKeys == (2 * T - 1)) {
