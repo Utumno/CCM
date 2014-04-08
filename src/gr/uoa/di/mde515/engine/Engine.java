@@ -2,7 +2,9 @@ package gr.uoa.di.mde515.engine;
 
 import gr.uoa.di.mde515.db.Record;
 
-public abstract class Engine<T> { // MUST BE AN INTERFACE - EntityManager
+public abstract class Engine<K extends Comparable<K>, V> { // MUST BE AN
+															// INTERFACE -
+															// EntityManager
 
 
 	Engine() {}
@@ -11,16 +13,16 @@ public abstract class Engine<T> { // MUST BE AN INTERFACE - EntityManager
 
 	public abstract void e_xaction(Transaction tr);
 
-	public abstract Record<T> insert(Transaction tr, Record<T> record);
+	public abstract Record<K, V> insert(Transaction tr, Record<K, V> record);
 
 	//
-	// Record<T> delete(T key);
+	// Record<K,V> delete(T key);
 	//
-	// Record<T> lookup(T key);
+	// Record<K,V> lookup(T key);
 	//
-	// Record<T> update(T key);
+	// Record<K,V> update(T key);
 	//
-	// List<Record<T>> range(T key1, T key2);
+	// List<Record<K,V>> range(T key1, T key2);
 	//
 	// boolean waitTransaction(long t);
 	//
@@ -31,14 +33,14 @@ public abstract class Engine<T> { // MUST BE AN INTERFACE - EntityManager
 	// File bulk_load(File fileOfRecords);
 	//
 	// File bulk_delete(File fileOfKeys);
-	public static Engine<?> newInstance() {
+	public static Engine<?, ?> newInstance() {
 		return new EngineImpl();
 	}
 }
 
-class EngineImpl<T> extends Engine<T> {
+class EngineImpl<K extends Comparable<K>, V> extends Engine<K, V> {
 
-	CCM<T> ccm;
+	CCM<K, V> ccm;
 
 	@Override
 	public Transaction b_xaction() {
@@ -50,7 +52,7 @@ class EngineImpl<T> extends Engine<T> {
 	}
 
 	@Override
-	public Record<T> insert(Transaction tr, Record<T> record) {
+	public Record<K, V> insert(Transaction tr, Record<K, V> record) {
 		return ccm.insert(tr, record);
 	}
 }

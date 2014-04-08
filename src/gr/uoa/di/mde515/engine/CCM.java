@@ -5,21 +5,21 @@ import gr.uoa.di.mde515.db.Record;
 import java.io.File; // FIXME
 import java.util.List;
 
-public interface CCM<T> {
+public interface CCM<K extends Comparable<K>, V> {
 
 	Transaction b_xaction();
 
 	void e_xaction();
 
-	Record<T> insert(Transaction tr, Record<T> record);
+	Record<K, V> insert(Transaction tr, Record<K, V> record);
 
-	Record<T> delete(T key);
+	Record<K, V> delete(K key);
 
-	Record<T> lookup(T key);
+	Record<K, V> lookup(K key);
 
-	Record<T> update(T key);
+	Record<K, V> update(K key);
 
-	List<Record<T>> range(T key1, T key2);
+	List<Record<K, V>> range(K key1, K key2);
 
 	boolean waitTransaction(long t);
 
@@ -32,12 +32,11 @@ public interface CCM<T> {
 	File bulk_delete(File fileOfKeys);
 }
 
-class CCMImpl<T> implements CCM<T> {
+class CCMImpl<K extends Comparable<K>, V> implements CCM<K, V> {
 
 	List<Transaction> transactions;
 
 	// thread pool
-
 	@Override
 	public Transaction b_xaction() {
 		synchronized (transactions) {
@@ -53,31 +52,31 @@ class CCMImpl<T> implements CCM<T> {
 	}
 
 	@Override
-	public Record<T> insert(Transaction tr, Record<T> record) {
+	public Record<K, V> insert(Transaction tr, Record<K, V> record) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public Record<T> delete(T key) {
+	public Record<K, V> delete(K key) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public Record<T> lookup(T key) {
+	public Record<K, V> lookup(K key) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public Record<T> update(T key) {
+	public Record<K, V> update(K key) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public List<Record<T>> range(T key1, T key2) {
+	public List<Record<K, V>> range(K key1, K key2) {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -110,5 +109,3 @@ class CCMImpl<T> implements CCM<T> {
 		return null;
 	}
 }
-
-
