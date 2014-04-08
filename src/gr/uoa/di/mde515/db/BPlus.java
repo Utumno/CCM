@@ -1,6 +1,9 @@
 package gr.uoa.di.mde515.db;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 import java.util.Map.Entry;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -10,6 +13,8 @@ public class BPlus<K extends Comparable<K>, V> {
 	private Node<K, V> root = new LeafNode<>();
 	private static final int N = 4;
 	private static final int MAX_ITEMS = 2 * N + 1; // TODO
+	private int _leafs = 1;
+	private int _levels = 1;
 
 	static abstract class Node<K extends Comparable<K>, V> {
 
@@ -20,7 +25,7 @@ public class BPlus<K extends Comparable<K>, V> {
 		/** Split this Node and return the key pointing to new node (this.next) */
 		abstract SortedMap<K, Node<K, V>> split();
 
-		abstract InternalNode<K, V> parent(Node<K, V> root);
+		abstract InternalNode<K, V> parent(Node<K, V> fromTreeRoot);
 
 		boolean isLeaf() {
 			return LeafNode.class.isAssignableFrom(this.getClass());
@@ -31,6 +36,13 @@ public class BPlus<K extends Comparable<K>, V> {
 		}
 
 		abstract int items();
+
+		abstract Collection<Node<K, V>> print(int leafs);
+
+		@Override
+		public String toString() {
+			return "@" + hashCode();
+		}
 	}
 
 	static class InternalNode<K extends Comparable<K>, V> extends Node<K, V> {
@@ -57,7 +69,7 @@ public class BPlus<K extends Comparable<K>, V> {
 			return children.get(firstKey);
 		}
 
-		K _keyOfValue(Node<K, V> anchor) {
+		K _keyWithValue(Node<K, V> anchor) {
 			for (Entry<K, Node<K, V>> e : children.entrySet())
 				if (e.getValue() == anchor) return e.getKey();
 			if (greaterOrEqual != anchor)
@@ -68,8 +80,7 @@ public class BPlus<K extends Comparable<K>, V> {
 
 		@Override
 		InternalNode<K, V> parent(Node<K, V> root) {
-			if (this == root) // eq ?
-				return null;
+			if (this == root) return null; // eq ?
 			InternalNode<K, V> parent = (InternalNode<K, V>) root;
 			if (parent.children.values().contains(this)) return parent;
 			return parent(parent._lookup(this.children.lastKey()));
@@ -98,7 +109,7 @@ public class BPlus<K extends Comparable<K>, V> {
 				SortedMap<K, Node<K, V>> insert) {
 			final K keyToInsert = insert.firstKey();
 			final Node<K, V> newNode = insert.get(keyToInsert);
-			K _keyOfAnchor = _keyOfValue(anchorNode);
+			K _keyOfAnchor = _keyWithValue(anchorNode);
 			if (_keyOfAnchor != null) {
 				children.put(_keyOfAnchor, newNode);
 				children.put(keyToInsert, anchorNode); // all keys in anchor
@@ -115,6 +126,17 @@ public class BPlus<K extends Comparable<K>, V> {
 		@Override
 		int items() {
 			return children.size();
+		}
+
+		@Override
+		Collection<Node<K, V>> print(int leafs) {
+			System.out.print(this + "::");
+			System.out.print(Arrays.toString(children.entrySet().toArray()));
+			System.out.print(greaterOrEqual + "\t");
+			final Collection<Node<K, V>> values = new ArrayList<>(
+				children.values());
+			values.add(greaterOrEqual);
+			return values;
 		}
 	}
 
@@ -159,6 +181,14 @@ public class BPlus<K extends Comparable<K>, V> {
 		int items() {
 			return records.size();
 		}
+
+		@Override
+		Collection<Node<K, V>> print(int leafs) {
+			System.out.print(this + "::");
+			System.out.print(Arrays.toString(records.entrySet().toArray()));
+			System.out.print(next + "\t");
+			return null;
+		}
 	}
 
 	public <R extends Record<K, V>> void insert(R rec) {
@@ -169,6 +199,7 @@ public class BPlus<K extends Comparable<K>, V> {
 			throw new IllegalArgumentException("Key exists");
 		SortedMap<K, Node<K, V>> insert = leafNode.insertInLeaf(rec);
 		if (insert != null) { // got a key back, so leafNode split
+			++_leafs;
 			insertInternal(leafNode, insert);
 		}
 	}
@@ -176,6 +207,7 @@ public class BPlus<K extends Comparable<K>, V> {
 	private void insertInternal(Node<K, V> anchor,
 			SortedMap<K, Node<K, V>> insert) {
 		if (root == anchor) { // root must split (leaf or not)
+			++_levels;
 			InternalNode<K, V> newRoot = new InternalNode<>();
 			newRoot.children.put(insert.firstKey(), anchor);
 			newRoot.greaterOrEqual = insert.get(insert.firstKey());
@@ -184,7 +216,7 @@ public class BPlus<K extends Comparable<K>, V> {
 		}
 		InternalNode<K, V> parent = anchor.parent(root); // root is not leaf
 															// here
-		SortedMap<K, Node<K, V>> insertInternal = parent.insertInternal(parent,
+		SortedMap<K, Node<K, V>> insertInternal = parent.insertInternal(anchor,
 			insert);
 		if (insertInternal != null) insertInternal(parent, insertInternal);
 	}
@@ -195,5 +227,19 @@ public class BPlus<K extends Comparable<K>, V> {
 			current = current.findLeaf(key);
 		}
 		return (LeafNode<K, V>) current;
+	}
+
+	public void print() {
+		List<Node<K, V>> items = new ArrayList<>();
+		items.add(root);
+		while (!items.isEmpty()) {
+			List<Node<K, V>> children = new ArrayList<>();
+			for (Node<K, V> node : items) {
+				final Collection<Node<K, V>> print = node.print(_leafs);
+				if (print != null) children.addAll(print);
+			}
+			System.out.println();
+			items = children;
+		}
 	}
 }
