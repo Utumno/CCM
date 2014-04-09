@@ -1,6 +1,7 @@
 package gr.uoa.di.mde515;
 
-import gr.uoa.di.mde515.db.BPlus;
+import gr.uoa.di.mde515.db.BPlusJava;
+import gr.uoa.di.mde515.db.IBPlus;
 import gr.uoa.di.mde515.db.Record;
 
 import java.util.ArrayList;
@@ -22,10 +23,10 @@ public class Main {
 			11, 13, 19, 23, 37, 41, 43, 47, 53, 59, 67, 71, 61, 73, 79, 89, 97,
 			101, 103, 109, 29, 31, 113, 127, 131, 137, 139, 149, 151, 157, 163,
 			167, 173, 179, 17, 83, 107));
-		for (int j = 0; ++j < 2;) {
+		for (int j = 0; ++j < 10;) {
 			List<Integer> perm = permutation(primeNumbers);
 			// List<Integer> perm = primeNumbers;
-			BPlus<Integer, Integer> bPlusTree = new BPlus<>();
+			IBPlus<Integer, Integer> bPlusTree = new BPlusJava<>();
 			System.out.println(perm);
 			for (int i = 0; i < perm.size(); i++) {
 				final Integer in = perm.get(i);

@@ -8,14 +8,49 @@ import java.util.Map.Entry;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-public class BPlus<K extends Comparable<K>, V> {
+public class BPlusJava<K extends Comparable<K>, V> implements IBPlus<K, V> {
 
 	private Node<K, V> root = new LeafNode<>();
-	private static final int N = 2;
+	private static final int N = 1;
 	private static final int MAX_ITEMS = 2 * N + 1; // TODO
 	private int _leafs = 1; // to be used in printing
 	private int _levels = 1;
 
+	// =========================================================================
+	// API
+	// =========================================================================
+	@Override
+	public <R extends Record<K, V>> void insert(R rec) {
+		final K key = rec.getKey();
+		final LeafNode<K, V> leafNode = findLeaf(key); // find where the key
+		// must go
+		if (leafNode.records.containsKey(key))
+			throw new IllegalArgumentException("Key exists");
+		Record<K, Node<K, V>> insert = leafNode.insertInLeaf(rec);
+		if (insert != null) { // got a key back, so leafNode split
+			++_leafs;
+			insertInternal(leafNode, insert);
+		}
+	}
+
+	@Override
+	public void print() {
+		List<Node<K, V>> items = new ArrayList<>();
+		items.add(root);
+		while (!items.isEmpty()) {
+			List<Node<K, V>> children = new ArrayList<>();
+			for (Node<K, V> node : items) {
+				final Collection<Node<K, V>> print = node.print(_leafs);
+				if (print != null) children.addAll(print);
+			}
+			System.out.println();
+			items = children;
+		}
+	}
+
+	// =========================================================================
+	// Nodes
+	// =========================================================================
 	static abstract class Node<K extends Comparable<K>, V> {
 
 		// TODO list of parents (?)
@@ -187,33 +222,9 @@ public class BPlus<K extends Comparable<K>, V> {
 		}
 	}
 
-	public <R extends Record<K, V>> void insert(R rec) {
-		final K key = rec.getKey();
-		final LeafNode<K, V> leafNode = findLeaf(key); // find where the key
-		// must go
-		if (leafNode.records.containsKey(key))
-			throw new IllegalArgumentException("Key exists");
-		Record<K, Node<K, V>> insert = leafNode.insertInLeaf(rec);
-		if (insert != null) { // got a key back, so leafNode split
-			++_leafs;
-			insertInternal(leafNode, insert);
-		}
-	}
-
-	public void print() {
-		List<Node<K, V>> items = new ArrayList<>();
-		items.add(root);
-		while (!items.isEmpty()) {
-			List<Node<K, V>> children = new ArrayList<>();
-			for (Node<K, V> node : items) {
-				final Collection<Node<K, V>> print = node.print(_leafs);
-				if (print != null) children.addAll(print);
-			}
-			System.out.println();
-			items = children;
-		}
-	}
-
+	// =========================================================================
+	// Helpers
+	// =========================================================================
 	private void
 			insertInternal(Node<K, V> anchor, Record<K, Node<K, V>> insert) {
 		if (root == anchor) { // root must split (leaf or not)
