@@ -22,14 +22,10 @@ public class BPlus<K extends Comparable<K>, V> {
 		/** Return the Leaf that should contain key k starting from this Node */
 		abstract LeafNode<K, V> findLeaf(K k);
 
-		/** Split this Node and return the key pointing to new node (this.next) */
-		abstract SortedMap<K, Node<K, V>> split();
+		/** Split this Node - return key and new node to insert in parent node */
+		abstract Record<K, Node<K, V>> split();
 
 		abstract InternalNode<K, V> parent(Node<K, V> fromTreeRoot);
-
-		boolean isLeaf() {
-			return LeafNode.class.isAssignableFrom(this.getClass());
-		}
 
 		boolean overflow() {
 			return items() == MAX_ITEMS;
@@ -48,13 +44,13 @@ public class BPlus<K extends Comparable<K>, V> {
 	static class InternalNode<K extends Comparable<K>, V> extends Node<K, V> {
 
 		/**
-		 * A Sorted Map mapping Key key to Node node (Internal or Leaf) with
-		 * node.lastKey strictly smaller than key. Define intNode.lastKey :=
+		 * A Sorted Map mapping Key k to Node n (Internal or Leaf) with
+		 * n.lastKey strictly smaller than k. Define intNode.lastKey :=
 		 * children.lastKey() and likewise for firstKey.
 		 */
 		SortedMap<K, Node<K, V>> children = new TreeMap<>();
 		/** Node with keys strictly greater or equal to this.firstKey */
-		Node<K, V> greaterOrEqual;
+		Node<K, V> greaterOrEqual; // TODO rename to next and move to Node
 
 		private Node<K, V> _lookup(final K k) {
 			if (k.compareTo(children.lastKey()) >= 0) return greaterOrEqual;
@@ -69,7 +65,7 @@ public class BPlus<K extends Comparable<K>, V> {
 			return children.get(firstKey);
 		}
 
-		K _keyWithValue(Node<K, V> anchor) {
+		private K _keyWithValue(Node<K, V> anchor) {
 			for (Entry<K, Node<K, V>> e : children.entrySet())
 				if (e.getValue() == anchor) return e.getKey();
 			if (greaterOrEqual != anchor)
@@ -92,7 +88,7 @@ public class BPlus<K extends Comparable<K>, V> {
 		}
 
 		@Override
-		SortedMap<K, Node<K, V>> split() {
+		Record<K, Node<K, V>> split() {
 			final InternalNode<K, V> sibling = new InternalNode<>();
 			sibling.greaterOrEqual = greaterOrEqual;
 			final K median = new ArrayList<>(children.keySet()).get(N);
@@ -100,15 +96,13 @@ public class BPlus<K extends Comparable<K>, V> {
 			sibling.children = new TreeMap<>(children.tailMap(median));
 			sibling.children.remove(median);
 			this.children = new TreeMap<>(children.headMap(median));
-			SortedMap<K, Node<K, V>> treeMap = new TreeMap<>();
-			treeMap.put(median, sibling);
-			return treeMap;
+			return new Record<K, Node<K, V>>(median, sibling);
 		}
 
-		SortedMap<K, Node<K, V>> insertInternal(Node<K, V> anchorNode,
-				SortedMap<K, Node<K, V>> insert) {
-			final K keyToInsert = insert.firstKey();
-			final Node<K, V> newNode = insert.get(keyToInsert);
+		Record<K, Node<K, V>> insertInternal(Node<K, V> anchorNode,
+				Record<K, Node<K, V>> insert) {
+			final K keyToInsert = insert.getKey();
+			final Node<K, V> newNode = insert.getValue();
 			K _keyOfAnchor = _keyWithValue(anchorNode);
 			if (_keyOfAnchor != null) {
 				children.put(_keyOfAnchor, newNode);
@@ -145,6 +139,11 @@ public class BPlus<K extends Comparable<K>, V> {
 		SortedMap<K, V> records = new TreeMap<>();
 		Node<K, V> next;
 
+		Record<K, Node<K, V>> insertInLeaf(Record<K, V> rec) {
+			records.put(rec.getKey(), rec.getValue());
+			return overflow() ? split() : null;
+		}
+
 		@Override
 		InternalNode<K, V> parent(Node<K, V> root) {
 			if (this == root) return null;
@@ -156,13 +155,8 @@ public class BPlus<K extends Comparable<K>, V> {
 			return this;
 		}
 
-		SortedMap<K, Node<K, V>> insertInLeaf(Record<K, V> rec) {
-			records.put(rec.getKey(), rec.getValue());
-			return overflow() ? split() : null;
-		}
-
 		@Override
-		SortedMap<K, Node<K, V>> split() {
+		Record<K, Node<K, V>> split() {
 			LeafNode<K, V> sibling = new LeafNode<>();
 			sibling.next = next;
 			next = sibling;
@@ -171,10 +165,7 @@ public class BPlus<K extends Comparable<K>, V> {
 			sibling.records = new TreeMap<>(records.tailMap(median));
 			// keep the rest
 			this.records = new TreeMap<>(records.headMap(median));
-			// below in python would be return median, sibling -:(
-			SortedMap<K, Node<K, V>> treeMap = new TreeMap<>();
-			treeMap.put(median, sibling);
-			return treeMap;
+			return new Record<K, Node<K, V>>(median, sibling);
 		}
 
 		@Override
@@ -197,36 +188,11 @@ public class BPlus<K extends Comparable<K>, V> {
 		// must go
 		if (leafNode.records.containsKey(key))
 			throw new IllegalArgumentException("Key exists");
-		SortedMap<K, Node<K, V>> insert = leafNode.insertInLeaf(rec);
+		Record<K, Node<K, V>> insert = leafNode.insertInLeaf(rec);
 		if (insert != null) { // got a key back, so leafNode split
 			++_leafs;
 			insertInternal(leafNode, insert);
 		}
-	}
-
-	private void insertInternal(Node<K, V> anchor,
-			SortedMap<K, Node<K, V>> insert) {
-		if (root == anchor) { // root must split (leaf or not)
-			++_levels;
-			InternalNode<K, V> newRoot = new InternalNode<>();
-			newRoot.children.put(insert.firstKey(), anchor);
-			newRoot.greaterOrEqual = insert.get(insert.firstKey());
-			root = newRoot;
-			return;
-		}
-		InternalNode<K, V> parent = anchor.parent(root); // root is not leaf
-															// here
-		SortedMap<K, Node<K, V>> insertInternal = parent.insertInternal(anchor,
-			insert);
-		if (insertInternal != null) insertInternal(parent, insertInternal);
-	}
-
-	private LeafNode<K, V> findLeaf(final K key) {
-		Node<K, V> current = root;
-		while (!current.isLeaf()) {
-			current = current.findLeaf(key);
-		}
-		return (LeafNode<K, V>) current;
 	}
 
 	public void print() {
@@ -241,5 +207,26 @@ public class BPlus<K extends Comparable<K>, V> {
 			System.out.println();
 			items = children;
 		}
+	}
+
+	private void
+			insertInternal(Node<K, V> anchor, Record<K, Node<K, V>> insert) {
+		if (root == anchor) { // root must split (leaf or not)
+			++_levels;
+			InternalNode<K, V> newRoot = new InternalNode<>();
+			newRoot.children.put(insert.getKey(), anchor);
+			newRoot.greaterOrEqual = insert.getValue();
+			root = newRoot;
+			return;
+		}
+		InternalNode<K, V> parent = anchor.parent(root); // root is not leaf
+															// here
+		Record<K, Node<K, V>> insertInternal = parent.insertInternal(anchor,
+			insert);
+		if (insertInternal != null) insertInternal(parent, insertInternal);
+	}
+
+	private LeafNode<K, V> findLeaf(final K key) {
+		return root.findLeaf(key);
 	}
 }
