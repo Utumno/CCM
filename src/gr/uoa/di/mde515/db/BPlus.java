@@ -11,9 +11,9 @@ import java.util.TreeMap;
 public class BPlus<K extends Comparable<K>, V> {
 
 	private Node<K, V> root = new LeafNode<>();
-	private static final int N = 4;
+	private static final int N = 2;
 	private static final int MAX_ITEMS = 2 * N + 1; // TODO
-	private int _leafs = 1;
+	private int _leafs = 1; // to be used in printing
 	private int _levels = 1;
 
 	static abstract class Node<K extends Comparable<K>, V> {
@@ -52,7 +52,7 @@ public class BPlus<K extends Comparable<K>, V> {
 		/** Node with keys strictly greater or equal to this.firstKey */
 		Node<K, V> greaterOrEqual; // TODO rename to next and move to Node
 
-		private Node<K, V> _lookup(final K k) {
+		Node<K, V> _lookup(final K k) {
 			if (k.compareTo(children.lastKey()) >= 0) return greaterOrEqual;
 			// tailMap contains at least children.lastKey()
 			SortedMap<K, Node<K, V>> tailMap = this.children.tailMap(k);
@@ -76,9 +76,11 @@ public class BPlus<K extends Comparable<K>, V> {
 
 		@Override
 		InternalNode<K, V> parent(Node<K, V> root) {
+			System.out.println("this" + this + " parent" + root);
 			if (this == root) return null; // eq ?
 			InternalNode<K, V> parent = (InternalNode<K, V>) root;
-			if (parent.children.values().contains(this)) return parent;
+			if (parent.children.values().contains(this)
+				|| this == parent.greaterOrEqual) return parent;
 			return parent(parent._lookup(this.children.lastKey()));
 		}
 
@@ -146,8 +148,11 @@ public class BPlus<K extends Comparable<K>, V> {
 
 		@Override
 		InternalNode<K, V> parent(Node<K, V> root) {
-			if (this == root) return null;
-			return (InternalNode<K, V>) root;
+			if (root instanceof LeafNode) return null; // tree root is leaf
+			InternalNode<K, V> parent = (InternalNode<K, V>) root;
+			if (parent.children.values().contains(this)
+				|| this == parent.greaterOrEqual) return parent;
+			return parent(parent._lookup(this.records.lastKey()));
 		}
 
 		@Override
@@ -220,10 +225,9 @@ public class BPlus<K extends Comparable<K>, V> {
 			return;
 		}
 		InternalNode<K, V> parent = anchor.parent(root); // root is not leaf
-															// here
-		Record<K, Node<K, V>> insertInternal = parent.insertInternal(anchor,
+		Record<K, Node<K, V>> newInternalNode = parent.insertInternal(anchor,
 			insert);
-		if (insertInternal != null) insertInternal(parent, insertInternal);
+		if (newInternalNode != null) insertInternal(parent, newInternalNode);
 	}
 
 	private LeafNode<K, V> findLeaf(final K key) {
