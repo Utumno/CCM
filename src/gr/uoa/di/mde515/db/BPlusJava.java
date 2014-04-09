@@ -22,7 +22,7 @@ public class BPlusJava<K extends Comparable<K>, V> implements IBPlus<K, V> {
 	@Override
 	public <R extends Record<K, V>> void insert(R rec) {
 		final K key = rec.getKey();
-		final LeafNode<K, V> leafNode = findLeaf(key); // find where the key
+		final LeafNode<K, V> leafNode = root.findLeaf(key); // find where the key
 		// must go
 		if (leafNode.records.containsKey(key))
 			throw new IllegalArgumentException("Key exists");
@@ -239,9 +239,5 @@ public class BPlusJava<K extends Comparable<K>, V> implements IBPlus<K, V> {
 		Record<K, Node<K, V>> newInternalNode = parent.insertInternal(anchor,
 			insert);
 		if (newInternalNode != null) insertInternal(parent, newInternalNode);
-	}
-
-	private LeafNode<K, V> findLeaf(final K key) {
-		return root.findLeaf(key);
 	}
 }
