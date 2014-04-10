@@ -60,7 +60,15 @@ public class BPlusJava<K extends Comparable<K>, V> implements IBPlus<K, V> {
 		/** Split this Node - return key and new node to insert in parent node */
 		abstract Record<K, Node<K, V>> split();
 
-		abstract InternalNode<K, V> parent(Node<K, V> fromTreeRoot);
+		/**
+		 * Do not call *on* tree root. For (non tree root) Node n,
+		 * n.parent(tree_root) will return the parent of n. tree_root should be
+		 * Internal unless the only node in the tree.
+		 *
+		 * @throws ClassCastException
+		 *             if no parent found (tries to find child nodes of leafs)
+		 */
+		abstract InternalNode<K, V> parent(InternalNode<K, V> candidateParent);
 
 		boolean overflow() {
 			return items() == MAX_ITEMS;
@@ -100,6 +108,18 @@ public class BPlusJava<K extends Comparable<K>, V> implements IBPlus<K, V> {
 			return children.get(firstKey);
 		}
 
+		/**
+		 * Wrappers around _lookup(K k) - look a node up means look its lastKey
+		 * up
+		 */
+		Node<K, V> _lookup(LeafNode<K, V> root) {
+			return _lookup(root.records.lastKey());
+		}
+
+		private Node<K, V> _lookup(InternalNode<K, V> internalNode) {
+			return _lookup(internalNode.children.lastKey());
+		}
+
 		private K _keyWithValue(Node<K, V> anchor) {
 			for (Entry<K, Node<K, V>> e : children.entrySet())
 				if (e.getValue() == anchor) return e.getKey();
@@ -110,13 +130,10 @@ public class BPlusJava<K extends Comparable<K>, V> implements IBPlus<K, V> {
 		}
 
 		@Override
-		InternalNode<K, V> parent(Node<K, V> root) {
-			System.out.println("this" + this + " parent" + root);
-			if (this == root) return null; // eq ?
-			InternalNode<K, V> parent = (InternalNode<K, V>) root;
-			if (parent.children.values().contains(this)
-				|| this == parent.greaterOrEqual) return parent;
-			return parent(parent._lookup(this.children.lastKey()));
+		InternalNode<K, V> parent(InternalNode<K, V> root) {
+			if (root.children.values().contains(this)
+				|| this == root.greaterOrEqual) return root;
+			return parent((InternalNode<K, V>) root._lookup(this)); // the CCE
 		}
 
 		@Override
@@ -183,12 +200,10 @@ public class BPlusJava<K extends Comparable<K>, V> implements IBPlus<K, V> {
 		}
 
 		@Override
-		InternalNode<K, V> parent(Node<K, V> root) {
-			if (root instanceof LeafNode) return null; // tree root is leaf
-			InternalNode<K, V> parent = (InternalNode<K, V>) root;
-			if (parent.children.values().contains(this)
-				|| this == parent.greaterOrEqual) return parent;
-			return parent(parent._lookup(this.records.lastKey()));
+		InternalNode<K, V> parent(InternalNode<K, V> root) {
+			if (root.children.values().contains(this)
+				|| this == root.greaterOrEqual) return root;
+			return parent((InternalNode<K, V>) root._lookup(this)); // the CCE
 		}
 
 		@Override
@@ -226,19 +241,21 @@ public class BPlusJava<K extends Comparable<K>, V> implements IBPlus<K, V> {
 	// =========================================================================
 	// Helpers
 	// =========================================================================
-	private void
-			insertInternal(Node<K, V> anchor, Record<K, Node<K, V>> insert) {
-		if (root == anchor) { // root must split (leaf or not)
+	private void insertInternal(Node<K, V> justSplit,
+			Record<K, Node<K, V>> insert) {
+		if (root == justSplit) { // root must split (leaf or not)
 			++_levels;
 			InternalNode<K, V> newRoot = new InternalNode<>();
-			newRoot.children.put(insert.getKey(), anchor);
+			newRoot.children.put(insert.getKey(), justSplit);
 			newRoot.greaterOrEqual = insert.getValue();
 			root = newRoot;
 			return;
 		}
-		InternalNode<K, V> parent = anchor.parent(root); // root is not leaf
-		Record<K, Node<K, V>> newInternalNode = parent.insertInternal(anchor,
-			insert);
+		// justSplit is not tree root so has a parent
+		InternalNode<K, V> parent = justSplit.parent((InternalNode<K, V>) root);
+		// moreover root is not leaf so I cast it to InternalNode safely
+		Record<K, Node<K, V>> newInternalNode = parent.insertInternal(
+			justSplit, insert);
 		if (newInternalNode != null) insertInternal(parent, newInternalNode);
 	}
 }
