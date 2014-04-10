@@ -36,6 +36,7 @@ public class Main {
 				// bPlusTree.print();
 			}
 			bPlusTree.print();
+			bPlusTree._ex();
 			System.out.println();
 		}
 	}

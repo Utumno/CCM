@@ -11,7 +11,7 @@ import java.util.TreeMap;
 public class BPlusJava<K extends Comparable<K>, V> implements IBPlus<K, V> {
 
 	private Node<K, V> root = new LeafNode<>();
-	private static final int N = 1;
+	private static final int N = 11;
 	private static final int MAX_ITEMS = 2 * N + 1; // TODO
 	private int _leafs = 1; // to be used in printing
 	private int _levels = 1;
@@ -48,6 +48,10 @@ public class BPlusJava<K extends Comparable<K>, V> implements IBPlus<K, V> {
 		}
 	}
 
+	@Override
+	public void _ex() {
+		root.parent((InternalNode<K, V>) root);
+	}
 	// =========================================================================
 	// Nodes
 	// =========================================================================
@@ -133,7 +137,11 @@ public class BPlusJava<K extends Comparable<K>, V> implements IBPlus<K, V> {
 		InternalNode<K, V> parent(InternalNode<K, V> root) {
 			if (root.children.values().contains(this)
 				|| this == root.greaterOrEqual) return root;
-			return parent((InternalNode<K, V>) root._lookup(this)); // the CCE
+			try {
+				return parent((InternalNode<K, V>) root._lookup(this)); // the CCE
+			} catch (ClassCastException e) {
+				throw new RuntimeException("No parent for " + this, e);
+			}
 		}
 
 		@Override
@@ -160,10 +168,11 @@ public class BPlusJava<K extends Comparable<K>, V> implements IBPlus<K, V> {
 			K _keyOfAnchor = _keyWithValue(justSplit);
 			if (_keyOfAnchor != null) {
 				children.put(_keyOfAnchor, newNode);
-				children.put(keyToInsert, justSplit); // all keys in anchor
+				children.put(keyToInsert, justSplit); // all keys in justSplit
 				// node are smaller than the key to insert
 			} else {
-				// _keyOfAnchor == null - anchor used to be for keys greater or
+				// _keyOfAnchor == null - justSplit used to be for keys greater
+				// or
 				// equal to lastKey
 				children.put(keyToInsert, justSplit);
 				greaterOrEqual = newNode;
