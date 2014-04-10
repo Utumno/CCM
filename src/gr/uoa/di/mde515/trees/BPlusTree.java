@@ -2,7 +2,7 @@ package gr.uoa.di.mde515.trees;
 
 import gr.uoa.di.mde515.index.Record;
 
-public interface IBPlus<K extends Comparable<K>, V> {
+public interface BPlusTree<K extends Comparable<K>, V> {
 
 	void print();
 

@@ -11,7 +11,7 @@ import java.util.Map.Entry;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-public class BPlusJava<K extends Comparable<K>, V> implements IBPlus<K, V> {
+public class BPlusJava<K extends Comparable<K>, V> implements BPlusTree<K, V> {
 
 	private Node<K, V> root = new LeafNode<>();
 	private static final int N = 1;

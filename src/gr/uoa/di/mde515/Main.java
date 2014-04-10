@@ -2,7 +2,7 @@ package gr.uoa.di.mde515;
 
 import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.trees.BPlusJava;
-import gr.uoa.di.mde515.trees.IBPlus;
+import gr.uoa.di.mde515.trees.BPlusTree;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,7 +26,7 @@ public class Main {
 		for (int j = 0; ++j < 10;) {
 			List<Integer> perm = permutation(primeNumbers);
 			// List<Integer> perm = primeNumbers;
-			IBPlus<Integer, Integer> bPlusTree = new BPlusJava<>();
+			BPlusTree<Integer, Integer> bPlusTree = new BPlusJava<>();
 			System.out.println(perm);
 			for (int i = 0; i < perm.size(); i++) {
 				final Integer in = perm.get(i);
