@@ -1,8 +1,8 @@
 package gr.uoa.di.mde515;
 
-import gr.uoa.di.mde515.db.BPlusJava;
-import gr.uoa.di.mde515.db.IBPlus;
 import gr.uoa.di.mde515.db.Record;
+import gr.uoa.di.mde515.trees.BPlusJava;
+import gr.uoa.di.mde515.trees.IBPlus;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,7 +41,7 @@ public class Main {
 	}
 
 	static List<Integer> permutation(List<Integer> primeNumbers) {
-		primeNumbers = new ArrayList<>(primeNumbers);
+		primeNumbers = new ArrayList<>(primeNumbers); // NEEDED
 		final List<Integer> perm = new ArrayList<>();
 		for (int inLen = primeNumbers.size(); inLen != 0; --inLen) {
 			int nextInt = r.nextInt(inLen);

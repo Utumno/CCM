@@ -1,5 +1,7 @@
 package gr.uoa.di.mde515.db;
 
+import gr.uoa.di.mde515.trees.BPlusJava;
+
 public class Index<K extends Comparable<K>, V> {
 
 	private BPlusJava<K, V> bplus;

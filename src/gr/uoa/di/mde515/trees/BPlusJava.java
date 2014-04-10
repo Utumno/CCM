@@ -1,4 +1,6 @@
-package gr.uoa.di.mde515.db;
+package gr.uoa.di.mde515.trees;
+
+import gr.uoa.di.mde515.db.Record;
 
 import java.util.ArrayList;
 import java.util.Arrays;
