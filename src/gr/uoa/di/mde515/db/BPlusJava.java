@@ -22,8 +22,8 @@ public class BPlusJava<K extends Comparable<K>, V> implements IBPlus<K, V> {
 	@Override
 	public <R extends Record<K, V>> void insert(R rec) {
 		final K key = rec.getKey();
-		final LeafNode<K, V> leafNode = root.findLeaf(key); // find where the key
-		// must go
+		final LeafNode<K, V> leafNode = root.findLeaf(key); // find where the
+		// key must go
 		if (leafNode.records.containsKey(key))
 			throw new IllegalArgumentException("Key exists");
 		Record<K, Node<K, V>> insert = leafNode.insertInLeaf(rec);
@@ -136,19 +136,19 @@ public class BPlusJava<K extends Comparable<K>, V> implements IBPlus<K, V> {
 			return new Record<K, Node<K, V>>(median, sibling);
 		}
 
-		Record<K, Node<K, V>> insertInternal(Node<K, V> anchorNode,
+		Record<K, Node<K, V>> insertInternal(Node<K, V> justSplit,
 				Record<K, Node<K, V>> insert) {
 			final K keyToInsert = insert.getKey();
 			final Node<K, V> newNode = insert.getValue();
-			K _keyOfAnchor = _keyWithValue(anchorNode);
+			K _keyOfAnchor = _keyWithValue(justSplit);
 			if (_keyOfAnchor != null) {
 				children.put(_keyOfAnchor, newNode);
-				children.put(keyToInsert, anchorNode); // all keys in anchor
+				children.put(keyToInsert, justSplit); // all keys in anchor
 				// node are smaller than the key to insert
 			} else {
 				// _keyOfAnchor == null - anchor used to be for keys greater or
 				// equal to lastKey
-				children.put(keyToInsert, anchorNode);
+				children.put(keyToInsert, justSplit);
 				greaterOrEqual = newNode;
 			}
 			return overflow() ? split() : null;
@@ -177,7 +177,8 @@ public class BPlusJava<K extends Comparable<K>, V> implements IBPlus<K, V> {
 		Node<K, V> next;
 
 		Record<K, Node<K, V>> insertInLeaf(Record<K, V> rec) {
-			records.put(rec.getKey(), rec.getValue());
+			records.put(rec.getKey(), rec.getValue()); // Need 2 pages if this
+			// overflows and implementing it with page buffers
 			return overflow() ? split() : null;
 		}
 

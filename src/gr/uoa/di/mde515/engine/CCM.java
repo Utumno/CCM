@@ -7,9 +7,9 @@ import java.util.List;
 
 public interface CCM<K extends Comparable<K>, V> {
 
-	Transaction b_xaction();
+	Transaction beginTransaction();
 
-	void e_xaction();
+	void endTransaction();
 
 	Record<K, V> insert(Transaction tr, Record<K, V> record);
 
@@ -38,7 +38,7 @@ class CCMImpl<K extends Comparable<K>, V> implements CCM<K, V> {
 
 	// thread pool
 	@Override
-	public Transaction b_xaction() {
+	public Transaction beginTransaction() {
 		synchronized (transactions) {
 			final Transaction tr = new Transaction();
 			transactions.add(tr);
@@ -47,7 +47,7 @@ class CCMImpl<K extends Comparable<K>, V> implements CCM<K, V> {
 	}
 
 	@Override
-	public void e_xaction() {
+	public void endTransaction() {
 		// TODO Auto-generated method stub
 	}
 

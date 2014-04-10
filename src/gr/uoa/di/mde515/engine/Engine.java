@@ -9,9 +9,9 @@ public abstract class Engine<K extends Comparable<K>, V> { // MUST BE AN
 
 	Engine() {}
 
-	public abstract Transaction b_xaction();
+	public abstract Transaction beginTransaction();
 
-	public abstract void e_xaction(Transaction tr);
+	public abstract void endTransaction(Transaction tr);
 
 	public abstract Record<K, V> insert(Transaction tr, Record<K, V> record);
 
@@ -43,11 +43,11 @@ class EngineImpl<K extends Comparable<K>, V> extends Engine<K, V> {
 	CCM<K, V> ccm;
 
 	@Override
-	public Transaction b_xaction() {
-		return ccm.b_xaction();
+	public Transaction beginTransaction() {
+		return ccm.beginTransaction();
 	}
 	@Override
-	public void e_xaction(Transaction tr) {
+	public void endTransaction(Transaction tr) {
 		// TODO Auto-generated method stub
 	}
 
