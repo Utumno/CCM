@@ -1,5 +1,6 @@
 package gr.uoa.di.mde515.trees;
 
+import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
 
 import java.util.ArrayList;
@@ -26,13 +27,36 @@ public class BPlusJava<K extends Comparable<K>, V> implements IBPlus<K, V> {
 		final K key = rec.getKey();
 		final LeafNode<K, V> leafNode = root.findLeaf(key); // find where the
 		// key must go
+		_insertInLeaf(rec, key, leafNode);
+	}
+
+	private <R extends Record<K, V>> void _insertInLeaf(R rec, final K key,
+			final LeafNode<K, V> leafNode) throws IllegalArgumentException {
 		if (leafNode.records.containsKey(key))
 			throw new IllegalArgumentException("Key exists");
 		Record<K, Node<K, V>> insert = leafNode.insertInLeaf(rec);
 		if (insert != null) { // got a key back, so leafNode split
 			++_leafs;
-			insertInternal(leafNode, insert);
+			insertInternal(leafNode, insert); // all parents are locked
 		}
+	}
+
+	public <R extends Record<K, V>> PageId<Node<K, V>> insertIterative(R rec) {
+		return new PageId<>(root);
+	}
+
+	public <R extends Record<K, V>> PageId<Node<K, V>> insertIterative(
+			PageId<Node<K, V>> grantedPage, R rec) {
+		Node<K, V> node = grantedPage.getO();
+		final K key = rec.getKey();
+		if (node instanceof LeafNode) {
+			_insertInLeaf(rec, key, (LeafNode<K, V>) node); // all parents are
+			// locked
+			return null; // granted
+		}
+		InternalNode<K, V> in = (InternalNode<K, V>) node;
+		final Node<K, V> nextNode = in._lookup(key);
+		return new PageId<>(nextNode);
 	}
 
 	@Override
@@ -53,7 +77,7 @@ public class BPlusJava<K extends Comparable<K>, V> implements IBPlus<K, V> {
 	// =========================================================================
 	// Nodes
 	// =========================================================================
-	static abstract class Node<K extends Comparable<K>, V> {
+	public static abstract class Node<K extends Comparable<K>, V> {
 
 		// TODO list of parents (?)
 		/** Return the Leaf that should contain key k starting from this Node */
