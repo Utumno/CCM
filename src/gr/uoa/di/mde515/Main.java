@@ -1,6 +1,6 @@
 package gr.uoa.di.mde515;
 
-import gr.uoa.di.mde515.db.Record;
+import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.trees.BPlusJava;
 import gr.uoa.di.mde515.trees.IBPlus;
 

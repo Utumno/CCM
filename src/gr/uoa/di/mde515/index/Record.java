@@ -1,4 +1,4 @@
-package gr.uoa.di.mde515.db;
+package gr.uoa.di.mde515.index;
 
 public class Record<K extends Comparable<K>, V> {
 

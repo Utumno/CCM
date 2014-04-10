@@ -1,6 +1,6 @@
 package gr.uoa.di.mde515.engine;
 
-import gr.uoa.di.mde515.db.Record;
+import gr.uoa.di.mde515.index.Record;
 
 import java.io.File; // FIXME
 import java.util.List;
