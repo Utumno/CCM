@@ -3,6 +3,8 @@ package gr.uoa.di.mde515.engine;
 import gr.uoa.di.mde515.index.Record;
 
 import java.io.File; // FIXME
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public interface CCM<K extends Comparable<K>, V> {
@@ -44,16 +46,15 @@ public interface CCM<K extends Comparable<K>, V> {
 
 class CCMImpl<K extends Comparable<K>, V> implements CCM<K, V> {
 
-	List<Transaction> transactions;
+	final List<Transaction> transactions = Collections
+		.synchronizedList(new ArrayList<Transaction>()); // ...
 
 	// thread pool
 	@Override
 	public Transaction beginTransaction() {
-		synchronized (transactions) {
-			final Transaction tr = new Transaction();
-			transactions.add(tr);
-			return tr;
-		}
+		final Transaction tr = new Transaction();
+		transactions.add(tr);
+		return tr;
 	}
 
 	@Override
