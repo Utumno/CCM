@@ -1,5 +1,6 @@
 package gr.uoa.di.mde515.engine;
 
+import gr.uoa.di.mde515.engine.CCM.TransactionRequiredException;
 import gr.uoa.di.mde515.index.Record;
 
 public abstract class Engine<K extends Comparable<K>, V> { // MUST BE AN
@@ -13,7 +14,8 @@ public abstract class Engine<K extends Comparable<K>, V> { // MUST BE AN
 
 	public abstract void endTransaction(Transaction tr);
 
-	public abstract Record<K, V> insert(Transaction tr, Record<K, V> record);
+	public abstract Record<K, V> insert(Transaction tr, Record<K, V> record)
+			throws TransactionRequiredException;
 
 	//
 	// Record<K,V> delete(T key);
@@ -52,7 +54,8 @@ class EngineImpl<K extends Comparable<K>, V> extends Engine<K, V> {
 	}
 
 	@Override
-	public Record<K, V> insert(Transaction tr, Record<K, V> record) {
+	public Record<K, V> insert(Transaction tr, Record<K, V> record)
+			throws TransactionRequiredException {
 		return ccm.insert(tr, record);
 	}
 }
