@@ -10,7 +10,7 @@ import gr.uoa.di.mde515.trees.BPlusJava.Node;
 public class Index<K extends Comparable<K>, V> {
 
 	private BPlusJava<K, V> bplus;
-	LockManager<Node<K, V>> lm;
+	private LockManager<Node<K, V>> lm;
 
 	public void insert(Record<K, V> rec) {
 		Lock el = Lock.E;

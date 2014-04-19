@@ -11,13 +11,26 @@ import java.util.Map.Entry;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
+/**
+ * B plus tree. When a node that accepts an EVEN number of items splits the
+ * midle node is moved to the RIGHT sibling. For instance (for max number of
+ * items equal to 4):
+ *
+ * 12345 -> 12 345
+ *
+ * @param <K>
+ *            the key of the records to be stored in the leaf nodes
+ * @param <V>
+ *            the value of the records to be stored in the leaf nodes (non key
+ *            attributes)
+ */
 public class BPlusJava<K extends Comparable<K>, V> implements BPlusTree<K, V> {
 
 	private Node<K, V> root = new LeafNode<>();
 	private static final int N = 1;
-	private static final int MAX_ITEMS = 2 * N + 1; // TODO
+	private static final int MAX_ITEMS = 2 * N + 1; // TODO, not only odd
 	private int _leafs = 1; // to be used in printing
-	private int _levels = 1;
+	private int _levels = 1; // to be used in printing
 
 	// =========================================================================
 	// API
@@ -30,24 +43,13 @@ public class BPlusJava<K extends Comparable<K>, V> implements BPlusTree<K, V> {
 		_insertInLeaf(rec, key, leafNode);
 	}
 
-	private <R extends Record<K, V>> void _insertInLeaf(R rec, final K key,
-			final LeafNode<K, V> leafNode) throws IllegalArgumentException {
-		if (leafNode.records.containsKey(key))
-			throw new IllegalArgumentException("Key exists");
-		Record<K, Node<K, V>> insert = leafNode.insertInLeaf(rec);
-		if (insert != null) { // got a key back, so leafNode split
-			++_leafs;
-			insertInternal(leafNode, insert); // all parents are locked
-		}
-	}
-
 	public <R extends Record<K, V>> PageId<Node<K, V>> insertIterative(R rec) {
 		return new PageId<>(root);
 	}
 
 	public <R extends Record<K, V>> PageId<Node<K, V>> insertIterative(
 			PageId<Node<K, V>> grantedPage, R rec) {
-		Node<K, V> node = grantedPage.getO();
+		Node<K, V> node = grantedPage.getId();
 		final K key = rec.getKey();
 		if (node instanceof LeafNode) {
 			_insertInLeaf(rec, key, (LeafNode<K, V>) node); // all parents are
@@ -283,5 +285,16 @@ public class BPlusJava<K extends Comparable<K>, V> implements BPlusTree<K, V> {
 		Record<K, Node<K, V>> newInternalNode = parent.insertInternal(
 			justSplit, insert);
 		if (newInternalNode != null) insertInternal(parent, newInternalNode);
+	}
+
+	private <R extends Record<K, V>> void _insertInLeaf(R rec, final K key,
+			final LeafNode<K, V> leafNode) throws IllegalArgumentException {
+		if (leafNode.records.containsKey(key))
+			throw new IllegalArgumentException("Key exists");
+		Record<K, Node<K, V>> insert = leafNode.insertInLeaf(rec);
+		if (insert != null) { // got a key back, so leafNode split
+			++_leafs;
+			insertInternal(leafNode, insert); // all parents are locked
+		}
 	}
 }

@@ -49,7 +49,7 @@ class CCMImpl<K extends Comparable<K>, V> implements CCM<K, V> {
 	final List<Transaction> transactions = Collections
 		.synchronizedList(new ArrayList<Transaction>()); // ...
 
-	// thread pool
+	// TODO thread pool
 	@Override
 	public Transaction beginTransaction() {
 		final Transaction tr = new Transaction();

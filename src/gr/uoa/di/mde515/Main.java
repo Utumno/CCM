@@ -19,6 +19,10 @@ public class Main {
 		// Record<Integer> rec = null;
 		// eng.insert(tr, rec);
 		// eng.e_xaction(tr);
+		treePrint();
+	}
+
+	private static void treePrint() {
 		List<Integer> primeNumbers = new ArrayList<>(Arrays.asList(2, 3, 5, 7,
 			11, 13, 19, 23, 37, 41, 43, 47, 53, 59, 67, 71, 61, 73, 79, 89, 97,
 			101, 103, 109, 29, 31, 113, 127, 131, 137, 139, 149, 151, 157, 163,
