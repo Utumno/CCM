@@ -1,6 +1,9 @@
 package gr.uoa.di.mde515.engine;
 
+import gr.uoa.di.mde515.engine.buffer.Page;
+import gr.uoa.di.mde515.index.Index;
 import gr.uoa.di.mde515.index.Record;
+import gr.uoa.di.mde515.locks.Lock;
 
 import java.io.File; // FIXME
 import java.util.ArrayList;
@@ -48,6 +51,7 @@ class CCMImpl<K extends Comparable<K>, V> implements CCM<K, V> {
 
 	final List<Transaction> transactions = Collections
 		.synchronizedList(new ArrayList<Transaction>()); // ...
+	final Index<K, V> index = new Index<>();
 
 	// TODO thread pool
 	@Override
@@ -63,7 +67,16 @@ class CCMImpl<K extends Comparable<K>, V> implements CCM<K, V> {
 	}
 
 	@Override
-	public Record<K, V> insert(Transaction tr, Record<K, V> record) {
+	public Record<K, V> insert(Transaction tr, Record<K, V> record)
+			throws TransactionRequiredException {
+		if (tr == null || record == null) throw new NullPointerException();
+		if (!transactions.contains(tr))
+			throw new TransactionRequiredException();
+		Page p = index.lookupLocked(tr, record.getKey(), Lock.E);
+		// if key exists throw
+		// V value = rec.getValue(); // this should now insert into the file
+		// if insertion to file is successful we must now insert into the index
+		// and unlock
 		throw new UnsupportedOperationException("Not supported yet."); // TODO
 	}
 

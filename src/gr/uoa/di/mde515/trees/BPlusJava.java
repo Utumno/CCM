@@ -43,11 +43,31 @@ public class BPlusJava<K extends Comparable<K>, V> implements BPlusTree<K, V> {
 		_insertInLeaf(rec, key, leafNode);
 	}
 
-	public <R extends Record<K, V>> PageId<Node<K, V>> insertIterative(R rec) {
+	/** Return a page id for the root node */
+	public PageId<Node<K, V>> getRootPageId() {
 		return new PageId<>(root);
 	}
 
-	public <R extends Record<K, V>> PageId<Node<K, V>> insertIterative(
+	/**
+	 * Returns the next page id of the index we need to lock in our search for
+	 * the given key. When the grantedPage is a leaf node this function returns
+	 * null to signal we locked all the path to the key while at the same time
+	 * populating the sm output parameter with the map of keys and page ids in
+	 * the leaf node.
+	 */
+	public PageId<Node<K, V>> getNextPageId(PageId<Node<K, V>> grantedPage,
+			K key, SortedMap<K, V> sm) {
+		Node<K, V> node = grantedPage.getId();
+		if (node instanceof LeafNode) {
+			sm.putAll(((LeafNode) node).records);
+			return null; // locked the path to the key
+		}
+		InternalNode<K, V> in = (InternalNode<K, V>) node;
+		final Node<K, V> nextNode = in._lookup(key);
+		return new PageId<>(nextNode);
+	}
+
+	public <R extends Record<K, V>> PageId<Node<K, V>> getLeaf(
 			PageId<Node<K, V>> grantedPage, R rec) {
 		Node<K, V> node = grantedPage.getId();
 		final K key = rec.getKey();
