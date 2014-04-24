@@ -1,8 +1,6 @@
 package gr.uoa.di.mde515.engine;
 
 import java.nio.ByteBuffer;
-import java.io.RandomAccessFile;
-import gr.uoa.di.mde515.engine.Offsets.*;
 
 public class Page {
 
@@ -67,7 +65,7 @@ public class Page {
 	public void fileHeader(boolean isNew) {}
 
 	public void setPageHeader(short value) {
-		writeShort(Offsets.PAGE_FREE_SPACE, (short) 100); // defined 
+		writeShort(Offsets.PAGE_FREE_SPACE, (short) 100); // defined
 		writeShort(Offsets.PAGE_HEADER_NEXT, value); // ??
 		writeShort(Offsets.PAGE_HEADER_PREVIOUS, (short) 0); // ??
 		for (int i = 8; i < (Offsets.numSlots + 8); i++) {
@@ -79,7 +77,7 @@ public class Page {
 	void pageHeaderSetNext(short next) {
 		writeShort(Offsets.PAGE_HEADER_NEXT, next);
 	}
-	
+
 	void pageHeaderSetPrevious(short previous) {
 		writeShort(Offsets.PAGE_HEADER_NEXT, previous);
 	}

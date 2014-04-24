@@ -1,7 +1,10 @@
 package gr.uoa.di.mde515.engine;
 
-import java.io.*;
-import java.nio.*;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
 
 public class HeapFile {
 
@@ -13,23 +16,21 @@ public class HeapFile {
 		file = new RandomAccessFile( filename, "rw");
 		preallocateFile();
 	}
-	
+
 	public Page readPage(int pageID) throws IOException {
 		byte[] d = new byte[4096]; // normally, we use a buffer from the pool
 		file.seek(pageID);
 		file.read(d, 0, 4096);
 		file.close();
-		Page apage = new Page(pageID, d);
-		return apage;
+		return new Page(pageID, d);
 	}
-	
+
 	public void writePage(int pageID, byte[] data) throws IOException{
 		file.seek(pageID);
 		file.write(data);
 		file.close();
 	}
 
-	public void insertRecord( Record rec, int pageID) {}
 
 	// again the ByteBuffer could be used instead of seek
 	public void deleteRecord(int pageID, int slot) {
@@ -52,7 +53,7 @@ public class HeapFile {
 			file.write(data.array());
 		}
 	}
-	
+
 	private void preallocateFile()
 			throws IOException {
 		for (long i = 0; i < Offsets.FILE_SIZE; i += Offsets.PAGE_SIZE) {
