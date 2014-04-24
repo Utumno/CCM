@@ -24,6 +24,13 @@ public class Index<K extends Comparable<K>, V> {
 	private BPlusJava<K, V> bplus;
 	private LockManager<Node<K, V>> lm;
 
+	/**
+	 * Locks the path from the root to the leaf where a key is to be inserted on
+	 * behalf of a given transaction - WIP
+	 *
+	 * @throws KeyExistsException
+	 *             if the key exists
+	 */
 	public void lookupLocked(Transaction tr, K key, Lock el)
 			throws KeyExistsException {
 		SortedMap<K, V> sm = new TreeMap<>();

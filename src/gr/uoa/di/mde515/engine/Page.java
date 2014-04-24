@@ -6,14 +6,22 @@ import java.nio.ByteBuffer;
 
 public class Page<T> {
 
+	// OFSSETS
+	private static final short NEXT_PAGE_OFFSET = 0;
+	private static final short PREVIOUS_PAGE_OFFSET = 4;
+	// /OFFSETS
 	private PageId<T> pageid;
 	// private int numSlots;
 	// private short[] slots;
-	// private int previousPage;
-	// private int nextPage;
+	private int previousPage;
+	private int nextPage;
 	private ByteBuffer dat;
 	public boolean dirty = false;
 	public static final String FILE_NAME = "customers.txt";
+	//
+	int numSlots = 100;
+	int NUM_RECORDS_HEADER_LOCATION = 0;
+	int DATA_START_HEADER_LOCATION = 4;
 
 	// sug: instead we could accept the ByteBuffer immediately
 	public Page(T pageid, byte[] data) {
@@ -25,11 +33,11 @@ public class Page<T> {
 		return dat;
 	}
 
-	public int getPageId() {
+	public PageId<T> getPageId() {
 		return pageid;
 	}
 
-	public void setPageId(int pageid) {
+	public void setPageId(PageId<T> pageid) {
 		this.pageid = pageid;
 	}
 
@@ -67,13 +75,13 @@ public class Page<T> {
 	public void fileHeader(boolean isNew) {}
 
 	public void setPageHeader(short value) {
-		writeShort(Offsets.PAGE_FREE_SPACE, (short) 100); // defined
-		writeShort(Offsets.PAGE_HEADER_NEXT, value); // ??
-		writeShort(Offsets.PAGE_HEADER_PREVIOUS, (short) 0); // ??
+		writeShort(PAGE_FREE_SPACE, (short) 100); // defined
+		writeShort(PAGE_HEADER_NEXT, value); // ??
+		writeShort(PAGE_HEADER_PREVIOUS, (short) 0); // ??
 		for (int i = 8; i < (Offsets.numSlots + 8); i++) {
 			writeShort(i, (short) -1);
 		}
-		writeShort();//thesi tou prwtou record
+		writeShort();// thesi tou prwtou record
 	}
 
 	void pageHeaderSetNext(short next) {

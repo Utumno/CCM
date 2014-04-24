@@ -54,7 +54,8 @@ class CCMImpl<K extends Comparable<K>, V, T> implements CCM<K, V> {
 	final List<Transaction> transactions = Collections
 		.synchronizedList(new ArrayList<Transaction>()); // ...
 	final Index<K, PageId<T>> index = new Index<>();
-	final DataFile<K, V> dataFile = DataFile.init("");
+	// KLEO buffer manager
+	final DataFile<K, V> dataFile = DataFile.init(""); // add the buffer manager
 
 	// TODO thread pool
 	@Override
