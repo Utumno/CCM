@@ -1,7 +1,7 @@
 package gr.uoa.di.mde515.engine;
 
-import gr.uoa.di.mde515.engine.buffer.Page;
 import gr.uoa.di.mde515.index.Index;
+import gr.uoa.di.mde515.index.Index.KeyExistsException;
 import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.locks.Lock;
 
@@ -26,7 +26,7 @@ public interface CCM<K extends Comparable<K>, V> {
 	void endTransaction(Transaction tr);
 
 	Record<K, V> insert(Transaction tr, Record<K, V> record)
-			throws TransactionRequiredException;
+			throws TransactionRequiredException, KeyExistsException;
 
 	Record<K, V> delete(Transaction tr, K key);
 
@@ -68,12 +68,11 @@ class CCMImpl<K extends Comparable<K>, V> implements CCM<K, V> {
 
 	@Override
 	public Record<K, V> insert(Transaction tr, Record<K, V> record)
-			throws TransactionRequiredException {
+			throws TransactionRequiredException, KeyExistsException {
 		if (tr == null || record == null) throw new NullPointerException();
 		if (!transactions.contains(tr))
 			throw new TransactionRequiredException();
-		Page p = index.lookupLocked(tr, record.getKey(), Lock.E);
-		// if key exists throw
+		index.lookupLocked(tr, record.getKey(), Lock.E);
 		// V value = rec.getValue(); // this should now insert into the file
 		// if insertion to file is successful we must now insert into the index
 		// and unlock
