@@ -1,10 +1,12 @@
 package gr.uoa.di.mde515.engine;
 
+import gr.uoa.di.mde515.index.PageId;
+
 import java.nio.ByteBuffer;
 
-public class Page {
+public class Page<T> {
 
-	private int pageid;
+	private PageId<T> pageid;
 	// private int numSlots;
 	// private short[] slots;
 	// private int previousPage;
@@ -14,8 +16,8 @@ public class Page {
 	public static final String FILE_NAME = "customers.txt";
 
 	// sug: instead we could accept the ByteBuffer immediately
-	public Page(int pageid, byte[] data) {
-		this.pageid = pageid;
+	public Page(T pageid, byte[] data) {
+		this.pageid = new PageId<>(pageid);
 		this.dat = ByteBuffer.wrap(data);
 	}
 

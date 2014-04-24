@@ -1,7 +1,9 @@
 package gr.uoa.di.mde515.engine;
 
+import gr.uoa.di.mde515.index.DataFile;
 import gr.uoa.di.mde515.index.Index;
 import gr.uoa.di.mde515.index.Index.KeyExistsException;
+import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.locks.Lock;
 
@@ -47,11 +49,12 @@ public interface CCM<K extends Comparable<K>, V> {
 	File bulkDelete(Transaction tr, File fileOfKeys);
 }
 
-class CCMImpl<K extends Comparable<K>, V> implements CCM<K, V> {
+class CCMImpl<K extends Comparable<K>, V, T> implements CCM<K, V> {
 
 	final List<Transaction> transactions = Collections
 		.synchronizedList(new ArrayList<Transaction>()); // ...
-	final Index<K, V> index = new Index<>();
+	final Index<K, PageId<T>> index = new Index<>();
+	final DataFile<K, V> dataFile = DataFile.init("");
 
 	// TODO thread pool
 	@Override
@@ -73,6 +76,7 @@ class CCMImpl<K extends Comparable<K>, V> implements CCM<K, V> {
 		if (!transactions.contains(tr))
 			throw new TransactionRequiredException();
 		index.lookupLocked(tr, record.getKey(), Lock.E);
+		dataFile.insert(tr, record);
 		// V value = rec.getValue(); // this should now insert into the file
 		// if insertion to file is successful we must now insert into the index
 		// and unlock

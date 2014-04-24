@@ -1,20 +1,26 @@
 package gr.uoa.di.mde515.engine;
 
+import gr.uoa.di.mde515.index.DataFile;
+import gr.uoa.di.mde515.index.Record;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 
-public class HeapFile {
+public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 
 	private RandomAccessFile file;
-	private String filename;
 	public static final byte[] BLANK_PAGE = new byte[Offsets.PAGE_SIZE];
 
-	public HeapFile(String filename) throws IOException {
-		file = new RandomAccessFile( filename, "rw");
-		preallocateFile();
+	public HeapFile(String filename) {
+		try {
+			file = new RandomAccessFile(filename, "rw");
+		} catch (FileNotFoundException e) {
+			throw new RuntimeException("Can't open database file " + filename,
+				e);
+		}
+		// preallocateFile();
 	}
 
 	public Page readPage(int pageID) throws IOException {
@@ -62,6 +68,10 @@ public class HeapFile {
 		file.close();
 	}
 
+	@Override
+	public void insert(Transaction tr, Record<K, V> rec) {
+		lockHeader();
+	}
 	/*public static void main(String args[]) {
 		try {
 			MyFile obj = new MyFile();
@@ -79,4 +89,5 @@ public class HeapFile {
 			System.err.println("Caught IOException df: " + e.getMessage());
 		}
 	}*/
+	private void lockHeader() {}
 }
