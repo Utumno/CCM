@@ -75,7 +75,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	}
 
 	public void createFileHeader() throws IOException {
-		buf.newPage(0);
+		buf.allocateNewPage(0);
 		Frame f = buf.allocFrame(0);
 		Page p = new Page(0, f.getBufferFromFrame());
 		p.writeInt(OFFSET_FREE_LIST, 1);
@@ -154,9 +154,9 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	private void lockHeader() {
 		throw new UnsupportedOperationException("Not implemented"); // TODO
 	}
-	
+
 	public static void main(String args[]){
-		
+
 	}
 }
 

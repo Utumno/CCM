@@ -16,8 +16,6 @@ public class BufferManager {
 	// the structure that maintain information about pageIDs and their
 	// corresponding frame numbers
 	private FramePage hash;
-	// storage layer
-	private final DiskFile disk;
 	// contains the available frames that can be used
 	private final List<Integer> freeList = new ArrayList<>();
 
@@ -25,11 +23,6 @@ public class BufferManager {
 		// System.out.println("--- Start The BufferManager Constructor---");
 		pool = new Frame[numBufs];
 		hash = new FramePage();
-		try {
-			disk = new DiskFile("test.db");
-		} catch (FileNotFoundException e) {
-			throw new RuntimeException("Can't access db file", e);
-		}
 		for (int i = 0; i < numBufs; i++) {
 			pool[i] = new Frame(i);
 			// System.out.println("The init hashcode is " + pool[i].hashCode());
@@ -53,28 +46,19 @@ public class BufferManager {
 		return instance;
 	}
 
-	/**
-	 * It is a wrapper around the DiskManager method
-	 *
-	 * @param pageID
-	 * @throws IOException
-	 */
-	public void newPage(int pageID) throws IOException {
-		disk.allocateNewPage(pageID);
-	}
-
 	public void freePage(/* int frameNumber */) {
 		throw new UnsupportedOperationException("Not implemented"); // TODO
 	}
 
 	/**
-	 * It flushes the content of the frame assocciated with the given pageID to
+	 * It flushes the content of the frame associated with the given pageID to
 	 * the disk at correct block.
 	 *
 	 * @param pageID
+	 * @param disk
 	 * @throws IOException
 	 */
-	public void flushPage(int pageID) throws IOException {
+	public void flushPage(int pageID, DiskFile disk) throws IOException {
 		int frameNumber = hash.getValue(pageID);
 		// System.out.println("--- Start The flushPage of the BufferManager---");
 		// System.out.println("The (flushPage)framenumber is " + frameNumber);
@@ -93,9 +77,10 @@ public class BufferManager {
 	/**
 	 * Flushes the header of the file while keeping it pinned in main memory.
 	 *
+	 * @param disk
 	 * @throws IOException
 	 */
-	public void flushFileHeader() throws IOException {
+	public void flushFileHeader(DiskFile disk) throws IOException {
 		// if it does not exist?
 		disk.writePage(0, pool[0].getBufferFromFrame());
 		pool[0].setEmpty();
@@ -106,10 +91,11 @@ public class BufferManager {
 	 * map of pageIDs and frameNumbers along with returning the specified Frame.
 	 *
 	 * @param pageID
+	 * @param disk
 	 * @return ByteBuffer
 	 * @throws IOException
 	 */
-	public Frame allocFrame(int pageID) throws IOException {
+	public Frame allocFrame(int pageID, DiskFile disk) throws IOException {
 		if (freeList.isEmpty()) {
 			System.out.println("No available buffer"); // FIXME
 														// BUfferFullException
@@ -212,7 +198,7 @@ public class BufferManager {
 		hash.iter();
 	}
 
-	public void _st(ByteBuffer b) throws IOException {
+	public void _st(ByteBuffer b, DiskFile disk) throws IOException {
 		disk.writePage(0, b);
 	}
 
@@ -221,8 +207,14 @@ public class BufferManager {
 		BufferManager a = BufferManager.getInstance();
 		System.out.println("The freeList before allocation");
 		a._printList();
-		Frame sth = a.allocFrame(0);
-		Frame sec = a.allocFrame(1);
+		DiskFile disk;
+		try {
+			disk = new DiskFile("test.db");
+		} catch (FileNotFoundException e) {
+			throw new RuntimeException("Can't access db file", e);
+		}
+		Frame sth = a.allocFrame(0, disk);
+		Frame sec = a.allocFrame(1, disk);
 		System.out.println("The sth hasCode is" + sth.hashCode());
 		System.out.println("The freeList after allocation");
 		a._printList();
@@ -252,8 +244,8 @@ public class BufferManager {
 		 */
 		// }
 		// it says zero but writes to 7(hardcoded)
-		a.flushPage(0);
-		a.flushPage(1);
+		a.flushPage(0, disk);
+		a.flushPage(1, disk);
 		System.out.println("The pincount is " + sth.getPinCount());
 		System.out.println("The empty buff is " + sth.isEmpty());
 		System.out.println("The dirty buff is " + sth.isDirty());
@@ -265,7 +257,7 @@ public class BufferManager {
 		for (int i = 0; i < 10; i++) {
 			b.put(i, (byte) 4);
 		}
-		a._st(b);
+		a._st(b, disk);
 		System.out.println("The position is " + b.position());
 		for (int i = 0; i < 16; i++) {
 			System.out.println(" ");
