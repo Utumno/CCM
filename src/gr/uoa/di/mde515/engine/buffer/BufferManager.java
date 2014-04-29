@@ -17,7 +17,7 @@ public class BufferManager {
 	// corresponding frame numbers
 	private FramePage hash;
 	// storage layer
-	private final DiskManager disk;
+	private final DiskFile disk;
 	// contains the available frames that can be used
 	private final List<Integer> freeList = new ArrayList<>();
 
@@ -26,7 +26,7 @@ public class BufferManager {
 		pool = new Frame[numBufs];
 		hash = new FramePage();
 		try {
-			disk = new DiskManager("test.db");
+			disk = new DiskFile("test.db");
 		} catch (FileNotFoundException e) {
 			throw new RuntimeException("Can't access db file", e);
 		}

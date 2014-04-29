@@ -8,7 +8,7 @@ import java.nio.ByteBuffer;
 /**
  * @author Kleomenis
  */
-public class DiskManager {
+public class DiskFile {
 
 	// TODO CLOSE THE FILE
 	// The page size constant
@@ -25,7 +25,7 @@ public class DiskManager {
 	 * @param path
 	 * @throws FileNotFoundException
 	 */
-	public DiskManager(String path) throws FileNotFoundException {
+	public DiskFile(String path) throws FileNotFoundException {
 		file = new RandomAccessFile(path, "rw");
 		// create as well the index file
 		// last_allocated_pageID = 0;
@@ -73,7 +73,7 @@ public class DiskManager {
 	}
 
 	public static void main(String args[]) throws IOException {
-		DiskManager disk = new DiskManager("test.db");
+		DiskFile disk = new DiskFile("test.db");
 		ByteBuffer b = ByteBuffer.allocate(PAGE_SIZE);
 		Page p = new Page(0, b);
 		for (int i = 0; i < PAGE_SIZE; i++) {
