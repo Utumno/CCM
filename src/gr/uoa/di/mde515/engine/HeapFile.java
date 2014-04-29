@@ -1,7 +1,10 @@
 package gr.uoa.di.mde515.engine;
 
+import gr.uoa.di.mde515.engine.buffer.BufferManager;
+import gr.uoa.di.mde515.engine.buffer.DiskManager;
+import gr.uoa.di.mde515.engine.buffer.Frame;
 import gr.uoa.di.mde515.index.DataFile;
-import gr.uoa.di.mde515.index.PageId;
+import gr.uoa.di.mde515.engine.buffer.Page;
 import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.locks.Lock;
 import gr.uoa.di.mde515.locks.LockManager;
@@ -19,33 +22,32 @@ import java.nio.file.StandardOpenOption;
 
 public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 
-	private RandomAccessFile file;
+	private BufferManager buf;
 	private Header head;
-	public static final byte[] BLANK_PAGE = new byte[Header.PAGE_SIZE];
+	public static final byte[] BLANK_PAGE = new byte[4096];
+	private static final int PAGE_SIZE = 4096; // TODO move to globals
+	private static final int OFFSET_FREE_LIST = 0;
+	private static final int OFFSET_FULL_LIST = 4;
+	private static final int OFFSET_RECORD_SIZE = 8;
+	private static final int OFFSET_PAGES_COUNT = 10;
+	// PAGE HEADER OFFSETS
+	private static final int NEXT_PAGE_OFFSET = 0;
+	private static final int PREVIOUS_PAGE_OFFSET = 4;
 
 	public HeapFile(String filename) {
-		try {
-			file = new RandomAccessFile(filename, "rw");
-			// KLEO
-			// IF file existed:
-			// bm.getHeader
-			// lm. lockHeader for read (NO TRANSACTION)....
-			// read Header and initialize _head_
-			// ELSE init a new header and CREATE ONE BLANK PAGE
-		} catch (FileNotFoundException e) {
-			throw new RuntimeException("Can't open database file " + filename,
-				e);
-		}
+		buf = BufferManager.getInstance();
+		// file = new RandomAccessFile(filename, "rw");
+		// KLEO
+		// IF file existed:
+		// bm.getHeader
+		// lm. lockHeader for read (NO TRANSACTION)....
+		// read Header and initialize _head_
+		// ELSE init a new header and CREATE ONE BLANK PAGE
 		// preallocateFile();
 	}
 
 	private final static class Header {
 
-		private static final short PAGE_SIZE = 4096; // TODO move to globals
-		private static final short OFFSET_FREE_LIST = 0;
-		private static final short OFFSET_FULL_LIST = 4;
-		private static final short OFFSET_RECORD_SIZE = 8;
-		private static final short OFFSET_PAGES_COUNT = 10;
 		private int freeListStart;
 		private int fullListStart;
 		private int numPages;
@@ -71,35 +73,40 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				e.printStackTrace();
 			}
 		}
-
-		public Header(short recordSize) {
-			RECORD_SIZE = recordSize;
-			freeListStart = 1;
-			fullListStart = -1;
-			numPages = 1;
-		}
 		// fileheader = file.readPage(0);
 	}
 
-	public Page readPage(int pageID) throws IOException {
-		byte[] d = new byte[4096]; // normally, we use a buffer from the pool
-		try {
-			file.seek(pageID * head.PAGE_SIZE);
-			file.read(d, 0, 4096);
-		} finally {
-			try {
-				file.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-		return new Page(pageID, d);
+	public void createFile(int numPages) throws IOException {
+		createFileHeader();
+		//createPageHeader(pageID);
 	}
 
-	public void writePage(int pageID, byte[] data) throws IOException {
-		file.seek(pageID);
-		file.write(data);
-		file.close();
+	public void createFileHeader() throws IOException {
+		buf.newPage(0);
+		Frame f = buf.allocFrame(0);
+		Page p = new Page(0, f.getBufferFromFrame());
+		p.writeInt(OFFSET_FREE_LIST, 1);
+		p.writeInt(OFFSET_FULL_LIST, -1);
+		p.writeShort(OFFSET_RECORD_SIZE, (short) 12);
+		f.setDirty();
+		// garbage collect page object
+		p = null;
+		try {
+			buf.flushPage(0);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void createPageHeader(int pageID) throws IOException {
+		Frame f = buf.allocFrame(pageID);
+		Page p = new Page(pageID, f.getBufferFromFrame());
+		p.writeInt(NEXT_PAGE_OFFSET, -1);
+		p.writeInt(PREVIOUS_PAGE_OFFSET, 0);
+		f.setDirty();
+		// garbage collect page object
+		p = null;
+		buf.flushPage(0);
 	}
 
 	// again the ByteBuffer could be used instead of seek
@@ -109,19 +116,10 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	}
 
 	public void searchForRecord(int pageID, int slot) throws IOException {
-		file.seek(pageID + (slot * 12));// 12 is record size
-		System.out.println("The record is " + file.readInt()); // according to
+		//file.seek(pageID + (slot * 12));// 12 is record size
+		//System.out.println("The record is " + file.readInt()); // according to
 																// the record
 																// structure
-	}
-
-	public void synchPageToFile(Page apage) throws IOException {
-		ByteBuffer data = apage.getData();
-		int pageID = apage.getPageId();
-		if (data != null) {
-			file.seek(pageID);
-			file.write(data.array());
-		}
 	}
 
 	// private void preallocateFile() throws IOException {
@@ -132,15 +130,15 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	// }
 	@Override
 	public void insert(Transaction tr, Record<K, V> rec) {
-		lockHeader();
-		PageId<Integer> p = nextAvailablePage();
-		Request<Integer> request = new LockManager.Request<>(p, tr, Lock.E);
+		//lockHeader();
+		//PageId<Integer> p = nextAvailablePage();
+		//Request<Integer> request = new LockManager.Request<>(p, tr, Lock.E);
 		// lock manager request
 	}
 
-	private PageId<Integer> nextAvailablePage() {
-		return new PageId<>(head.freeListStart);
-	}
+	//private PageId<Integer> nextAvailablePage() {
+		//return new PageId<>(head.freeListStart);
+	//}
 
 	// public static void main(String args[]) {
 	// try {
@@ -163,4 +161,10 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	private void lockHeader() {
 		throw new UnsupportedOperationException("Not implemented"); // TODO
 	}
+	
+	public static void main(String args[]){
+		
+	}
 }
+
+

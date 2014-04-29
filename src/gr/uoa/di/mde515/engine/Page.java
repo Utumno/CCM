@@ -9,6 +9,8 @@ public class Page<T> {
 	// OFSSETS
 	private static final short NEXT_PAGE_OFFSET = 0;
 	private static final short PREVIOUS_PAGE_OFFSET = 4;
+	public static final byte[] BLANK_PAGE = new byte[4096];
+
 	// /OFFSETS
 	private PageId<T> pageid;
 	// private int numSlots;
@@ -74,7 +76,7 @@ public class Page<T> {
 
 	public void fileHeader(boolean isNew) {}
 
-	public void setPageHeader(short value) {
+	/*public void setPageHeader(short value) {
 		writeShort(PAGE_FREE_SPACE, (short) 100); // defined
 		writeShort(PAGE_HEADER_NEXT, value); // ??
 		writeShort(PAGE_HEADER_PREVIOUS, (short) 0); // ??
@@ -82,15 +84,15 @@ public class Page<T> {
 			writeShort(i, (short) -1);
 		}
 		writeShort();// thesi tou prwtou record
-	}
+	}*/
 
-	void pageHeaderSetNext(short next) {
+	/*void pageHeaderSetNext(short next) {
 		writeShort(Offsets.PAGE_HEADER_NEXT, next);
 	}
 
 	void pageHeaderSetPrevious(short previous) {
 		writeShort(Offsets.PAGE_HEADER_NEXT, previous);
-	}
+	}*/
 
 	public static void main(String args[]) throws Exception {
 		int[] array = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,

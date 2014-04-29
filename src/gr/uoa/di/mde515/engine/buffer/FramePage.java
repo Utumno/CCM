@@ -7,20 +7,32 @@ import java.util.Map;
 public class FramePage {
 
 	// (key)pageid me framenumber(value)
-	Map<Integer, Integer> map = new HashMap<>();
+	Map<Integer, Integer> map = new HashMap<Integer, Integer>();
 
 	public void setKeyValue(int key, int value) {
 		map.put(key, value);
 	}
 
-	public void removeKey() {}
+	public void removeKey(int key) {
+		map.remove(key);
+	}
 
 	public boolean hasKey(int key) {
 		return map.containsKey(key);
 	}
 
-	public int hasValue(int key) {
+	public boolean hasValue(int value) {
+		return map.containsValue(value);
+	}
+
+	public int getValue(int key) {
 		return map.get(key);
+	}
+
+	public void getKey() {
+		for (Map.Entry<Integer, Integer> entry : map.entrySet()) {
+			System.out.println("(map)The key value is " + entry.getKey());
+		}
 	}
 
 	public void iter() {

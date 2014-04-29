@@ -4,7 +4,7 @@ import java.nio.ByteBuffer;
 
 public class Frame {
 
-	private static final int PAGE_SIZE = 4096;
+	private static final int PAGE_SIZE = 32;
 	private int framenumber;
 	private int pincount;
 	private boolean dirty;
@@ -27,8 +27,12 @@ public class Frame {
 		return framenumber;
 	}
 
-	public byte[] getBuffer() {
-		return data.array();
+	public ByteBuffer getBufferFromFrame() {
+		// System.out.println("Start getBufferFromFrame");
+		// System.out.println("The (getBufferFromFrame)ByteBuffer is "
+		// + data.hashCode());
+		// System.out.println("End getBufferFromFrame");
+		return data;
 	}
 
 	public boolean isDirty() {
@@ -49,9 +53,11 @@ public class Frame {
 
 	public void setDirty() {
 		dirty = true;
+		empty = false;
 	}
 
 	public void setEmpty() {
 		empty = true;
+		dirty = false;
 	}
 }
