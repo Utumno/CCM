@@ -2,7 +2,8 @@ package gr.uoa.di.mde515.engine.buffer;
 
 import java.nio.ByteBuffer;
 
-public class Frame {
+/** A wrapper around a ByteBuffer representing a frame in the main memory */
+public final class Frame {
 
 	private static final int PAGE_SIZE = 32;
 	private int framenumber;

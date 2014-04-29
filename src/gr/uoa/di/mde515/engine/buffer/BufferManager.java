@@ -8,7 +8,6 @@ import java.util.List;
 
 /**
  * @author Kleomenis
- * 
  */
 public class BufferManager {
 
@@ -18,9 +17,9 @@ public class BufferManager {
 	// corresponding frame numbers
 	private FramePage hash;
 	// storage layer
-	private DiskManager disk;
+	private final DiskManager disk;
 	// contains the available frames that can be used
-	private List<Integer> freeList;
+	private final List<Integer> freeList = new ArrayList<>();
 
 	private BufferManager(int numBufs) {
 		// System.out.println("--- Start The BufferManager Constructor---");
@@ -29,9 +28,8 @@ public class BufferManager {
 		try {
 			disk = new DiskManager("test.db");
 		} catch (FileNotFoundException e) {
-			e.printStackTrace();
+			throw new RuntimeException("Can't access db file", e);
 		}
-		freeList = new ArrayList<Integer>();
 		for (int i = 0; i < numBufs; i++) {
 			pool[i] = new Frame(i);
 			// System.out.println("The init hashcode is " + pool[i].hashCode());
@@ -42,56 +40,22 @@ public class BufferManager {
 		// System.out.println("---END The BufferManager Constructor---");
 	}
 
-	private static BufferManager instance = new BufferManager(4);
+	private static final BufferManager instance = new BufferManager(4);
 
-	// The BufferManager follows the singleton pattern. So one BufferManager is
-	// created.
+	// =========================================================================
+	// API
+	// =========================================================================
+	/**
+	 * The BufferManager follows the singleton pattern. So one BufferManager is
+	 * created.
+	 */
 	public static BufferManager getInstance() {
 		return instance;
 	}
 
-	public int getBufferNumber(int i) {
-		return pool[i].getFrameNumber();
-	}
-
-	public Frame getBuffer(int i) {
-		// System.out.println("---Start The getBuffer of the BufferManager---");
-		// System.out.println("The Frame hascode is " + pool[i].hashCode());
-		// System.out.println("---End The getBuffer of the BufferManager---");
-		return pool[i];
-	}
-
-	/**
-	 * pinPage only increases the relative pinCount variable of the Frame class
-	 * 
-	 * @param frameNumber
-	 */
-	public void pinPage(int frameNumber) {
-		pool[frameNumber].increasePincount();
-	}
-
-	/**
-	 * unpinPage simply decrease the pinCount of the frame. It does not decrease
-	 * the pinCount below 0.
-	 * 
-	 * @param frameNumber
-	 */
-	public void unpinPage(int frameNumber) {
-		// System.out.println("---Start unpinPage of BufferManager---");
-		// System.out.println("The pincount before decreasing is "
-		// + pool[frameNumber].getPinCount());
-		if (pool[frameNumber].getPinCount() > 0)
-			pool[frameNumber].decreasePincount();
-		// System.out.println("The pincount before decreasing is "
-		// + pool[frameNumber].getPinCount());
-		// System.out
-		// .println("Is the frame dirty? " + pool[frameNumber].isDirty());
-		// System.out.println("---End unpinPage of BufferManager---");
-	}
-
 	/**
 	 * It is a wrapper around the DiskManager method
-	 * 
+	 *
 	 * @param pageID
 	 * @throws IOException
 	 */
@@ -99,12 +63,14 @@ public class BufferManager {
 		disk.allocateNewPage(pageID);
 	}
 
-	public void freePage(int frameNumber) {}
+	public void freePage(/* int frameNumber */) {
+		throw new UnsupportedOperationException("Not implemented"); // TODO
+	}
 
 	/**
 	 * It flushes the content of the frame assocciated with the given pageID to
 	 * the disk at correct block.
-	 * 
+	 *
 	 * @param pageID
 	 * @throws IOException
 	 */
@@ -120,14 +86,13 @@ public class BufferManager {
 		cleanPage(frameNumber);
 		hash.removeKey(pageID);
 		freeList.add(frameNumber);
-		printList();
+		_printList();
 		// System.out.println("---End The flushPage of the BufferManager---");
 	}
 
 	/**
-	 * Used by the file header to flush its contents to disk while the contents
-	 * still remaining in the memory.
-	 * 
+	 * Flushes the header of the file while keeping it pinned in main memory.
+	 *
 	 * @throws IOException
 	 */
 	public void flushFileHeader() throws IOException {
@@ -137,26 +102,17 @@ public class BufferManager {
 	}
 
 	/**
-	 * Just changes the dirty and empty fields of the Frame class. This can be
-	 * used to decide whether flush or not flush a page.
-	 * 
-	 * @param frameNumber
-	 */
-	public void cleanPage(int frameNumber) {
-		pool[frameNumber].setEmpty();
-	}
-
-	/**
 	 * It first finds an empty buffer from the free list and then updates the
 	 * map of pageIDs and frameNumbers along with returning the specified Frame.
-	 * 
+	 *
 	 * @param pageID
 	 * @return ByteBuffer
 	 * @throws IOException
 	 */
 	public Frame allocFrame(int pageID) throws IOException {
 		if (freeList.isEmpty()) {
-			System.out.println("No available buffer");
+			System.out.println("No available buffer"); // FIXME
+														// BUfferFullException
 		}
 		/* if the page already in the buffer return the buffer */
 		if (isPage(pageID)) {
@@ -172,7 +128,7 @@ public class BufferManager {
 		hash.iter();
 		pinPage(numFrame);
 		freeList.remove((Integer) numFrame);
-		printList();
+		_printList();
 		// System.out.println("The bytebuffer of the frame is: "+
 		// getBuffer(numFrame).getBufferFromFrame().hashCode());
 		disk.readPage(pageID, getBuffer(numFrame));
@@ -183,30 +139,80 @@ public class BufferManager {
 		return getBuffer(numFrame);
 	}
 
-	public boolean isBufferFull() {
+	private int getBufferNumber(int i) {
+		return pool[i].getFrameNumber();
+	}
+
+	private Frame getBuffer(int i) {
+		// System.out.println("---Start The getBuffer of the BufferManager---");
+		// System.out.println("The Frame hascode is " + pool[i].hashCode());
+		// System.out.println("---End The getBuffer of the BufferManager---");
+		return pool[i];
+	}
+
+	/**
+	 * pinPage only increases the relative pinCount variable of the Frame class
+	 *
+	 * @param frameNumber
+	 */
+	private void pinPage(int frameNumber) {
+		pool[frameNumber].increasePincount();
+	}
+
+	/**
+	 * unpinPage simply decrease the pinCount of the frame. It does not decrease
+	 * the pinCount below 0.
+	 *
+	 * @param frameNumber
+	 */
+	private void unpinPage(int frameNumber) {
+		// System.out.println("---Start unpinPage of BufferManager---");
+		// System.out.println("The pincount before decreasing is "
+		// + pool[frameNumber].getPinCount());
+		if (pool[frameNumber].getPinCount() > 0)
+			pool[frameNumber].decreasePincount();
+		// System.out.println("The pincount before decreasing is "
+		// + pool[frameNumber].getPinCount());
+		// System.out
+		// .println("Is the frame dirty? " + pool[frameNumber].isDirty());
+		// System.out.println("---End unpinPage of BufferManager---");
+	}
+
+	/**
+	 * Just changes the dirty and empty fields of the Frame class. This can be
+	 * used to decide whether flush or not flush a page.
+	 *
+	 * @param frameNumber
+	 */
+	private void cleanPage(int frameNumber) {
+		pool[frameNumber].setEmpty();
+	}
+
+	private boolean isBufferFull() {
 		for (int i = 0; i <= pool.length; i++) {
 			if (pool[i].getPinCount() == 0) return false;
 		}
 		return true;
 	}
 
-	public boolean isPage(int pageID) {
+	private boolean isPage(int pageID) {
 		return hash.hasKey(pageID);
 	}
 
-	public void printList() {
+	// helpers
+	private void _printList() {
 		System.out.println("---Start Printing the list---s");
 		for (Integer i : freeList)
 			System.out.println(i);
 		System.out.println("---End Printing the list---s");
 	}
 
-	public void printHashMap() {
+	public void _printHashMap() {
 		hash.getKey();
 		hash.iter();
 	}
 
-	public void st(ByteBuffer b) throws IOException {
+	public void _st(ByteBuffer b) throws IOException {
 		disk.writePage(0, b);
 	}
 
@@ -214,12 +220,12 @@ public class BufferManager {
 	public static void main(String args[]) throws IOException {
 		BufferManager a = BufferManager.getInstance();
 		System.out.println("The freeList before allocation");
-		a.printList();
+		a._printList();
 		Frame sth = a.allocFrame(0);
 		Frame sec = a.allocFrame(1);
 		System.out.println("The sth hasCode is" + sth.hashCode());
 		System.out.println("The freeList after allocation");
-		a.printList();
+		a._printList();
 		ByteBuffer b = sth.getBufferFromFrame();
 		System.out.println("The b hasCode is" + b.hashCode());
 		System.out.println("The buffer capacity is: " + b.capacity());
@@ -234,7 +240,7 @@ public class BufferManager {
 		for (int i = 0; i < 16; i++) {
 			System.out.println(" ");
 			System.out.println(" Take " + i);
-			System.out.println("The values is " + (byte) b.get(i));
+			System.out.println("The values is " + b.get(i));
 			System.out.println("The limit is " + b.limit());
 			System.out.println("The current position is " + b.position());
 			System.out.println("The remaining value is " + b.remaining());
@@ -252,18 +258,18 @@ public class BufferManager {
 		System.out.println("The empty buff is " + sth.isEmpty());
 		System.out.println("The dirty buff is " + sth.isDirty());
 		System.out.println("The freeList after reallocation");
-		a.printList();
+		a._printList();
 		System.out.println(" ");
 		System.out.println("New stuff begins about ByteBuffers functionality.");
 		// b.clear();// the loop prints the values
 		for (int i = 0; i < 10; i++) {
 			b.put(i, (byte) 4);
 		}
-		a.st(b);
+		a._st(b);
 		System.out.println("The position is " + b.position());
 		for (int i = 0; i < 16; i++) {
 			System.out.println(" ");
-			System.out.println("The values is " + (byte) b.get(i));
+			System.out.println("The values is " + b.get(i));
 			System.out.println(" ");
 		}
 		/*

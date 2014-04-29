@@ -1,18 +1,12 @@
 package gr.uoa.di.mde515.engine;
 
 import gr.uoa.di.mde515.engine.buffer.BufferManager;
-import gr.uoa.di.mde515.engine.buffer.DiskManager;
 import gr.uoa.di.mde515.engine.buffer.Frame;
-import gr.uoa.di.mde515.index.DataFile;
 import gr.uoa.di.mde515.engine.buffer.Page;
+import gr.uoa.di.mde515.index.DataFile;
 import gr.uoa.di.mde515.index.Record;
-import gr.uoa.di.mde515.locks.Lock;
-import gr.uoa.di.mde515.locks.LockManager;
-import gr.uoa.di.mde515.locks.LockManager.Request;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
@@ -25,7 +19,6 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	private BufferManager buf;
 	private Header head;
 	public static final byte[] BLANK_PAGE = new byte[4096];
-	private static final int PAGE_SIZE = 4096; // TODO move to globals
 	private static final int OFFSET_FREE_LIST = 0;
 	private static final int OFFSET_FULL_LIST = 4;
 	private static final int OFFSET_RECORD_SIZE = 8;

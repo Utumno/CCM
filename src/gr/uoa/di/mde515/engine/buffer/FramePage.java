@@ -4,10 +4,10 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-public class FramePage {
+final class FramePage {
 
 	// (key)pageid me framenumber(value)
-	Map<Integer, Integer> map = new HashMap<Integer, Integer>();
+	Map<Integer, Integer> map = new HashMap<>();
 
 	public void setKeyValue(int key, int value) {
 		map.put(key, value);

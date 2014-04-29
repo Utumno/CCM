@@ -1,16 +1,17 @@
 package gr.uoa.di.mde515.engine.buffer;
 
+import gr.uoa.di.mde515.index.Record;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
-
-import gr.uoa.di.mde515.index.*;
 
 public class HF {
 
 	private BufferManager buf;
 	// useful constants
 	private static final int PAGE_SIZE = 32; // TODO move to globals
-	private static final int RECORD_SIZE = 8;
+	private static final int RECORD_SIZE = 8; // TODO read from header
+	private int pageCount; // TODO read from header
 	// it the size of entry in the fileheader
 	private static final int ENTRY_SIZE = 4;
 	private static final int FILEHEADER_LENGTH = 6;
@@ -49,7 +50,7 @@ public class HF {
 
 	/**
 	 * Creates the file header
-	 * 
+	 *
 	 * @throws IOException
 	 */
 	public void createFileHeader() throws IOException {
@@ -61,18 +62,12 @@ public class HF {
 		// p.writeInt(OFFSET_FULL_LIST, -1);
 		p.writeShort(OFFSET_RECORD_SIZE, (short) RECORD_SIZE);
 		f.setDirty();
-		// garbage collect page object
-		p = null;
-		try {
-			buf.flushFileHeader();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		buf.flushFileHeader();
 	}
 
 	/**
 	 * Creates the page header
-	 * 
+	 *
 	 * @param pageID
 	 * @throws IOException
 	 */
@@ -109,7 +104,7 @@ public class HF {
 	 * Insert a Record<K, V> to the file. It dynamically creates new pages if
 	 * the file does not have them and modify appropriately the file and header
 	 * pages if necessary.
-	 * 
+	 *
 	 * @param record
 	 * @throws IOException
 	 */
