@@ -5,7 +5,7 @@ import gr.uoa.di.mde515.index.Index;
 import gr.uoa.di.mde515.index.Index.KeyExistsException;
 import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
-import gr.uoa.di.mde515.locks.Lock;
+import gr.uoa.di.mde515.locks.DBLock;
 
 import java.io.File; // FIXME
 import java.util.ArrayList;
@@ -76,7 +76,7 @@ class CCMImpl<K extends Comparable<K>, V, T> implements CCM<K, V> {
 		if (tr == null || record == null) throw new NullPointerException();
 		if (!transactions.contains(tr))
 			throw new TransactionRequiredException();
-		index.lookupLocked(tr, record.getKey(), Lock.E);
+		index.lookupLocked(tr, record.getKey(), DBLock.E);
 		dataFile.insert(tr, record);
 		// V value = rec.getValue(); // this should now insert into the file
 		// if insertion to file is successful we must now insert into the index

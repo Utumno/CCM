@@ -1,7 +1,7 @@
 package gr.uoa.di.mde515.index;
 
 import gr.uoa.di.mde515.engine.Transaction;
-import gr.uoa.di.mde515.locks.Lock;
+import gr.uoa.di.mde515.locks.DBLock;
 import gr.uoa.di.mde515.locks.LockManager;
 import gr.uoa.di.mde515.locks.LockManager.Request;
 import gr.uoa.di.mde515.trees.BPlusJava;
@@ -31,7 +31,7 @@ public class Index<K extends Comparable<K>, V> {
 	 * @throws KeyExistsException
 	 *             if the key exists
 	 */
-	public void lookupLocked(Transaction tr, K key, Lock el)
+	public void lookupLocked(Transaction tr, K key, DBLock el)
 			throws KeyExistsException {
 		SortedMap<K, V> sm = new TreeMap<>();
 		lock(tr, key, el, sm);
@@ -39,7 +39,7 @@ public class Index<K extends Comparable<K>, V> {
 		if (v != null) throw new KeyExistsException(key + "");
 	}
 
-	private void lock(Transaction tr, K key, Lock el, SortedMap<K, V> sm) {
+	private void lock(Transaction tr, K key, DBLock el, SortedMap<K, V> sm) {
 		PageId<Node<K, V>> indexPage = bplus.getRootPageId();
 		// TODO lock the root
 		while (indexPage != null) {
