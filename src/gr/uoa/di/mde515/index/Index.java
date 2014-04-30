@@ -3,7 +3,6 @@ package gr.uoa.di.mde515.index;
 import gr.uoa.di.mde515.engine.Transaction;
 import gr.uoa.di.mde515.locks.DBLock;
 import gr.uoa.di.mde515.locks.LockManager;
-import gr.uoa.di.mde515.locks.LockManager.Request;
 import gr.uoa.di.mde515.trees.BPlusJava;
 import gr.uoa.di.mde515.trees.BPlusJava.Node;
 
@@ -22,7 +21,7 @@ public class Index<K extends Comparable<K>, V> {
 	}
 
 	private BPlusJava<K, V> bplus;
-	private LockManager<Node<K, V>> lm;
+	private LockManager lm = LockManager.getInstance();
 
 	/**
 	 * Locks the path from the root to the leaf where a key is to be inserted on
@@ -41,12 +40,9 @@ public class Index<K extends Comparable<K>, V> {
 
 	private void lock(Transaction tr, K key, DBLock el, SortedMap<K, V> sm) {
 		PageId<Node<K, V>> indexPage = bplus.getRootPageId();
-		// TODO lock the root
 		while (indexPage != null) {
+			lm.requestLock(new LockManager.Request(indexPage, tr, el));
 			indexPage = bplus.getNextPageId(indexPage, key, sm);
-			Request<Node<K, V>> request = new LockManager.Request<>(indexPage,
-				tr, el);
-			// TODO request lock for this page id and block till granted //
 		}
 	}
 }
