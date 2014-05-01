@@ -1,12 +1,14 @@
 package gr.uoa.di.mde515.engine.buffer;
 
+import gr.uoa.di.mde515.engine.Transaction;
+import gr.uoa.di.mde515.index.DataFile;
 import gr.uoa.di.mde515.index.Record;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class HF {
+public class HF<K extends Comparable<K>, V> extends DataFile<K, V> {
 
 	private BufferManager buf;
 	// storage layer
@@ -29,9 +31,9 @@ public class HF {
 	private static final int OFFSET_NEXT_FREE_SLOT = 4;
 	private static final int OFFSET_CURRENT_NUMBER_OF_SLOTS = 8;
 
-	public HF() {
+	public HF(String filename) {
 		try {
-			file = new DiskFile("test.db");
+			file = new DiskFile(filename);
 		} catch (FileNotFoundException e) {
 			throw new RuntimeException("Can't access db file", e);
 		}
@@ -206,7 +208,7 @@ public class HF {
 	 * e.printStackTrace(); } }
 	 */
 	public static void main(String args[]) throws IOException {
-		HF heapfile = new HF();
+		HF heapfile = new HF("test.db");
 		heapfile.createFileHeader();
 		heapfile.createPageHeader(1);
 		heapfile.createPageHeader(2);
@@ -221,5 +223,10 @@ public class HF {
 		 * f.getFrameNumber()); System.out.println("Is it empty?  " +
 		 * f.isEmpty());
 		 */
+	}
+
+	@Override
+	public void insert(Transaction tr, Record<K, V> rec) {
+		throw new UnsupportedOperationException("Not implemented"); // TODO
 	}
 }
