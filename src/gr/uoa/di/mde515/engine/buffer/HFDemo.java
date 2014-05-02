@@ -7,15 +7,15 @@ import java.io.IOException;
 
 public class HFDemo {
 	// Creates the file header and inserts three records.
-	// This test case involves the allocation of a new page, 
-	// insertion, until the page is full and then allocating a new one 
+	// This test case involves the allocation of a new page,
+	// insertion, until the page is full and then allocating a new one
 	// to insert the third and final one. It also makes the necessary changes
 	// to file and header pages.
 	// The end result is saved in a file called test.db
 	// In order to see the results you need a hex editor.
 	// I use the HxD Hexeditor
 	public static void main(String args[]) throws IOException {
-		HF heapfile = new HF();
+		HF heapfile = new HF("temp.db");
 		System.out.println("Creating the fileheader");
 		heapfile.createFileHeader();
 		System.out.println(" ");
