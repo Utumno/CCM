@@ -1,18 +1,14 @@
 package gr.uoa.di.mde515.engine;
 
 import gr.uoa.di.mde515.index.DataFile;
-import gr.uoa.di.mde515.index.Index;
 import gr.uoa.di.mde515.index.Index.KeyExistsException;
-import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
-import gr.uoa.di.mde515.locks.DBLock;
 
 import java.io.File; // FIXME
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
-public interface CCM<K extends Comparable<K>, V> {
+public interface CCM {
 
 	final class TransactionRequiredException extends Exception {
 
@@ -27,16 +23,22 @@ public interface CCM<K extends Comparable<K>, V> {
 
 	void endTransaction(Transaction tr);
 
-	Record<K, V> insert(Transaction tr, Record<K, V> record)
-			throws TransactionRequiredException, KeyExistsException;
+	<K extends Comparable<K>, V> Record<K, V> insert(Transaction tr,
+			Record<K, V> record, DataFile<K, V> file)
+			throws TransactionRequiredException, KeyExistsException,
+			ExecutionException;
 
-	Record<K, V> delete(Transaction tr, K key);
+	<K extends Comparable<K>, V> Record<K, V> delete(Transaction tr, K key,
+			DataFile<K, V> file);
 
-	Record<K, V> lookup(Transaction tr, K key);
+	<K extends Comparable<K>, V> Record<K, V> lookup(Transaction tr, K key,
+			DataFile<K, V> file);
 
-	Record<K, V> update(Transaction tr, K key);
+	<K extends Comparable<K>, V> Record<K, V> update(Transaction tr, K key,
+			DataFile<K, V> file);
 
-	List<Record<K, V>> range(Transaction tr, K key1, K key2);
+	<K extends Comparable<K>, V> List<Record<K, V>> range(Transaction tr,
+			K key1, K key2, DataFile<K, V> file);
 
 	boolean waitTransaction(Transaction tr, long t);
 
@@ -47,85 +49,4 @@ public interface CCM<K extends Comparable<K>, V> {
 	File bulkLoad(Transaction tr, File fileOfRecords);
 
 	File bulkDelete(Transaction tr, File fileOfKeys);
-}
-
-class CCMImpl<K extends Comparable<K>, V, T> implements CCM<K, V> {
-
-	final List<Transaction> transactions = Collections
-		.synchronizedList(new ArrayList<Transaction>()); // ...
-	final Index<K, PageId<T>> index = new Index<>();
-	// KLEO buffer manager
-	final DataFile<K, V> dataFile = DataFile.init(""); // add the buffer manager
-
-	// TODO thread pool
-	@Override
-	public Transaction beginTransaction() {
-		final Transaction tr = new Transaction();
-		transactions.add(tr);
-		return tr;
-	}
-
-	@Override
-	public void endTransaction(Transaction tr) {
-		throw new UnsupportedOperationException("Not supported yet."); // TODO
-	}
-
-	@Override
-	public Record<K, V> insert(Transaction tr, Record<K, V> record)
-			throws TransactionRequiredException, KeyExistsException {
-		if (tr == null || record == null) throw new NullPointerException();
-		if (!transactions.contains(tr))
-			throw new TransactionRequiredException();
-		index.lookupLocked(tr, record.getKey(), DBLock.E);
-		dataFile.insert(tr, record);
-		// V value = rec.getValue(); // this should now insert into the file
-		// if insertion to file is successful we must now insert into the index
-		// and unlock
-		throw new UnsupportedOperationException("Not supported yet."); // TODO
-	}
-
-	@Override
-	public Record<K, V> delete(Transaction tr, K key) {
-		throw new UnsupportedOperationException("Not supported yet."); // TODO
-	}
-
-	@Override
-	public Record<K, V> lookup(Transaction tr, K key) {
-		throw new UnsupportedOperationException("Not supported yet."); // TODO
-	}
-
-	@Override
-	public Record<K, V> update(Transaction tr, K key) {
-		throw new UnsupportedOperationException("Not supported yet."); // TODO
-	}
-
-	@Override
-	public List<Record<K, V>> range(Transaction tr, K key1, K key2) {
-		throw new UnsupportedOperationException("Not supported yet."); // TODO
-	}
-
-	@Override
-	public boolean waitTransaction(Transaction tr, long t) {
-		throw new UnsupportedOperationException("Not supported yet."); // TODO
-	}
-
-	@Override
-	public void abort(Transaction tr) {
-		throw new UnsupportedOperationException("Not supported yet."); // TODO
-	}
-
-	@Override
-	public void commit(Transaction tr) {
-		throw new UnsupportedOperationException("Not supported yet."); // TODO
-	}
-
-	@Override
-	public File bulkLoad(Transaction tr, File fileOfRecords) {
-		throw new UnsupportedOperationException("Not supported yet."); // TODO
-	}
-
-	@Override
-	public File bulkDelete(Transaction tr, File fileOfKeys) {
-		throw new UnsupportedOperationException("Not supported yet."); // TODO
-	}
 }
