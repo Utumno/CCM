@@ -155,7 +155,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		throw new UnsupportedOperationException("Not implemented"); // TODO
 	}
 
-	public static void main(String args[]){
+	public static void main1(String args[]){
 
 	}
 }

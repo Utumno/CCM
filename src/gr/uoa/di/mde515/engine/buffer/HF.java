@@ -207,7 +207,7 @@ public class HF<K extends Comparable<K>, V> extends DataFile<K, V> {
 	 * = null; try { buf.flushPage(pageID); } catch (IOException e) {
 	 * e.printStackTrace(); } }
 	 */
-	public static void main(String args[]) throws IOException {
+	public static void main1(String args[]) throws IOException {
 		HF heapfile = new HF("test.db");
 		heapfile.createFileHeader();
 		heapfile.createPageHeader(1);

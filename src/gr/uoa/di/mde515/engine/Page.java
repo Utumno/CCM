@@ -94,7 +94,7 @@ public class Page<T> {
 		writeShort(Offsets.PAGE_HEADER_NEXT, previous);
 	}*/
 
-	public static void main(String args[]) throws Exception {
+	public static void main1(String args[]) throws Exception {
 		int[] array = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
 				17, 18, 19, 20 };
 		Page obj = new Page(0, BLANK_PAGE);

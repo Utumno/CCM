@@ -14,7 +14,7 @@ public class HFDemo {
 	// The end result is saved in a file called test.db
 	// In order to see the results you need a hex editor.
 	// I use the HxD Hexeditor
-	public static void main(String args[]) throws IOException {
+	public static void main1(String args[]) throws IOException {
 		HF heapfile = new HF("temp.db");
 		System.out.println("Creating the fileheader");
 		heapfile.createFileHeader();

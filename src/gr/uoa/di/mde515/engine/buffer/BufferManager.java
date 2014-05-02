@@ -203,7 +203,7 @@ public class BufferManager {
 	}
 
 	// Just testing things
-	public static void main(String args[]) throws IOException {
+	public static void main1(String args[]) throws IOException {
 		BufferManager a = BufferManager.getInstance();
 		System.out.println("The freeList before allocation");
 		a._printList();
