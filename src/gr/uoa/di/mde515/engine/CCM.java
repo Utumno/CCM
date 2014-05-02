@@ -1,10 +1,11 @@
 package gr.uoa.di.mde515.engine;
 
 import gr.uoa.di.mde515.index.DataFile;
+import gr.uoa.di.mde515.index.Index;
 import gr.uoa.di.mde515.index.Index.KeyExistsException;
 import gr.uoa.di.mde515.index.Record;
 
-import java.io.File; // FIXME
+import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
@@ -24,7 +25,7 @@ public interface CCM {
 	void endTransaction(Transaction tr);
 
 	<K extends Comparable<K>, V> Record<K, V> insert(Transaction tr,
-			Record<K, V> record, DataFile<K, V> file)
+			Record<K, V> record, DataFile<K, V> file, final Index<K, ?> index)
 			throws TransactionRequiredException, KeyExistsException,
 			ExecutionException;
 
@@ -46,7 +47,7 @@ public interface CCM {
 
 	void commit(Transaction tr);
 
-	File bulkLoad(Transaction tr, File fileOfRecords);
+	void bulkLoad(Transaction tr, Path fileOfRecords);
 
-	File bulkDelete(Transaction tr, File fileOfKeys);
+	void bulkDelete(Transaction tr, Path fileOfKeys, Object newParam);
 }

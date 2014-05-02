@@ -2,20 +2,37 @@ package gr.uoa.di.mde515.engine;
 
 import gr.uoa.di.mde515.engine.CCM.TransactionRequiredException;
 import gr.uoa.di.mde515.index.DataFile;
+import gr.uoa.di.mde515.index.Index;
 import gr.uoa.di.mde515.index.Index.KeyExistsException;
+import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
 
 import java.util.concurrent.ExecutionException;
 
 /**
  * Represents the DB external interface. It is a monofilestic engine but can be
- * extended to handle more files. Should be an interface implemented by enums
- * (for singleton property) but with the addition of a static factory (TODO:
- * java 8 ?)
+ * extended to handle more files, by making the methods instead of the class
+ * generic. This though leads to some complications given that the files have
+ * also generic parameters. Should be an interface implemented by enums (for
+ * singleton property) but with the addition of a static factory (TODO: java 8
+ * ?). <br/>
+ * All methods that require a Transaction will throw a
+ * {@code NullPointerException} if the supplied transaction is {@code null} and
+ * a {@link TransactionRequiredException} if the transaction supplied is not
+ * valid.
+ *
+ * @param <K>
+ *            the key type of the records in the one and only one file. Must
+ *            extend {@link Comparable}
+ * @param <V>
+ *            the type of the records value - that is all the attributes except
+ *            the key. No restrictions here.
  */
 public abstract class Engine<K extends Comparable<K>, V> {
 
 	public static final class TransactionFailedException extends Exception {
+
+		private static final long serialVersionUID = -4298165326203675694L;
 
 		public TransactionFailedException(ExecutionException e) {
 			super("Transaction operation failed", e);
@@ -58,10 +75,11 @@ public abstract class Engine<K extends Comparable<K>, V> {
 	// File bulk_delete(File fileOfKeys);
 }
 
-final class EngineImpl<K extends Comparable<K>, V> extends Engine<K, V> {
+final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V> {
 
 	private final CCM ccm;
-	private final DataFile<K, V> dataFile = DataFile.init("");
+	private final DataFile<K, V> dataFile = DataFile.init("temp.db");
+	final Index<K, PageId<T>> index = new Index<>();
 
 	EngineImpl() {
 		this.ccm = CCMImpl.instance();
@@ -82,7 +100,7 @@ final class EngineImpl<K extends Comparable<K>, V> extends Engine<K, V> {
 			throws TransactionRequiredException, KeyExistsException,
 			TransactionFailedException {
 		try {
-			return ccm.insert(tr, record, dataFile);
+			return ccm.insert(tr, record, dataFile, index);
 		} catch (ExecutionException e) {
 			throw new TransactionFailedException(e);
 		}

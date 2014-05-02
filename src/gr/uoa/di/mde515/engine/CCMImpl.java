@@ -3,11 +3,10 @@ package gr.uoa.di.mde515.engine;
 import gr.uoa.di.mde515.index.DataFile;
 import gr.uoa.di.mde515.index.Index;
 import gr.uoa.di.mde515.index.Index.KeyExistsException;
-import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.locks.DBLock;
 
-import java.io.File;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -21,8 +20,6 @@ final class CCMImpl<T> implements CCM {
 
 	final List<Transaction> transactions = Collections
 		.synchronizedList(new ArrayList<Transaction>()); // ...
-	final Index<K, PageId<T>> index = new Index<>();
-
 	// THREADS //
 	private final ExecutorService exec;
 	private static final int NUM_OF_THREADS = Runtime.getRuntime()
@@ -31,6 +28,10 @@ final class CCMImpl<T> implements CCM {
 
 	public CCMImpl() {
 		exec = Executors.newFixedThreadPool(NUM_OF_THREADS);
+	}
+
+	public static <L extends Comparable<L>, M> CCM instance() {
+		return INSTANCE;
 	}
 
 	private static abstract class DBoperation<R> implements Callable<R> {
@@ -98,7 +99,8 @@ final class CCMImpl<T> implements CCM {
 	@Override
 	public <K extends Comparable<K>, V> Record<K, V> insert(
 			final Transaction tr, final Record<K, V> record,
-			final DataFile<K, V> dataFile) throws TransactionRequiredException,
+			final DataFile<K, V> dataFile, final Index<K, ?> index)
+			throws TransactionRequiredException,
 			ExecutionException {
 		_operate_(new DBRecordOperation<K, V>(tr, record) {
 
@@ -161,16 +163,13 @@ final class CCMImpl<T> implements CCM {
 	}
 
 	@Override
-	public File bulkLoad(Transaction tr, File fileOfRecords) {
-		throw new UnsupportedOperationException("Not supported yet."); // TODO
+	public void bulkLoad(Transaction tr, Path fileOfRecords) {
+		throw new UnsupportedOperationException("Not implemented"); // TODO
 	}
 
 	@Override
-	public File bulkDelete(Transaction tr, File fileOfKeys) {
-		throw new UnsupportedOperationException("Not supported yet."); // TODO
+	public void bulkDelete(Transaction tr, Path fileOfKeys, Object newParam) {
+		throw new UnsupportedOperationException("Not implemented"); // TODO
 	}
 
-	public static <L extends Comparable<L>, M> CCM instance() {
-		return INSTANCE;
-	}
 }
