@@ -21,6 +21,7 @@ public class HF<K extends Comparable<K>, V> extends DataFile<K, V> {
 	private static final int ENTRY_SIZE = 4;
 	private static final int FILEHEADER_LENGTH = 14;
 	// new file header
+	// private Header head;
 	private static final int OFFSET_FREE_LIST = 0;
 	private static final int OFFSET_FULL_LIST = 4;
 	private static final int OFFSET_LAST_FREE_HEADER = 8;
@@ -42,23 +43,46 @@ public class HF<K extends Comparable<K>, V> extends DataFile<K, V> {
 		} catch (FileNotFoundException e) {
 			throw new RuntimeException("Can't access db file", e);
 		}
-		buf = BufferManager.getInstance();
+		buf = BufferManager.getInstance(); // STATIC
+		// file = new RandomAccessFile(filename, "rw");
+		// KLEO
+		// IF file existed:
+		// bm.getHeader
+		// lm. lockHeader for read (NO TRANSACTION)....
+		// read Header and initialize _head_
+		// ELSE init a new header and CREATE ONE BLANK PAGE
+		// preallocateFile();
 	}
 
-	/*
-	 * private final static class Header { private int freeListStart; private
-	 * int fullListStart; private int numPages; final short RECORD_SIZE; public
-	 * Header(Page header) { freeListStart = header.readInt(OFFSET_FREE_LIST);
-	 * fullListStart = header.readInt(OFFSET_FULL_LIST); RECORD_SIZE =
-	 * header.readShort(OFFSET_RECORD_SIZE); numPages =
-	 * header.readInt(OFFSET_PAGES_COUNT); try { Path path =
-	 * Paths.get("/home/temp/", "hugefile.txt"); SeekableByteChannel sbc =
-	 * Files.newByteChannel(path, StandardOpenOption.READ); ByteBuffer bf =
-	 * ByteBuffer.allocate(941);// line size int i = 0; while ((i =
-	 * sbc.read(bf)) > 0) { bf.flip(); System.out.println(new
-	 * String(bf.array())); bf.clear(); } } catch (Exception e) {
-	 * e.printStackTrace(); } } }
-	 */
+	// private final static class Header {
+	//
+	// private int freeListStart;
+	// private int fullListStart;
+	// private int numPages;
+	// final short RECORD_SIZE;
+	//
+	// public Header(Page header) {
+	// freeListStart = header.readInt(OFFSET_FREE_LIST);
+	// fullListStart = header.readInt(OFFSET_FULL_LIST);
+	// RECORD_SIZE = header.readShort(OFFSET_RECORD_SIZE);
+	// numPages = header.readInt(OFFSET_PAGES_COUNT);
+	// try {
+	// Path path = Paths.get("/home/temp/", "hugefile.txt");
+	// SeekableByteChannel sbc = Files.newByteChannel(path,
+	// StandardOpenOption.READ);
+	// ByteBuffer bf = ByteBuffer.allocate(941);// line size
+	// int i = 0;
+	// while ((i = sbc.read(bf)) > 0) {
+	// bf.flip();
+	// System.out.println(new String(bf.array()));
+	// bf.clear();
+	// }
+	// } catch (Exception e) {
+	// e.printStackTrace();
+	// }
+	// }
+	// // fileheader = file.readPage(0);
+	// }
 	public BufferManager buf() {
 		return buf;
 	}
@@ -130,6 +154,10 @@ public class HF<K extends Comparable<K>, V> extends DataFile<K, V> {
 		}
 		int pageID = header.readInt(OFFSET_FREE_LIST);
 		System.out.println("The pageID is " + pageID);
+		// lockHeader();
+		// PageId<Integer> p = nextAvailablePage();
+		// Request<Integer> request = new LockManager.Request<>(p, tr, Lock.E);
+		// lock manager request
 		Frame in = buf.allocFrame(pageID, file);
 		Page p = new Page(pageID, in.getBufferFromFrame());
 		int freeSlot = p.readInt(OFFSET_NEXT_FREE_SLOT);
@@ -162,32 +190,8 @@ public class HF<K extends Comparable<K>, V> extends DataFile<K, V> {
 		}
 	}
 
-	/*
-	 * public void insert(int key, int value) throws IOException { Frame f =
-	 * buf.allocFrame(0); Page header = new Page(0, f.getBufferFromFrame()); int
-	 * pageID = header.readInt(OFFSET_FREE_LIST); Frame in =
-	 * buf.allocFrame(pageID); Page p = new Page(pageID,
-	 * in.getBufferFromFrame()); p.writeInt(OFFSET_DATA_START, key);
-	 * p.writeInt(OFFSET_DATA_START + 4, value); in.setDirty(); header = null; p
-	 * = null; try { buf.flushPage(pageID); } catch (IOException e) {
-	 * e.printStackTrace(); } }
-	 */
-	public static void main1(String args[]) throws IOException {
-		HF heapfile = new HF("test.db");
-		heapfile.createFileHeader();
-		heapfile.createPageHeader(1);
-		heapfile.createPageHeader(2);
-		/*
-		 * System.out.println("The pinning occurs here"); Frame f =
-		 * buf.allocFrame(0); Page header = new Page(0, f.getBufferFromFrame());
-		 * ByteBuffer b = header.getData(); for (int i = 0; i < 5; i = i + 4) {
-		 * System.out.println(" "); System.out.println("The values is " +
-		 * b.getInt(i)); System.out.println(" "); }
-		 * System.out.println("The values is " + b.getShort(8));
-		 * System.out.println("The numframe of the header is " +
-		 * f.getFrameNumber()); System.out.println("Is it empty?  " +
-		 * f.isEmpty());
-		 */
+	private void lockHeader() {
+		throw new UnsupportedOperationException("Not implemented"); // TODO
 	}
 
 	@Override
