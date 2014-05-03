@@ -3,6 +3,7 @@ package gr.uoa.di.mde515.locks;
 import gr.uoa.di.mde515.engine.Transaction;
 import gr.uoa.di.mde515.index.PageId;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -51,8 +52,8 @@ public class LockManager {
 			// trans
 			pageLock.add(request);
 		}
-		pageLock.lock(request.lock); // this may block so must be out of the
-		// synchronized block
+		pageLock.lock(request); // this may block so must be
+		// out of the synchronized block
 	}
 
 	private final static class LockStructure {
@@ -62,24 +63,32 @@ public class LockManager {
 		private final Lock r = rw.readLock();
 		private final Lock w = rw.writeLock();
 		// private volatile boolean inUse = true; // in use == !trans.isEmpty()
-		private final LinkedHashMap<Transaction, DBLock> trans = new LinkedHashMap<>();
+		private final LinkedHashMap<Transaction, DBLock> requests = new LinkedHashMap<>();
+		private final Map<Transaction, Request> granted = Collections // FIXME
+			.synchronizedMap(new LinkedHashMap<Transaction, Request>());
 
 		LockStructure() {}
 
-		void lock(DBLock lock) {
+		void lock(Request req) {
+			final DBLock lock = req.lock;
+			final Request grant = granted.get(req.tr);
+			if (grant != null && grant.pageId.equals(req.pageId)
+				&& grant.lock == lock) return;
 			switch (lock) {
 			case E:
 				w.lock();
+				granted.put(req.tr, req);
 				return;
 			case S:
 				r.lock();
+				granted.put(req.tr, req);
 				return;
 			}
 			throw new RuntimeException("Forgotten enum constant");
 		}
 
 		synchronized void add(Request request) {
-			trans.put(request.tr, request.lock);
+			requests.put(request.tr, request.lock);
 		}
 	}
 }

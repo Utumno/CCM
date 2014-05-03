@@ -112,8 +112,10 @@ enum CCMImpl implements CCM {
 		_operate_(new DBRecordOperation<K, V>(tr, record) {
 
 			@Override
-			public Record<K, V> call() throws KeyExistsException, IOException {
+			public Record<K, V> call() throws KeyExistsException, IOException,
+					InterruptedException {
 				index.lookupLocked(tr, record.getKey(), DBLock.E);
+				dataFile.lockHeader(tr, DBLock.E);
 				dataFile.insert(tr, record);
 				// if insertion to file is successful we must now insert into
 				// the index and unlock

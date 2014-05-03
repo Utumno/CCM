@@ -30,4 +30,8 @@ public class Transaction {
 				+ name + ") is not owner of transaction with id " + threadId);
 		}
 	}
+
+	public void flush() {
+		throw new UnsupportedOperationException("Not implemented"); // TODO
+	}
 }

@@ -2,7 +2,10 @@ package gr.uoa.di.mde515.engine.buffer;
 
 import gr.uoa.di.mde515.engine.Transaction;
 import gr.uoa.di.mde515.index.DataFile;
+import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
+import gr.uoa.di.mde515.locks.DBLock;
+import gr.uoa.di.mde515.locks.LockManager;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -10,7 +13,7 @@ import java.nio.ByteBuffer;
 
 public class HF<K extends Comparable<K>, V> extends DataFile<K, V> {
 
-	private BufferManager buf;
+	private static final BufferManager buf = BufferManager.getInstance();
 	// storage layer
 	private final DiskFile file;
 	// useful constants
@@ -36,14 +39,16 @@ public class HF<K extends Comparable<K>, V> extends DataFile<K, V> {
 	private static final int OFFSET_CURRENT_NUMBER_OF_SLOTS = 8;
 	private static final int OFFSET_NEXT_PAGE = 12;
 	private static final int OFFSET_PREVIOUS_PAGE = 16;
+	// LockManager
+	private final LockManager lm = LockManager.getInstance();
 
-	public HF(String filename) {
+	public HF(String filename) throws IOException, InterruptedException {
 		try {
 			file = new DiskFile(filename);
+			createFileHeader();
 		} catch (FileNotFoundException e) {
 			throw new RuntimeException("Can't access db file", e);
 		}
-		buf = BufferManager.getInstance(); // STATIC
 		// file = new RandomAccessFile(filename, "rw");
 		// KLEO
 		// IF file existed:
@@ -91,8 +96,9 @@ public class HF<K extends Comparable<K>, V> extends DataFile<K, V> {
 	 * Creates the file header
 	 *
 	 * @throws IOException
+	 * @throws InterruptedException
 	 */
-	public void createFileHeader() throws IOException {
+	public void createFileHeader() throws IOException, InterruptedException {
 		file.allocateNewPage(0);
 		Frame f = buf.allocFrame(0, file);
 		Page p = new Page(0, f.getBufferFromFrame());
@@ -104,13 +110,19 @@ public class HF<K extends Comparable<K>, V> extends DataFile<K, V> {
 		buf.flushFileHeader(file);
 	}
 
+	private void readPageHeade() {
+		throw new UnsupportedOperationException("Not implemented"); // TODO
+	}
+
 	/**
 	 * Creates the page header
 	 *
 	 * @param pageID
 	 * @throws IOException
+	 * @throws InterruptedException
 	 */
-	public void createPageHeader(int pageID) throws IOException {
+	public void createPageHeader(int pageID) throws IOException,
+			InterruptedException {
 		file.allocateNewPage(pageID);
 		Frame f = buf.allocFrame(pageID, file);
 		Page p = new Page(pageID, f.getBufferFromFrame());
@@ -134,15 +146,18 @@ public class HF<K extends Comparable<K>, V> extends DataFile<K, V> {
 	/**
 	 * Insert a Record<K, V> to the file. It dynamically creates new pages if
 	 * the file does not have them and modify appropriately the file and header
-	 * pages if necessary.
+	 * pages if necessary. The header of the file should be locked beforehand
+	 * for writting.
 	 *
 	 * @param record
 	 * @throws IOException
+	 * @throws InterruptedException
 	 */
 	@Override
-	public void insert(Transaction tr, Record<K, V> record) throws IOException {
-		int key = (Integer) record.getKey();
-		int value = (Integer) record.getValue();
+	public void insert(Transaction tr, Record<K, V> record) throws IOException,
+			InterruptedException {
+		final int key = (Integer) record.getKey();
+		final int value = (Integer) record.getValue();
 		Frame f = buf.allocFrame(0, file);
 		Page header = new Page(0, f.getBufferFromFrame());
 		// if ((header.readInt(OFFSET_CURRENT_PAGE)))
@@ -154,7 +169,6 @@ public class HF<K extends Comparable<K>, V> extends DataFile<K, V> {
 		}
 		int pageID = header.readInt(OFFSET_FREE_LIST);
 		System.out.println("The pageID is " + pageID);
-		// lockHeader();
 		// PageId<Integer> p = nextAvailablePage();
 		// Request<Integer> request = new LockManager.Request<>(p, tr, Lock.E);
 		// lock manager request
@@ -180,9 +194,6 @@ public class HF<K extends Comparable<K>, V> extends DataFile<K, V> {
 		}
 		// sets the frame dirty
 		in.setDirty();
-		// we do not need anymore the pages objects
-		header = null;
-		p = null;
 		try {
 			buf.flushPage(pageID, file);
 		} catch (IOException e) {
@@ -190,12 +201,13 @@ public class HF<K extends Comparable<K>, V> extends DataFile<K, V> {
 		}
 	}
 
-	private void lockHeader() {
-		throw new UnsupportedOperationException("Not implemented"); // TODO
-	}
-
 	@Override
 	public void close() throws IOException {
 		file.close();
+	}
+
+	@Override
+	public void lockHeader(Transaction tr, DBLock e) {
+		lm.requestLock(new LockManager.Request(new PageId<>(0), tr, e));
 	}
 }

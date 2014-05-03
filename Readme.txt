@@ -12,3 +12,15 @@ realization of the work that the clients ask the server to do on their behalf
 Assumptions:
 
 Updates == deletion + insertion
+
+
+TODOs
+
+Buffer manager full ---- DEADLOCKS on POOL_LOCK
+BM----------THREAD UNSAFE
+BM return Pages and not Frames
+LRU or other algorithm
+FramePage into buffer manager - check thread safety
+MOVE flush out of the insert etc
+Extract helper methods in insert
+Be sure to throw if insert fails

@@ -1,7 +1,6 @@
 package gr.uoa.di.mde515.engine.buffer;
 
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 
 final class FramePage {
@@ -29,17 +28,9 @@ final class FramePage {
 		return map.get(key);
 	}
 
-	public void getKey() {
+	public void print() {
 		for (Map.Entry<Integer, Integer> entry : map.entrySet()) {
-			System.out.println("(map)The key value is " + entry.getKey());
-		}
-	}
-
-	public void iter() {
-		for (Iterator<Integer> iterator = map.keySet().iterator(); iterator
-			.hasNext();) {
-			Integer key = iterator.next();
-			System.out.println("The hashmap values are " + map.get(key));
+			System.out.println(entry);
 		}
 	}
 }

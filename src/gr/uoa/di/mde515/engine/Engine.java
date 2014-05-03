@@ -72,7 +72,7 @@ public abstract class Engine<K extends Comparable<K>, V> {
 	//
 	// void abort();
 	//
-	// void commit();
+	public abstract void commit(Transaction tr);
 	//
 	// File bulk_load(File fileOfRecords);
 	//
@@ -83,11 +83,16 @@ public abstract class Engine<K extends Comparable<K>, V> {
 final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V> {
 
 	private final CCM ccm;
-	private final DataFile<K, V> dataFile = DataFile.init("temp.db");
+	private final DataFile<K, V> dataFile;
 	final Index<K, PageId<T>> index = new Index<>();
 
 	EngineImpl() {
 		this.ccm = CCMImpl.instance();
+		try {
+			dataFile = DataFile.init("temp.db");
+		} catch (IOException | InterruptedException e) {
+			throw new RuntimeException("Can't open db file", e);
+		}
 	}
 
 	@Override
@@ -109,6 +114,11 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V> {
 		} catch (ExecutionException e) {
 			throw new TransactionFailedException(e);
 		}
+	}
+
+	@Override
+	public void commit(Transaction tr) {
+		tr.flush();
 	}
 
 	@Override
