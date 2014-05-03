@@ -23,15 +23,18 @@ public class Main {
 			KeyExistsException, TransactionFailedException,
 			InterruptedException, IOException {
 		Engine<Integer, Integer> eng = Engine.newInstance();
-		for (int i = 0; i < 100; i++) {
+		try {
 			Transaction tr = eng.beginTransaction();
-			Record<Integer, Integer> rec = new Record<>(i, i);
-			eng.insert(tr, rec);
+			for (int i = 0; i < 100; i++) {
+				Record<Integer, Integer> rec = new Record<>(i, i);
+				eng.insert(tr, rec);
+			}
+			// eng.e_xaction(tr);
+			eng.print();
+		} finally {
+			eng.shutEngine();
 		}
-		eng.print();
-		// eng.e_xaction(tr);
 		// treePrint();
-		eng.shutEngine();
 	}
 
 	private static void treePrint() {

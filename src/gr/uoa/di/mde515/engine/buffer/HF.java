@@ -65,7 +65,7 @@ public class HF<K extends Comparable<K>, V> extends DataFile<K, V> {
 
 	/**
 	 * Creates the file header
-	 * 
+	 *
 	 * @throws IOException
 	 */
 	public void createFileHeader() throws IOException {
@@ -82,7 +82,7 @@ public class HF<K extends Comparable<K>, V> extends DataFile<K, V> {
 
 	/**
 	 * Creates the page header
-	 * 
+	 *
 	 * @param pageID
 	 * @throws IOException
 	 */
@@ -111,7 +111,7 @@ public class HF<K extends Comparable<K>, V> extends DataFile<K, V> {
 	 * Insert a Record<K, V> to the file. It dynamically creates new pages if
 	 * the file does not have them and modify appropriately the file and header
 	 * pages if necessary.
-	 * 
+	 *
 	 * @param record
 	 * @throws IOException
 	 */

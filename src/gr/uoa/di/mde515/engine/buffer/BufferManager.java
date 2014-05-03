@@ -9,10 +9,11 @@ import java.util.List;
 /**
  * @author Kleomenis
  */
-public class BufferManager {
+public final class BufferManager {
 
+	private static final int NUM_BUFFERS = 10;
 	// the pool of frames
-	private Frame[] pool;
+	private final List<Frame> pool = new ArrayList<>(); // TODO unmodifiable
 	// the structure that maintain information about pageIDs and their
 	// corresponding frame numbers
 	private FramePage hash;
@@ -21,20 +22,15 @@ public class BufferManager {
 
 	private BufferManager(int numBufs) {
 		System.out.println("--- Start The BufferManager Constructor---");
-		pool = new Frame[numBufs];
 		hash = new FramePage();
 		for (int i = 0; i < numBufs; i++) {
-			pool[i] = new Frame(i);
-			System.out.println("The init hashcode is " + pool[i].hashCode()
-				+ " of frame" + pool[i].getFrameNumber());
-			System.out.println("The ByteBuffer hashCode for frame " + i
-				+ " is " + pool[i].printByteBufferHashCode());
+			pool.add(new Frame(i));
 			freeList.add(i);
 		}
 		System.out.println("---END The BufferManager Constructor---");
 	}
 
-	private static final BufferManager instance = new BufferManager(10);
+	private static final BufferManager instance = new BufferManager(NUM_BUFFERS);
 
 	// =========================================================================
 	// API
@@ -54,7 +50,7 @@ public class BufferManager {
 	/**
 	 * It flushes the content of the frame associated with the given pageID to
 	 * the disk at correct block.
-	 * 
+	 *
 	 * @param pageID
 	 * @param disk
 	 * @throws IOException
@@ -65,9 +61,9 @@ public class BufferManager {
 		System.out.println("The (flushPage)framenumber is " + frameNumber);
 		unpinPage(frameNumber);
 		System.out.println("Is the frame dirty (flusher)? "
-			+ pool[frameNumber].isDirty());
-		if (pool[frameNumber].isDirty())
-			disk.writePage(pageID, pool[frameNumber].getBufferFromFrame());
+			+ pool.get(frameNumber).isDirty());
+		if (pool.get(frameNumber).isDirty())
+			disk.writePage(pageID, pool.get(frameNumber).getBufferFromFrame());
 		cleanPage(frameNumber);
 		hash.removeKey(pageID);
 		freeList.add(frameNumber);
@@ -78,20 +74,20 @@ public class BufferManager {
 
 	/**
 	 * Flushes the header of the file while keeping it pinned in main memory.
-	 * 
+	 *
 	 * @param disk
 	 * @throws IOException
 	 */
 	public void flushFileHeader(DiskFile disk) throws IOException {
 		// if it does not exist?
-		disk.writePage(0, pool[0].getBufferFromFrame());
-		pool[0].setEmpty();
+		disk.writePage(0, pool.get(0).getBufferFromFrame());
+		pool.get(0).setEmpty();
 	}
 
 	/**
 	 * It first finds an empty buffer from the free list and then updates the
 	 * map of pageIDs and frameNumbers along with returning the specified Frame.
-	 * 
+	 *
 	 * @param pageID
 	 * @param disk
 	 * @return ByteBuffer
@@ -126,11 +122,11 @@ public class BufferManager {
 	}
 
 	private int getBufferNumber(int i) {
-		return pool[i].getFrameNumber();
+		return pool.get(i).getFrameNumber();
 	}
 
 	private Frame getBuffer(int i) {
-		return pool[i];
+		return pool.get(i);
 	}
 
 	private void frameHashCode(int i) {
@@ -140,45 +136,46 @@ public class BufferManager {
 
 	/**
 	 * pinPage only increases the relative pinCount variable of the Frame class
-	 * 
+	 *
 	 * @param frameNumber
 	 */
 	private void pinPage(int frameNumber) {
-		pool[frameNumber].increasePincount();
+		pool.get(frameNumber).increasePincount();
 	}
 
 	/**
 	 * unpinPage simply decrease the pinCount of the frame. It does not decrease
 	 * the pinCount below 0.
-	 * 
+	 *
 	 * @param frameNumber
 	 */
 	private void unpinPage(int frameNumber) {
 		System.out.println("---Start unpinPage of BufferManager---");
 		System.out.println("The pincount before decreasing is "
-			+ pool[frameNumber].getPinCount());
-		if (pool[frameNumber].getPinCount() > 0)
-			pool[frameNumber].decreasePincount();
+			+ pool.get(frameNumber).getPinCount());
+		if (pool.get(frameNumber).getPinCount() > 0)
+			pool.get(frameNumber).decreasePincount();
 		System.out.println("The pincount before decreasing is "
-			+ pool[frameNumber].getPinCount());
+			+ pool.get(frameNumber).getPinCount());
 		System.out
-			.println("Is the frame dirty? " + pool[frameNumber].isDirty());
+.println("Is the frame dirty? "
+			+ pool.get(frameNumber).isDirty());
 		System.out.println("---End unpinPage of BufferManager---");
 	}
 
 	/**
 	 * Just changes the dirty and empty fields of the Frame class. This can be
 	 * used to decide whether flush or not flush a page.
-	 * 
+	 *
 	 * @param frameNumber
 	 */
 	private void cleanPage(int frameNumber) {
-		pool[frameNumber].setEmpty();
+		pool.get(frameNumber).setEmpty();
 	}
 
 	private boolean isBufferFull() {
-		for (int i = 0; i <= pool.length; i++) {
-			if (pool[i].getPinCount() == 0) return false;
+		for (int i = 0; i < pool.size(); i++) {
+			if (pool.get(i).getPinCount() == 0) return false;
 		}
 		return true;
 	}
