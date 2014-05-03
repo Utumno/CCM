@@ -81,4 +81,8 @@ public class DiskFile {
 		}
 		disk.writePage(0, b);
 	}
+
+	public void close() throws IOException {
+		file.close();
+	}
 }

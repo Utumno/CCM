@@ -1,9 +1,15 @@
 package gr.uoa.di.mde515;
 
+import gr.uoa.di.mde515.engine.CCM.TransactionRequiredException;
+import gr.uoa.di.mde515.engine.Engine;
+import gr.uoa.di.mde515.engine.Engine.TransactionFailedException;
+import gr.uoa.di.mde515.engine.Transaction;
+import gr.uoa.di.mde515.index.Index.KeyExistsException;
 import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.trees.BPlusJava;
 import gr.uoa.di.mde515.trees.BPlusTree;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -13,13 +19,19 @@ public class Main {
 
 	static Random r = new Random();
 
-	public static void main(String[] args) {
-		// Engine eng = Engine.newInstance(); // FIXME SINGLETON
-		// Transaction tr = eng.b_xaction();
-		// Record<Integer> rec = null;
-		// eng.insert(tr, rec);
+	public static void main(String[] args) throws TransactionRequiredException,
+			KeyExistsException, TransactionFailedException,
+			InterruptedException, IOException {
+		Engine<Integer, Integer> eng = Engine.newInstance();
+		for (int i = 0; i < 100; i++) {
+			Transaction tr = eng.beginTransaction();
+			Record<Integer, Integer> rec = new Record<>(i, i);
+			eng.insert(tr, rec);
+		}
+		eng.print();
 		// eng.e_xaction(tr);
-		treePrint();
+		// treePrint();
+		eng.shutEngine();
 	}
 
 	private static void treePrint() {

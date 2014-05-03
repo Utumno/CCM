@@ -9,7 +9,7 @@ import gr.uoa.di.mde515.trees.BPlusJava.Node;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-public class Index<K extends Comparable<K>, V> {
+public class Index<K extends Comparable<K>, V> { // V --> rename to T
 
 	public static final class KeyExistsException extends Exception {
 
@@ -20,8 +20,8 @@ public class Index<K extends Comparable<K>, V> {
 		}
 	}
 
-	private BPlusJava<K, V> bplus;
-	private LockManager lm = LockManager.getInstance();
+	private final BPlusJava<K, V> bplus = new BPlusJava<>();
+	private final LockManager lm = LockManager.getInstance();
 
 	/**
 	 * Locks the path from the root to the leaf where a key is to be inserted on
@@ -44,5 +44,9 @@ public class Index<K extends Comparable<K>, V> {
 			lm.requestLock(new LockManager.Request(indexPage, tr, el));
 			indexPage = bplus.getNextPageId(indexPage, key, sm);
 		}
+	}
+
+	public void print() {
+		bplus.print();
 	}
 }

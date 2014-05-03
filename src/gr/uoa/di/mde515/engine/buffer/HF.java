@@ -118,8 +118,8 @@ public class HF<K extends Comparable<K>, V> extends DataFile<K, V> {
 	 * @param record
 	 * @throws IOException
 	 */
-	public <V, K extends Comparable<K>> void insert(Record<K, V> record)
-			throws IOException {
+	@Override
+	public void insert(Transaction tr, Record<K, V> record) throws IOException {
 		// need to add check logic if the record already exists TODO
 		// where is commit? TODO
 		int pageID;
@@ -226,7 +226,7 @@ public class HF<K extends Comparable<K>, V> extends DataFile<K, V> {
 	}
 
 	@Override
-	public void insert(Transaction tr, Record<K, V> rec) {
-		throw new UnsupportedOperationException("Not implemented"); // TODO
+	public void close() throws IOException {
+		file.close();
 	}
 }

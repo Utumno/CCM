@@ -50,4 +50,6 @@ public interface CCM {
 	void bulkLoad(Transaction tr, Path fileOfRecords);
 
 	void bulkDelete(Transaction tr, Path fileOfKeys, Object newParam);
+
+	void shutdown() throws InterruptedException;
 }

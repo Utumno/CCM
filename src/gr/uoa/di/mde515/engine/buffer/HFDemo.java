@@ -1,7 +1,5 @@
 package gr.uoa.di.mde515.engine.buffer;
 
-import gr.uoa.di.mde515.index.Record;
-
 import java.io.IOException;
 
 
@@ -75,18 +73,18 @@ public class HFDemo {
 			.println("The lastpageid value is after pageheader creation is "
 				+ DiskManager.last_allocated_pageID);
 		heapfile.buf().printHashMap();*/
-		System.out.println(" ");
-		System.out.println(" ");
-		System.out.println(" ");
-		System.out.println("Writing the first record");
-		Record<Integer, Integer> record = new Record<>(6,7);
-		heapfile.insert(record);
-		System.out.println(" ");
-		System.out.println("Writing the second record");
-		Record<Integer, Integer> record1 = new Record<>(8,9);
-		heapfile.insert(record1);
-		Record<Integer, Integer> record2 = new Record<>(10,11);
-		heapfile.insert(record2);
-		System.out.println("The insertion completed");
+		// System.out.println(" ");
+		// System.out.println(" ");
+		// System.out.println(" ");
+		// System.out.println("Writing the first record");
+		// Record<Integer, Integer> record = new Record<>(6,7);
+		// heapfile.insert(record);
+		// System.out.println(" ");
+		// System.out.println("Writing the second record");
+		// Record<Integer, Integer> record1 = new Record<>(8,9);
+		// heapfile.insert(record1);
+		// Record<Integer, Integer> record2 = new Record<>(10,11);
+		// heapfile.insert(record2);
+		// System.out.println("The insertion completed");
 	}
 }

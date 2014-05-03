@@ -7,6 +7,7 @@ import gr.uoa.di.mde515.index.Index.KeyExistsException;
 import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
 
+import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -45,6 +46,9 @@ public abstract class Engine<K extends Comparable<K>, V> {
 		return instance;
 	}
 
+	public abstract void shutEngine() throws InterruptedException, IOException;
+
+
 	// =========================================================================
 	// Abstract methods
 	// =========================================================================
@@ -73,6 +77,7 @@ public abstract class Engine<K extends Comparable<K>, V> {
 	// File bulk_load(File fileOfRecords);
 	//
 	// File bulk_delete(File fileOfKeys);
+	public abstract void print();
 }
 
 final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V> {
@@ -104,5 +109,16 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V> {
 		} catch (ExecutionException e) {
 			throw new TransactionFailedException(e);
 		}
+	}
+
+	@Override
+	public void shutEngine() throws InterruptedException, IOException {
+		ccm.shutdown();
+		dataFile.close();
+	}
+
+	@Override
+	public void print() {
+		index.print();
 	}
 }

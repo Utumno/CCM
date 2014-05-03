@@ -6,6 +6,7 @@ import gr.uoa.di.mde515.index.Index.KeyExistsException;
 import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.locks.DBLock;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -15,22 +16,20 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
-final class CCMImpl<T> implements CCM {
+enum CCMImpl implements CCM {
+	INSTANCE;
 
 	final List<Transaction> transactions = Collections
 		.synchronizedList(new ArrayList<Transaction>()); // ...
 	// THREADS //
-	private final ExecutorService exec;
-	private static final int NUM_OF_THREADS = Runtime.getRuntime()
+	private final int NUM_OF_THREADS = Runtime.getRuntime()
 		.availableProcessors();
-	private static final CCM INSTANCE = new CCMImpl<>();
+	private final ExecutorService exec = Executors
+		.newFixedThreadPool(NUM_OF_THREADS);
 
-	public CCMImpl() {
-		exec = Executors.newFixedThreadPool(NUM_OF_THREADS);
-	}
-
-	public static <L extends Comparable<L>, M> CCM instance() {
+	public static CCM instance() {
 		return INSTANCE;
 	}
 
@@ -89,6 +88,15 @@ final class CCMImpl<T> implements CCM {
 		}
 	}
 
+	// =========================================================================
+	// API
+	// =========================================================================
+	@Override
+	public void shutdown() throws InterruptedException {
+		INSTANCE.exec.shutdown();
+		INSTANCE.exec.awaitTermination(13, TimeUnit.SECONDS);
+	}
+
 	@Override
 	public Transaction beginTransaction() {
 		final Transaction tr = new Transaction();
@@ -100,19 +108,16 @@ final class CCMImpl<T> implements CCM {
 	public <K extends Comparable<K>, V> Record<K, V> insert(
 			final Transaction tr, final Record<K, V> record,
 			final DataFile<K, V> dataFile, final Index<K, ?> index)
-			throws TransactionRequiredException,
-			ExecutionException {
+			throws TransactionRequiredException, ExecutionException {
 		_operate_(new DBRecordOperation<K, V>(tr, record) {
 
 			@Override
-			public Record<K, V> call() throws KeyExistsException {
+			public Record<K, V> call() throws KeyExistsException, IOException {
 				index.lookupLocked(tr, record.getKey(), DBLock.E);
 				dataFile.insert(tr, record);
-				// V value = rec.getValue(); // this should now insert into the
-				// file
 				// if insertion to file is successful we must now insert into
 				// the index and unlock
-				throw new UnsupportedOperationException("Not supported yet."); // TODO
+				return record;
 			}
 		});
 		return record;
@@ -171,5 +176,4 @@ final class CCMImpl<T> implements CCM {
 	public void bulkDelete(Transaction tr, Path fileOfKeys, Object newParam) {
 		throw new UnsupportedOperationException("Not implemented"); // TODO
 	}
-
 }
