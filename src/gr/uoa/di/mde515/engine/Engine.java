@@ -48,7 +48,6 @@ public abstract class Engine<K extends Comparable<K>, V> {
 
 	public abstract void shutEngine() throws InterruptedException, IOException;
 
-
 	// =========================================================================
 	// Abstract methods
 	// =========================================================================
@@ -59,6 +58,7 @@ public abstract class Engine<K extends Comparable<K>, V> {
 	public abstract Record<K, V> insert(Transaction tr, Record<K, V> record)
 			throws TransactionRequiredException, KeyExistsException,
 			TransactionFailedException;
+
 	//
 	// Record<K,V> delete(T key);
 	//
@@ -73,6 +73,7 @@ public abstract class Engine<K extends Comparable<K>, V> {
 	// void abort();
 	//
 	public abstract void commit(Transaction tr);
+
 	//
 	// File bulk_load(File fileOfRecords);
 	//

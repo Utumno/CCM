@@ -10,7 +10,6 @@ public class Page<T> {
 	private static final short NEXT_PAGE_OFFSET = 0;
 	private static final short PREVIOUS_PAGE_OFFSET = 4;
 	public static final byte[] BLANK_PAGE = new byte[4096];
-
 	// /OFFSETS
 	private PageId<T> pageid;
 	// private int numSlots;
@@ -73,24 +72,4 @@ public class Page<T> {
 		setDirty();
 		dat.putInt(pos, value);
 	}
-
-	public void fileHeader(boolean isNew) {}
-
-	/*public void setPageHeader(short value) {
-		writeShort(PAGE_FREE_SPACE, (short) 100); // defined
-		writeShort(PAGE_HEADER_NEXT, value); // ??
-		writeShort(PAGE_HEADER_PREVIOUS, (short) 0); // ??
-		for (int i = 8; i < (Offsets.numSlots + 8); i++) {
-			writeShort(i, (short) -1);
-		}
-		writeShort();// thesi tou prwtou record
-	}*/
-
-	/*void pageHeaderSetNext(short next) {
-		writeShort(Offsets.PAGE_HEADER_NEXT, next);
-	}
-
-	void pageHeaderSetPrevious(short previous) {
-		writeShort(Offsets.PAGE_HEADER_NEXT, previous);
-	}*/
 }
