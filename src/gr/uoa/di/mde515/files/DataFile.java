@@ -10,7 +10,7 @@ public abstract class DataFile<K extends Comparable<K>, V> {
 
 	public static <L extends Comparable<L>, M> DataFile<L, M> init(
 			String filename) throws IOException, InterruptedException {
-		return new HF<L, M>(filename);
+		return new HeapFile<L, M>(filename);
 	}
 
 	public abstract void insert(Transaction tr, Record<K, V> rec)

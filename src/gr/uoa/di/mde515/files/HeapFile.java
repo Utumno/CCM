@@ -13,7 +13,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class HF<K extends Comparable<K>, V> extends DataFile<K, V> {
+public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 
 	private static final BufferManager buf = BufferManager.getInstance();
 	// storage layer
@@ -44,7 +44,7 @@ public class HF<K extends Comparable<K>, V> extends DataFile<K, V> {
 	// LockManager
 	private final LockManager lm = LockManager.getInstance();
 
-	public HF(String filename) throws IOException, InterruptedException {
+	public HeapFile(String filename) throws IOException, InterruptedException {
 		try {
 			file = new DiskFile(filename);
 			createFileHeader();
