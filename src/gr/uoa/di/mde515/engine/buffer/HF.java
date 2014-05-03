@@ -14,22 +14,27 @@ public class HF<K extends Comparable<K>, V> extends DataFile<K, V> {
 	// storage layer
 	private final DiskFile file;
 	// useful constants
-	private static final int PAGE_SIZE = 32; // TODO move to globals
+	private static final int PAGE_SIZE = 48; // TODO move to globals
 	private static final int RECORD_SIZE = 8; // TODO read from header
-	private int pageCount; // TODO read from header
+	private int last_allocated_page = 0;
 	// it the size of entry in the fileheader
 	private static final int ENTRY_SIZE = 4;
-	private static final int FILEHEADER_LENGTH = 6;
-	// maximum number of slots in a page
-	private static final int OFFSET_PAGES_COUNT = 0;
-	private static final int OFFSET_RECORD_SIZE = 4;
+	private static final int FILEHEADER_LENGTH = 14;
+	// new file header
+	private static final int OFFSET_FREE_LIST = 0;
+	private static final int OFFSET_FULL_LIST = 4;
+	private static final int OFFSET_LAST_FREE_HEADER = 8;
+	private static final int OFFSET_RECORD_SIZE = 12;
 	// PAGE HEADER OFFSETS
 	// Instead of linked list heap file, I changed to directory of pages
 	// maximum # of slots in page
-	private static final int MAXIMUM_NUMBER_OF_SLOTS = 2;
+	private static final int MAXIMUM_NUMBER_OF_SLOTS = 3;
+	private static final int PAGE_FILE_HEADER_LENGTH = 20;
 	private static final int OFFSET_CURRENT_PAGE = 0;
 	private static final int OFFSET_NEXT_FREE_SLOT = 4;
 	private static final int OFFSET_CURRENT_NUMBER_OF_SLOTS = 8;
+	private static final int OFFSET_NEXT_PAGE = 12;
+	private static final int OFFSET_PREVIOUS_PAGE = 16;
 
 	public HF(String filename) {
 		try {
@@ -60,16 +65,16 @@ public class HF<K extends Comparable<K>, V> extends DataFile<K, V> {
 
 	/**
 	 * Creates the file header
-	 *
+	 * 
 	 * @throws IOException
 	 */
 	public void createFileHeader() throws IOException {
 		file.allocateNewPage(0);
 		Frame f = buf.allocFrame(0, file);
 		Page p = new Page(0, f.getBufferFromFrame());
-		p.writeInt(OFFSET_PAGES_COUNT, 0);
-		// p.writeInt(OFFSET_FREE_LIST, 1);
-		// p.writeInt(OFFSET_FULL_LIST, -1);
+		p.writeInt(OFFSET_FREE_LIST, -1);
+		p.writeInt(OFFSET_FULL_LIST, -1);
+		p.writeInt(OFFSET_LAST_FREE_HEADER, -1);
 		p.writeShort(OFFSET_RECORD_SIZE, (short) RECORD_SIZE);
 		f.setDirty();
 		buf.flushFileHeader(file);
@@ -77,28 +82,20 @@ public class HF<K extends Comparable<K>, V> extends DataFile<K, V> {
 
 	/**
 	 * Creates the page header
-	 *
+	 * 
 	 * @param pageID
 	 * @throws IOException
 	 */
 	public void createPageHeader(int pageID) throws IOException {
 		file.allocateNewPage(pageID);
-		System.out.println("---Inside the createPageHeader---");
-		// System.out
-		// .println("The last allocated pageID after newPage execution is "
-		// + DiskManager.last_allocated_pageID);
-		System.out.println("---Inside the createPageHeader---");
 		Frame f = buf.allocFrame(pageID, file);
 		Page p = new Page(pageID, f.getBufferFromFrame());
 		p.writeInt(OFFSET_CURRENT_PAGE, pageID);
-		// p.writeInt(NEXT_PAGE_OFFSET, (DiskManager.last_allocated_pageID));
-		// p.writeInt(PREVIOUS_PAGE_OFFSET, DiskManager.last_allocated_pageID -
-		// 1);
-		p.writeInt(OFFSET_NEXT_FREE_SLOT, 12);
+		p.writeInt(OFFSET_NEXT_FREE_SLOT, PAGE_FILE_HEADER_LENGTH);
 		p.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS, 0);
+		p.writeInt(OFFSET_NEXT_PAGE, -1);
+		p.writeInt(OFFSET_PREVIOUS_PAGE, 0);
 		f.setDirty();
-		// garbage collect page object
-		p = null;
 		try {
 			buf.flushPage(pageID, file);
 		} catch (IOException e) {
@@ -114,76 +111,44 @@ public class HF<K extends Comparable<K>, V> extends DataFile<K, V> {
 	 * Insert a Record<K, V> to the file. It dynamically creates new pages if
 	 * the file does not have them and modify appropriately the file and header
 	 * pages if necessary.
-	 *
+	 * 
 	 * @param record
 	 * @throws IOException
 	 */
 	@Override
 	public void insert(Transaction tr, Record<K, V> record) throws IOException {
-		// need to add check logic if the record already exists TODO
-		// where is commit? TODO
-		int pageID;
-		int pageCount;
-		int i;
-		boolean status = true;
 		int key = (Integer) record.getKey();
 		int value = (Integer) record.getValue();
 		Frame f = buf.allocFrame(0, file);
 		Page header = new Page(0, f.getBufferFromFrame());
-		pageCount = header.readInt(OFFSET_PAGES_COUNT);
-		System.out.println("THE PAGE COUNT IS " + pageCount);
-		for (pageID = 0; pageID < pageCount; pageID++) {
-			i = header.readInt((pageID * ENTRY_SIZE) + FILEHEADER_LENGTH);
-			System.out.println("THE i IS " + i);
-			if (i == 1) {
-				status = false;
-				break;
-			}
-		}
-		System.out.println("THE PAGEID IS " + pageID);
-		// if there is no free space allocate a new page
-		if (status) {
-			// pageID = pageID +1;
-			createPageHeader(pageCount + 1);
-			header.writeInt(OFFSET_PAGES_COUNT, (pageCount + 1));
-			System.out.println("THE OFFSET_PAGES_COUNT AFTER UPDATE IS "
-				+ header.readInt(OFFSET_PAGES_COUNT));
-			System.out.println("THE PAGE COUNT IS AFTER INCREASE"
-				+ (pageCount + 1));
-			header.writeInt(((pageCount) * ENTRY_SIZE) + FILEHEADER_LENGTH, 1);
-			System.out.println("THE POSITION IS "
-				+ (((pageCount) * ENTRY_SIZE) + FILEHEADER_LENGTH));
-			// this might be outside
+		// if ((header.readInt(OFFSET_CURRENT_PAGE)))
+		if (header.readInt(OFFSET_FREE_LIST) == -1) {
+			createPageHeader(last_allocated_page + 1);
+			header.writeInt(OFFSET_FREE_LIST, last_allocated_page + 1);
 			buf.flushFileHeader(file);
+			last_allocated_page++;
 		}
-		// changing the pageID so that it follows the pageID=0 in loop is page 1
-		pageID = pageID + 1;
-		System.out.println("THE PAGEID IS before Frame in " + pageID);
+		int pageID = header.readInt(OFFSET_FREE_LIST);
+		System.out.println("The pageID is " + pageID);
 		Frame in = buf.allocFrame(pageID, file);
 		Page p = new Page(pageID, in.getBufferFromFrame());
 		int freeSlot = p.readInt(OFFSET_NEXT_FREE_SLOT);
 		int current_number_of_slots = p.readInt(OFFSET_CURRENT_NUMBER_OF_SLOTS);
-		System.out.println("THE freeSlot is " + freeSlot);
-		System.out.println("THE current number of slot is "
-			+ current_number_of_slots);
+		System.out.println("The freeSlot is " + freeSlot);
 		p.writeInt(freeSlot, key);
 		p.writeInt(freeSlot + 4, value);
-		// update the page header
 		p.writeInt(OFFSET_NEXT_FREE_SLOT, freeSlot + RECORD_SIZE);
 		p.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS, current_number_of_slots + 1);
-		// prints the content of the buffer for the page
-		System.out.println("THE key is " + p.readInt(freeSlot));
-		System.out.println("THE value is " + p.readInt(freeSlot + 4));
-		System.out.println("THE offset is " + p.readInt(OFFSET_NEXT_FREE_SLOT));
-		System.out.println("THE number of slots are "
-			+ p.readInt(OFFSET_CURRENT_NUMBER_OF_SLOTS));
-		// update the page header
 		if (current_number_of_slots + 1 == MAXIMUM_NUMBER_OF_SLOTS) {
-			int curr_id = p.readInt(OFFSET_CURRENT_PAGE) - 1;
-			System.out.println("The curr_id is " + curr_id);
-			header.writeInt((curr_id * ENTRY_SIZE) + FILEHEADER_LENGTH, -1);
-			// this might be outside
-			buf.flushFileHeader(file);
+			int next_page = p.readInt(OFFSET_NEXT_PAGE);
+			header.writeInt(OFFSET_FREE_LIST, next_page);
+			if (next_page != -1) {
+				Frame sec = buf.allocFrame(next_page, file);
+				Page s = new Page(next_page, sec.getBufferFromFrame());
+				s.writeInt(OFFSET_PREVIOUS_PAGE, 0);
+				s.setDirty();
+				buf.flushPage(next_page, file);
+			}
 		}
 		// sets the frame dirty
 		in.setDirty();
