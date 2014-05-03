@@ -93,22 +93,4 @@ public class Page<T> {
 	void pageHeaderSetPrevious(short previous) {
 		writeShort(Offsets.PAGE_HEADER_NEXT, previous);
 	}*/
-
-	public static void main1(String args[]) throws Exception {
-		int[] array = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-				17, 18, 19, 20 };
-		Page obj = new Page(0, BLANK_PAGE);
-		obj.setDirty();
-		System.out.println("The page id is " + obj.pageid);
-		System.out.println("The dirty field is " + obj.dirty);
-		ByteBuffer buf = obj.getData();
-		obj.writeInt(0, 5);
-		boolean a = buf.hasArray();
-		System.out.println("The buffer is backed? " + a);
-		buf.flip();
-		while (buf.hasRemaining()) {
-			System.out.println(buf.getInt());
-		}
-		// preallocateTestFile(FILE_NAME);
-	}
 }
