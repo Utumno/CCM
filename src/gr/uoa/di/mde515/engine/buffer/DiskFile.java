@@ -72,16 +72,6 @@ public class DiskFile {
 		last_allocated_pageID = PageID;
 	}
 
-	public static void main1(String args[]) throws IOException {
-		DiskFile disk = new DiskFile("test.db");
-		ByteBuffer b = ByteBuffer.allocate(PAGE_SIZE);
-		Page p = new Page(0, b);
-		for (int i = 0; i < PAGE_SIZE; i++) {
-			p.writeByte(i, (byte) 1);
-		}
-		disk.writePage(0, b);
-	}
-
 	public void close() throws IOException {
 		file.close();
 	}
