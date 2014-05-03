@@ -12,7 +12,7 @@ public class DiskFile {
 
 	// TODO CLOSE THE FILE
 	// The page size constant
-	private static int PAGE_SIZE = 32; // TODO globals
+	private static int PAGE_SIZE = 48; // TODO globals
 	private RandomAccessFile file;
 	public static int last_allocated_pageID;
 	// used to create a write a blank page in the disk

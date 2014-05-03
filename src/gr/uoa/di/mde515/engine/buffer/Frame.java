@@ -5,7 +5,7 @@ import java.nio.ByteBuffer;
 /** A wrapper around a ByteBuffer representing a frame in the main memory */
 public final class Frame {
 
-	private static final int PAGE_SIZE = 32;
+	private static final int PAGE_SIZE = 48;
 	private int framenumber;
 	private int pincount;
 	private boolean dirty;
@@ -30,10 +30,15 @@ public final class Frame {
 
 	public ByteBuffer getBufferFromFrame() {
 		// System.out.println("Start getBufferFromFrame");
+		// System.out.println("The framenumber is " + getFrameNumber());
 		// System.out.println("The (getBufferFromFrame)ByteBuffer is "
 		// + data.hashCode());
 		// System.out.println("End getBufferFromFrame");
 		return data;
+	}
+
+	public int printByteBufferHashCode() {
+		return data.hashCode();
 	}
 
 	public boolean isDirty() {

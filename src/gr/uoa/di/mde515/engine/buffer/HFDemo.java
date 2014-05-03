@@ -85,6 +85,11 @@ public class HFDemo {
 		// heapfile.insert(record1);
 		// Record<Integer, Integer> record2 = new Record<>(10,11);
 		// heapfile.insert(record2);
+		// Record<Integer, Integer> record3 = new Record<>(11,12);
+		// heapfile.insert(record3);
+		// Record<Integer, Integer> record4 = new Record<>(12,13);
+		// System.out.println("INserting the final record");
+		// heapfile.insert(record4);
 		// System.out.println("The insertion completed");
 	}
 }
