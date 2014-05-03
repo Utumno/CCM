@@ -1,7 +1,7 @@
-package gr.uoa.di.mde515.index;
+package gr.uoa.di.mde515.files;
 
 import gr.uoa.di.mde515.engine.Transaction;
-import gr.uoa.di.mde515.engine.buffer.HF;
+import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.locks.DBLock;
 
 import java.io.IOException;

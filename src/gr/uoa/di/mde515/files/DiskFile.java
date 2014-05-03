@@ -1,4 +1,6 @@
-package gr.uoa.di.mde515.engine.buffer;
+package gr.uoa.di.mde515.files;
+
+import gr.uoa.di.mde515.engine.buffer.Frame;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;

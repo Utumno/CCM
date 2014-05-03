@@ -1,7 +1,9 @@
-package gr.uoa.di.mde515.engine.buffer;
+package gr.uoa.di.mde515.files;
 
 import gr.uoa.di.mde515.engine.Transaction;
-import gr.uoa.di.mde515.index.DataFile;
+import gr.uoa.di.mde515.engine.buffer.BufferManager;
+import gr.uoa.di.mde515.engine.buffer.Frame;
+import gr.uoa.di.mde515.engine.buffer.Page;
 import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.locks.DBLock;

@@ -1,5 +1,7 @@
 package gr.uoa.di.mde515.engine.buffer;
 
+import gr.uoa.di.mde515.files.DiskFile;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
