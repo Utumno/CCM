@@ -4,7 +4,9 @@ import gr.uoa.di.mde515.files.DiskFile;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author Kleomenis
@@ -16,7 +18,7 @@ public final class BufferManager {
 	private final List<Frame> pool = new ArrayList<>(); // TODO unmodifiable
 	// the structure that maintains information about pageIDs and their
 	// corresponding frame numbers
-	private final FramePage hash = new FramePage();
+	private final Map<Integer, Integer> map = new HashMap<>();
 	// contains the available frames that can be used
 	private final List<Integer> freeList = new ArrayList<>();
 	private static final BufferManager instance = new BufferManager(NUM_BUFFERS);
@@ -43,27 +45,32 @@ public final class BufferManager {
 	public static BufferManager getInstance() {
 		return instance;
 	}
+	
+	public void setFrameDirty(int pageID){
+		int frameNumber = getValue(pageID);
+		getBuffer(frameNumber).setDirty();
+	}
 
 	/**
 	 * It flushes the content of the frame associated with the given pageID to
 	 * the disk at correct block.
-	 *
+	 * 
 	 * @param pageID
 	 * @param disk
 	 * @throws IOException
 	 */
 	public void flushPage(int pageID, DiskFile disk) throws IOException {
-		int frameNumber = hash.getValue(pageID);
+		int frameNumber = getValue(pageID);
 		decreasePinCount(frameNumber);
 		if (pool.get(frameNumber).isDirty())
 			disk.writePage(pageID, pool.get(frameNumber).getBufferFromFrame());
 		cleanPage(frameNumber);
-		hash.removeKey(pageID);
+		removeKey(pageID);
 	}
 
 	/**
 	 * Flushes the header of the file while keeping it pinned in main memory.
-	 *
+	 * 
 	 * @param disk
 	 * @throws IOException
 	 */
@@ -77,16 +84,16 @@ public final class BufferManager {
 	 * Returns a Frame It first finds an empty buffer from the free list (TODO:
 	 * list full) and then updates the map of pageIDs and frameNumbers along
 	 * with returning the specified Frame. FIXME thread safe
-	 *
+	 * 
 	 * FIXME FIXME FIXME - let Lock manager know
-	 *
+	 * 
 	 * @param pageID
 	 * @param disk
 	 * @return ByteBuffer
 	 * @throws IOException
 	 * @throws InterruptedException
 	 */
-	public Frame allocFrame(int pageID, DiskFile disk) throws IOException,
+	public Page allocFrame(int pageID, DiskFile disk) throws IOException,
 			InterruptedException {
 		synchronized (POOL_LOCK) {
 			while (freeList.isEmpty()) {
@@ -95,17 +102,19 @@ public final class BufferManager {
 			}
 			/* if the page already in the buffer return the buffer */
 			if (isPage(pageID)) {
-				final int frameNum = hash.getValue(pageID);
+				final int frameNum = getValue(pageID);
 				pinPage(frameNum);
-				return getBuffer(frameNum);
+				Page apage = new Page(pageID, getBuffer(frameNum).getBufferFromFrame());
+				return apage;
 			}
 			int numFrame = freeList.get(0);
-			hash.setKeyValue(pageID, numFrame);
-			hash.print();
+			setKeyValue(pageID, numFrame);
+			print();
 			pinPage(numFrame);
 			freeList.remove((Integer) numFrame);
-			disk.readPage(pageID, getBuffer(numFrame));
-			return getBuffer(numFrame);
+			disk.readPage(pageID, getBuffer(numFrame).getBufferFromFrame());
+			Page apage = new Page(pageID, getBuffer(numFrame).getBufferFromFrame());
+			return apage;
 		}
 	}
 
@@ -115,7 +124,7 @@ public final class BufferManager {
 
 	/**
 	 * pinPage only increases the relative pinCount variable of the Frame class
-	 *
+	 * 
 	 * @param frameNumber
 	 */
 	private void pinPage(int frameNumber) {
@@ -126,7 +135,7 @@ public final class BufferManager {
 	 * Decrease the pinCount of the frame. If the pin count of the frame reaches
 	 * zero it adds it to the free list and notifiesAll(). TODO throw on
 	 * negative pinCount
-	 *
+	 * 
 	 * @param frameNumber
 	 * @return
 	 */
@@ -147,7 +156,7 @@ public final class BufferManager {
 	/**
 	 * Just changes the dirty and empty fields of the Frame class. This can be
 	 * used to decide whether flush or not flush a page.
-	 *
+	 * 
 	 * @param frameNumber
 	 */
 	private void cleanPage(int frameNumber) {
@@ -155,6 +164,33 @@ public final class BufferManager {
 	}
 
 	private boolean isPage(int pageID) {
-		return hash.hasKey(pageID);
+		return hasKey(pageID);
+	}
+	
+	// The FramePage contents moved to the BufferManager
+	private void setKeyValue(int key, int value) {
+		map.put(key, value);
+	}
+
+	private void removeKey(int key) {
+		map.remove(key);
+	}
+
+	private boolean hasKey(int key) {
+		return map.containsKey(key);
+	}
+
+	private boolean hasValue(int value) {
+		return map.containsValue(value);
+	}
+
+	private int getValue(int key) {
+		return map.get(key);
+	}
+
+	private void print() {
+		for (Map.Entry<Integer, Integer> entry : map.entrySet()) {
+			System.out.println(entry);
+		}
 	}
 }
