@@ -34,7 +34,7 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	// PAGE HEADER OFFSETS
 	// Instead of linked list heap file, I changed to directory of pages
 	// maximum # of slots in page
-	private static final int MAXIMUM_NUMBER_OF_SLOTS = 3;
+	private static final int MAXIMUM_NUMBER_OF_SLOTS = 3; 
 	private static final int PAGE_FILE_HEADER_LENGTH = 20;
 	private static final int OFFSET_CURRENT_PAGE = 0;
 	private static final int OFFSET_NEXT_FREE_SLOT = 4;
@@ -96,29 +96,28 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 
 	/**
 	 * Creates the file header
-	 *
+	 * 
 	 * @throws IOException
 	 * @throws InterruptedException
 	 */
 	public void createFileHeader() throws IOException, InterruptedException {
 		file.allocateNewPage(0);
-		Frame f = buf.allocFrame(0, file);
-		Page p = new Page(0, f.getBufferFromFrame());
+		Page p = buf.allocFrame(0, file);
 		p.writeInt(OFFSET_FREE_LIST, -1);
 		p.writeInt(OFFSET_FULL_LIST, -1);
 		p.writeInt(OFFSET_LAST_FREE_HEADER, -1);
 		p.writeShort(OFFSET_RECORD_SIZE, (short) RECORD_SIZE);
-		f.setDirty();
+		buf.setFrameDirty(0);
 		buf.flushFileHeader(file);
 	}
 
-	private void readPageHeade() {
+	private void readPageHeader() {
 		throw new UnsupportedOperationException("Not implemented"); // TODO
 	}
 
 	/**
 	 * Creates the page header
-	 *
+	 * 
 	 * @param pageID
 	 * @throws IOException
 	 * @throws InterruptedException
@@ -126,14 +125,13 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	public void createPageHeader(int pageID) throws IOException,
 			InterruptedException {
 		file.allocateNewPage(pageID);
-		Frame f = buf.allocFrame(pageID, file);
-		Page p = new Page(pageID, f.getBufferFromFrame());
+		Page p = buf.allocFrame(pageID, file);
 		p.writeInt(OFFSET_CURRENT_PAGE, pageID);
 		p.writeInt(OFFSET_NEXT_FREE_SLOT, PAGE_FILE_HEADER_LENGTH);
 		p.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS, 0);
 		p.writeInt(OFFSET_NEXT_PAGE, -1);
 		p.writeInt(OFFSET_PREVIOUS_PAGE, 0);
-		f.setDirty();
+		buf.setFrameDirty(pageID);
 		try {
 			buf.flushPage(pageID, file);
 		} catch (IOException e) {
@@ -150,57 +148,35 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	 * the file does not have them and modify appropriately the file and header
 	 * pages if necessary. The header of the file should be locked beforehand
 	 * for writting.
-	 *
+	 * 
 	 * @param record
 	 * @throws IOException
 	 * @throws InterruptedException
 	 */
 	@Override
-	public void insert(Transaction tr, Record<K, V> record) throws IOException,
-			InterruptedException {
+	public synchronized void insert(Transaction tr, Record<K, V> record)
+			throws IOException, InterruptedException {
 		final int key = (Integer) record.getKey();
 		final int value = (Integer) record.getValue();
-		Frame f = buf.allocFrame(0, file);
-		Page header = new Page(0, f.getBufferFromFrame());
-		// if ((header.readInt(OFFSET_CURRENT_PAGE)))
-		if (header.readInt(OFFSET_FREE_LIST) == -1) {
-			createPageHeader(last_allocated_page + 1);
-			header.writeInt(OFFSET_FREE_LIST, last_allocated_page + 1);
-			buf.flushFileHeader(file);
-			last_allocated_page++;
-		}
-		int pageID = header.readInt(OFFSET_FREE_LIST);
+		Page header = buf.allocFrame(0, file);
+		int pageID = getFreeListPage(header);
 		System.out.println("The pageID is " + pageID);
 		// PageId<Integer> p = nextAvailablePage();
 		// Request<Integer> request = new LockManager.Request<>(p, tr, Lock.E);
 		// lock manager request
-		Frame in = buf.allocFrame(pageID, file);
-		Page p = new Page(pageID, in.getBufferFromFrame());
-		int freeSlot = p.readInt(OFFSET_NEXT_FREE_SLOT);
+		Page p = buf.allocFrame(pageID, file);
 		int current_number_of_slots = p.readInt(OFFSET_CURRENT_NUMBER_OF_SLOTS);
-		System.out.println("The freeSlot is " + freeSlot);
-		p.writeInt(freeSlot, key);
-		p.writeInt(freeSlot + 4, value);
-		p.writeInt(OFFSET_NEXT_FREE_SLOT, freeSlot + RECORD_SIZE);
-		p.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS, current_number_of_slots + 1);
-		if (current_number_of_slots + 1 == MAXIMUM_NUMBER_OF_SLOTS) {
-			int next_page = p.readInt(OFFSET_NEXT_PAGE);
-			header.writeInt(OFFSET_FREE_LIST, next_page);
-			if (next_page != -1) {
-				Frame sec = buf.allocFrame(next_page, file);
-				Page s = new Page(next_page, sec.getBufferFromFrame());
-				s.writeInt(OFFSET_PREVIOUS_PAGE, 0);
-				s.setDirty();
-				buf.flushPage(next_page, file);
-			}
-		}
-		// sets the frame dirty
-		in.setDirty();
+		writeIntoFrame(p, key, value, current_number_of_slots);
+		checkReachLimitOfPage(header, p, current_number_of_slots);
 		try {
 			buf.flushPage(pageID, file);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+
+	public void commit() {
+		throw new UnsupportedOperationException("Not implemented"); // TODO
 	}
 
 	@Override
@@ -211,5 +187,45 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	@Override
 	public void lockHeader(Transaction tr, DBLock e) {
 		lm.requestLock(new LockManager.Request(new PageId<>(0), tr, e));
+	}
+
+	// helpers
+	private synchronized int getFreeListPage(Page header) throws IOException,
+			InterruptedException {
+		// if ((header.readInt(OFFSET_CURRENT_PAGE)))
+		if (header.readInt(OFFSET_FREE_LIST) == -1) {
+			createPageHeader(last_allocated_page + 1);
+			header.writeInt(OFFSET_FREE_LIST, last_allocated_page + 1);
+			buf.flushFileHeader(file); // FIXME
+			last_allocated_page++;
+		}
+		int pageID = header.readInt(OFFSET_FREE_LIST);
+		return pageID;
+	}
+
+	private synchronized void writeIntoFrame(Page p, int key, int value,
+			int current_number_of_slots) { // FIXME STRING
+		int freeSlot = p.readInt(OFFSET_NEXT_FREE_SLOT);
+		System.out.println("The freeSlot is " + freeSlot);
+		p.writeInt(freeSlot, key);
+		p.writeInt(freeSlot + ENTRY_SIZE, value);
+		p.writeInt(OFFSET_NEXT_FREE_SLOT, freeSlot + RECORD_SIZE);
+		p.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS, current_number_of_slots + 1);
+		buf.setFrameDirty(p.getPageId());
+	}
+
+	private synchronized void checkReachLimitOfPage(Page header, Page p,
+			int current_number_of_slots) throws IOException,
+			InterruptedException {
+		if (current_number_of_slots + 1 == MAXIMUM_NUMBER_OF_SLOTS) {
+			int next_page = p.readInt(OFFSET_NEXT_PAGE);
+			header.writeInt(OFFSET_FREE_LIST, next_page);
+			if (next_page != -1) {
+				Page s = buf.allocFrame(next_page, file);
+				s.writeInt(OFFSET_PREVIOUS_PAGE, 0);
+				buf.setFrameDirty(s.getPageId());
+				buf.flushPage(next_page, file);
+			}
+		}
 	}
 }
