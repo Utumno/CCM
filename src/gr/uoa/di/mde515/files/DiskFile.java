@@ -41,11 +41,10 @@ public class DiskFile {
 	 * @param frame
 	 * @throws IOException
 	 */
-	public void readPage(int pageID, Frame frame) throws IOException {
+	public void readPage(int pageID, ByteBuffer buffer) throws IOException {
 		// System.out.println("---Start readPage of DiskManager---");
-		ByteBuffer data = frame.getBufferFromFrame();
 		file.seek(pageID * PAGE_SIZE);
-		file.read(data.array(), 0, PAGE_SIZE);
+		file.read(buffer.array(), 0, PAGE_SIZE);
 	}
 
 	/**
