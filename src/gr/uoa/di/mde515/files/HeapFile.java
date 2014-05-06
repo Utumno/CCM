@@ -25,6 +25,7 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	// it the size of entry in the fileheader
 	private static final int ENTRY_SIZE = 4;
 	private static final int FILEHEADER_LENGTH = 14;
+	private static final int PAGE_FILE_HEADER_LENGTH = 20;
 	// new file header
 	// private Header head;
 	private static final int OFFSET_FREE_LIST = 0;
@@ -34,8 +35,8 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	// PAGE HEADER OFFSETS
 	// Instead of linked list heap file, I changed to directory of pages
 	// maximum # of slots in page
-	private static final int MAXIMUM_NUMBER_OF_SLOTS = 3; 
-	private static final int PAGE_FILE_HEADER_LENGTH = 20;
+	private static final double MAXIMUM_NUMBER_OF_SLOTS = Math
+		.floor((PAGE_SIZE - PAGE_FILE_HEADER_LENGTH) / RECORD_SIZE);
 	private static final int OFFSET_CURRENT_PAGE = 0;
 	private static final int OFFSET_NEXT_FREE_SLOT = 4;
 	private static final int OFFSET_CURRENT_NUMBER_OF_SLOTS = 8;
@@ -154,12 +155,12 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	 * @throws InterruptedException
 	 */
 	@Override
-	public synchronized void insert(Transaction tr, Record<K, V> record)
-			throws IOException, InterruptedException {
+	public void insert(Transaction tr, Record<K, V> record) throws IOException,
+			InterruptedException {
 		final int key = (Integer) record.getKey();
 		final int value = (Integer) record.getValue();
 		Page header = buf.allocFrame(0, file);
-		int pageID = getFreeListPage(header);
+		int pageID = getFreeListPageId(header);
 		System.out.println("The pageID is " + pageID);
 		// PageId<Integer> p = nextAvailablePage();
 		// Request<Integer> request = new LockManager.Request<>(p, tr, Lock.E);
@@ -190,7 +191,7 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	}
 
 	// helpers
-	private synchronized int getFreeListPage(Page header) throws IOException,
+	private int getFreeListPageId(Page header) throws IOException,
 			InterruptedException {
 		// if ((header.readInt(OFFSET_CURRENT_PAGE)))
 		if (header.readInt(OFFSET_FREE_LIST) == -1) {
@@ -203,7 +204,7 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		return pageID;
 	}
 
-	private synchronized void writeIntoFrame(Page p, int key, int value,
+	private void writeIntoFrame(Page p, int key, int value,
 			int current_number_of_slots) { // FIXME STRING
 		int freeSlot = p.readInt(OFFSET_NEXT_FREE_SLOT);
 		System.out.println("The freeSlot is " + freeSlot);
@@ -214,7 +215,7 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		buf.setFrameDirty(p.getPageId());
 	}
 
-	private synchronized void checkReachLimitOfPage(Page header, Page p,
+	private void checkReachLimitOfPage(Page header, Page p,
 			int current_number_of_slots) throws IOException,
 			InterruptedException {
 		if (current_number_of_slots + 1 == MAXIMUM_NUMBER_OF_SLOTS) {
