@@ -101,7 +101,7 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	 */
 	public void createFileHeader() throws IOException, InterruptedException {
 		file.allocateNewPage(0);
-		Page p = buf.allocFrame(0, file);
+		Page<?> p = buf.allocFrame(0, file);
 		p.writeInt(OFFSET_FREE_LIST, -1);
 		p.writeInt(OFFSET_FULL_LIST, -1);
 		p.writeInt(OFFSET_LAST_FREE_HEADER, -1);
@@ -120,7 +120,7 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	public void createPageHeader(int pageID) throws IOException,
 			InterruptedException {
 		file.allocateNewPage(pageID);
-		Page p = buf.allocFrame(pageID, file);
+		Page<?> p = buf.allocFrame(pageID, file);
 		p.writeInt(OFFSET_CURRENT_PAGE, pageID);
 		p.writeInt(OFFSET_NEXT_FREE_SLOT, PAGE_FILE_HEADER_LENGTH);
 		p.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS, 0);
@@ -181,7 +181,7 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	}
 
 	// helpers
-	private int getFreeListPageId(Page header) throws IOException,
+	private int getFreeListPageId(Page<?> header) throws IOException,
 			InterruptedException {
 		// if ((header.readInt(OFFSET_CURRENT_PAGE)))
 		if (header.readInt(OFFSET_FREE_LIST) == -1) {
