@@ -33,6 +33,9 @@ enum CCMImpl implements CCM {
 		return INSTANCE;
 	}
 
+	// =========================================================================
+	// Private execute around implementation
+	// =========================================================================
 	private static abstract class DBoperation<R> implements Callable<R> {
 
 		private final Transaction trans;

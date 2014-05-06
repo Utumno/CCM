@@ -59,7 +59,6 @@ public abstract class Engine<K extends Comparable<K>, V> {
 			throws TransactionRequiredException, KeyExistsException,
 			TransactionFailedException;
 
-	//
 	// Record<K,V> delete(T key);
 	//
 	// Record<K,V> lookup(T key);
@@ -74,7 +73,6 @@ public abstract class Engine<K extends Comparable<K>, V> {
 	//
 	public abstract void commit(Transaction tr);
 
-	//
 	// File bulk_load(File fileOfRecords);
 	//
 	// File bulk_delete(File fileOfKeys);

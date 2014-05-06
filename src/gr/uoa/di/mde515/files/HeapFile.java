@@ -2,7 +2,6 @@ package gr.uoa.di.mde515.files;
 
 import gr.uoa.di.mde515.engine.Transaction;
 import gr.uoa.di.mde515.engine.buffer.BufferManager;
-import gr.uoa.di.mde515.engine.buffer.Frame;
 import gr.uoa.di.mde515.engine.buffer.Page;
 import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
@@ -24,7 +23,6 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	private int last_allocated_page = 0;
 	// it the size of entry in the fileheader
 	private static final int ENTRY_SIZE = 4;
-	private static final int FILEHEADER_LENGTH = 14;
 	private static final int PAGE_FILE_HEADER_LENGTH = 20;
 	// new file header
 	// private Header head;
@@ -97,7 +95,7 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 
 	/**
 	 * Creates the file header
-	 * 
+	 *
 	 * @throws IOException
 	 * @throws InterruptedException
 	 */
@@ -118,7 +116,7 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 
 	/**
 	 * Creates the page header
-	 * 
+	 *
 	 * @param pageID
 	 * @throws IOException
 	 * @throws InterruptedException
@@ -148,8 +146,8 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	 * Insert a Record<K, V> to the file. It dynamically creates new pages if
 	 * the file does not have them and modify appropriately the file and header
 	 * pages if necessary. The header of the file should be locked beforehand
-	 * for writting.
-	 * 
+	 * for writing.
+	 *
 	 * @param record
 	 * @throws IOException
 	 * @throws InterruptedException

@@ -1,25 +1,20 @@
 package gr.uoa.di.mde515.files;
 
-import gr.uoa.di.mde515.engine.buffer.Frame;
-
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 
-/**
- * @author Kleomenis
- */
 public class DiskFile {
 
 	// TODO CLOSE THE FILE
 	// The page size constant
 	private static int PAGE_SIZE = 48; // TODO globals
-	private RandomAccessFile file;
-	public static int last_allocated_pageID;
+	private final RandomAccessFile file;
+	public int last_allocated_pageID;
 	// used to create a write a blank page in the disk
 	// it is used by the allocateNewPage method
-	public static final byte[] BLANK_PAGE = new byte[PAGE_SIZE];
+	private static final byte[] BLANK_PAGE = new byte[PAGE_SIZE];
 
 	/**
 	 * The constructor creates the database file or opens it if already exists

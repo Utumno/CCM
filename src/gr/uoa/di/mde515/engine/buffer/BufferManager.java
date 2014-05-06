@@ -8,9 +8,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * @author Kleomenis
- */
 public final class BufferManager {
 
 	private static final int NUM_BUFFERS = 10;
@@ -31,6 +28,7 @@ public final class BufferManager {
 		}
 	}
 
+	@SuppressWarnings("unused")
 	private static enum ReplacementAlgorithm {
 		LRU;
 	}
@@ -56,7 +54,7 @@ public final class BufferManager {
 	/**
 	 * It flushes the content of the frame associated with the given pageID to
 	 * the disk at correct block.
-	 * 
+	 *
 	 * @param pageID
 	 * @param disk
 	 * @throws IOException
@@ -75,7 +73,7 @@ public final class BufferManager {
 
 	/**
 	 * Flushes the header of the file while keeping it pinned in main memory.
-	 * 
+	 *
 	 * @param disk
 	 * @throws IOException
 	 */
@@ -88,12 +86,12 @@ public final class BufferManager {
 	}
 
 	/**
-	 * Returns a Frame It first finds an empty buffer from the free list (TODO:
+	 * Returns a Page It first finds an empty buffer from the free list (TODO:
 	 * list full) and then updates the map of pageIDs and frameNumbers along
-	 * with returning the specified Frame. FIXME thread safe
-	 * 
+	 * with returning the specified Page. FIXME thread safe
+	 *
 	 * FIXME FIXME FIXME - let Lock manager know
-	 * 
+	 *
 	 * @param pageID
 	 * @param disk
 	 * @return ByteBuffer
@@ -132,11 +130,11 @@ public final class BufferManager {
 	}
 
 	/**
-	 * pinPage only increases the relative pinCount variable of the Frame class
-	 * 
+	 * Increases the relative pinCount variable of the Frame class.
+	 *
 	 * @param frameNumber
 	 */
-	private void pinPage(int frameNumber) {
+	private void increasePinCount(int frameNumber) {
 		pool.get(frameNumber).increasePincount();
 	}
 
@@ -144,7 +142,7 @@ public final class BufferManager {
 	 * Decrease the pinCount of the frame. If the pin count of the frame reaches
 	 * zero it adds it to the free list and notifiesAll(). TODO throw on
 	 * negative pinCount
-	 * 
+	 *
 	 * @param frameNumber
 	 * @return
 	 */
@@ -165,7 +163,7 @@ public final class BufferManager {
 	/**
 	 * Just changes the dirty and empty fields of the Frame class. This can be
 	 * used to decide whether flush or not flush a page.
-	 * 
+	 *
 	 * @param frameNumber
 	 */
 	private void cleanPage(int frameNumber) {
