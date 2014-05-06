@@ -45,10 +45,12 @@ public final class BufferManager {
 	public static BufferManager getInstance() {
 		return instance;
 	}
-	
-	public void setFrameDirty(int pageID){
-		int frameNumber = getValue(pageID);
-		getBuffer(frameNumber).setDirty();
+
+	public void setFrameDirty(int pageID) {
+		synchronized (POOL_LOCK) {
+			int frameNumber = getValue(pageID);
+			getBuffer(frameNumber).setDirty();
+		}
 	}
 
 	/**
@@ -60,12 +62,15 @@ public final class BufferManager {
 	 * @throws IOException
 	 */
 	public void flushPage(int pageID, DiskFile disk) throws IOException {
-		int frameNumber = getValue(pageID);
-		decreasePinCount(frameNumber);
-		if (pool.get(frameNumber).isDirty())
-			disk.writePage(pageID, pool.get(frameNumber).getBufferFromFrame());
-		cleanPage(frameNumber);
-		removeKey(pageID);
+		synchronized (POOL_LOCK) {
+			int frameNumber = getValue(pageID);
+			decreasePinCount(frameNumber);
+			if (pool.get(frameNumber).isDirty())
+				disk.writePage(pageID, pool.get(frameNumber)
+					.getBufferFromFrame());
+			cleanPage(frameNumber);
+			removeKey(pageID);
+		}
 	}
 
 	/**
@@ -76,8 +81,10 @@ public final class BufferManager {
 	 */
 	public void flushFileHeader(DiskFile disk) throws IOException {
 		// if it does not exist?
-		disk.writePage(0, pool.get(0).getBufferFromFrame());
-		pool.get(0).setEmpty();
+		synchronized (POOL_LOCK) {
+			disk.writePage(0, pool.get(0).getBufferFromFrame());
+			pool.get(0).setEmpty();
+		}
 	}
 
 	/**
@@ -104,7 +111,8 @@ public final class BufferManager {
 			if (isPage(pageID)) {
 				final int frameNum = getValue(pageID);
 				pinPage(frameNum);
-				Page apage = new Page(pageID, getBuffer(frameNum).getBufferFromFrame());
+				Page apage = new Page(pageID, getBuffer(frameNum)
+					.getBufferFromFrame());
 				return apage;
 			}
 			int numFrame = freeList.get(0);
@@ -113,7 +121,8 @@ public final class BufferManager {
 			pinPage(numFrame);
 			freeList.remove((Integer) numFrame);
 			disk.readPage(pageID, getBuffer(numFrame).getBufferFromFrame());
-			Page apage = new Page(pageID, getBuffer(numFrame).getBufferFromFrame());
+			Page apage = new Page(pageID, getBuffer(numFrame)
+				.getBufferFromFrame());
 			return apage;
 		}
 	}
@@ -166,7 +175,7 @@ public final class BufferManager {
 	private boolean isPage(int pageID) {
 		return hasKey(pageID);
 	}
-	
+
 	// The FramePage contents moved to the BufferManager
 	private void setKeyValue(int key, int value) {
 		map.put(key, value);
