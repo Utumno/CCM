@@ -24,14 +24,13 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	// it the size of entry in the fileheader
 	private static final int ENTRY_SIZE = 4;
 	private static final int PAGE_FILE_HEADER_LENGTH = 20;
-	// new file header
 	// private Header head;
 	private static final int OFFSET_FREE_LIST = 0;
 	private static final int OFFSET_FULL_LIST = 4;
 	private static final int OFFSET_LAST_FREE_HEADER = 8;
 	private static final int OFFSET_RECORD_SIZE = 12;
 	// PAGE HEADER OFFSETS
-	// Instead of linked list heap file, I changed to directory of pages
+	private static final int UNDEFINED = -1;
 	// maximum # of slots in page
 	private static final double MAXIMUM_NUMBER_OF_SLOTS = Math
 		.floor((PAGE_SIZE - PAGE_FILE_HEADER_LENGTH) / RECORD_SIZE);
@@ -102,9 +101,9 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	public void createFileHeader() throws IOException, InterruptedException {
 		file.allocateNewPage(0);
 		Page<?> p = buf.allocFrame(0, file);
-		p.writeInt(OFFSET_FREE_LIST, -1);
-		p.writeInt(OFFSET_FULL_LIST, -1);
-		p.writeInt(OFFSET_LAST_FREE_HEADER, -1);
+		p.writeInt(OFFSET_FREE_LIST, UNDEFINED);
+		p.writeInt(OFFSET_FULL_LIST, UNDEFINED);
+		p.writeInt(OFFSET_LAST_FREE_HEADER, UNDEFINED);
 		p.writeShort(OFFSET_RECORD_SIZE, (short) RECORD_SIZE);
 		buf.setFrameDirty(0);
 		buf.flushFileHeader(file);
@@ -124,7 +123,7 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		p.writeInt(OFFSET_CURRENT_PAGE, pageID);
 		p.writeInt(OFFSET_NEXT_FREE_SLOT, PAGE_FILE_HEADER_LENGTH);
 		p.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS, 0);
-		p.writeInt(OFFSET_NEXT_PAGE, -1);
+		p.writeInt(OFFSET_NEXT_PAGE, UNDEFINED);
 		p.writeInt(OFFSET_PREVIOUS_PAGE, 0);
 		buf.setFrameDirty(pageID);
 		try {
@@ -184,7 +183,7 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	private int getFreeListPageId(Page<?> header) throws IOException,
 			InterruptedException {
 		// if ((header.readInt(OFFSET_CURRENT_PAGE)))
-		if (header.readInt(OFFSET_FREE_LIST) == -1) {
+		if (header.readInt(OFFSET_FREE_LIST) == UNDEFINED) {
 			createPageHeader(last_allocated_page + 1);
 			header.writeInt(OFFSET_FREE_LIST, last_allocated_page + 1);
 			buf.flushFileHeader(file); // FIXME
@@ -211,7 +210,7 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		if (current_number_of_slots + 1 == MAXIMUM_NUMBER_OF_SLOTS) {
 			int next_page = p.readInt(OFFSET_NEXT_PAGE);
 			header.writeInt(OFFSET_FREE_LIST, next_page);
-			if (next_page != -1) {
+			if (next_page != UNDEFINED) {
 				Page<Integer> s = buf.allocFrame(next_page, file);
 				s.writeInt(OFFSET_PREVIOUS_PAGE, 0);
 				buf.setFrameDirty(s.getPageId().getId());
