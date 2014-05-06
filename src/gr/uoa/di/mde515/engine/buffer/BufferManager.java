@@ -104,10 +104,6 @@ public final class BufferManager<T> {
 	public Page<Integer> allocFrame(Integer pageID, DiskFile disk)
 			throws IOException, InterruptedException {
 		synchronized (POOL_LOCK) {
-			while (freeList.isEmpty()) {
-				System.out.println("No available buffer");
-				POOL_LOCK.wait();
-			}
 			/* if the page already in the buffer return the buffer */
 			final Integer frameNum = map.get(pageID);
 			if (frameNum != null) {
@@ -115,11 +111,13 @@ public final class BufferManager<T> {
 				return new Page<>(new PageId<>(pageID), getBuffer(frameNum)
 					.getBufferFromFrame());
 			}
-			int numFrame = freeList.get(0);
+			while (freeList.isEmpty()) {
+				System.out.println("No available buffer");
+				POOL_LOCK.wait();
+			}
+			int numFrame = freeList.remove(0);
 			map.put((T) pageID, numFrame);
-			print();
 			increasePinCount(numFrame);
-			freeList.remove((Integer) numFrame);
 			disk.readPage(pageID, getBuffer(numFrame).getBufferFromFrame());
 			return new Page<>(new PageId<>(pageID), getBuffer(numFrame)
 				.getBufferFromFrame());

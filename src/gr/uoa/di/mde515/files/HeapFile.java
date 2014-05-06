@@ -24,7 +24,7 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	// it the size of entry in the fileheader
 	private static final int ENTRY_SIZE = 4;
 	private static final int PAGE_FILE_HEADER_LENGTH = 20;
-	// private Header head;
+	// private final Header head;
 	private static final int OFFSET_FREE_LIST = 0;
 	private static final int OFFSET_FULL_LIST = 4;
 	private static final int OFFSET_LAST_FREE_HEADER = 8;
@@ -137,7 +137,7 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	 * Insert a Record<K, V> to the file. It dynamically creates new pages if
 	 * the file does not have them and modify appropriately the file and header
 	 * pages if necessary. The header of the file should be locked beforehand
-	 * for writing.
+	 * for writing. Blocks if the buffer manager has no available frames.
 	 *
 	 * @param record
 	 * @throws IOException
@@ -146,9 +146,7 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	@Override
 	public void insert(Transaction tr, Record<K, V> record) throws IOException,
 			InterruptedException {
-		final int key = (Integer) record.getKey();
-		final int value = (Integer) record.getValue();
-		Page<Integer> header = buf.allocFrame(0, file);
+		Page<Integer> header = buf.allocFrame(0, file); // FIXME block
 		int pageID = getFreeListPageId(header);
 		System.out.println("The pageID is " + pageID);
 		// PageId<Integer> p = nextAvailablePage();
@@ -156,7 +154,8 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		// lock manager request
 		Page<Integer> p = buf.allocFrame(pageID, file);
 		int current_number_of_slots = p.readInt(OFFSET_CURRENT_NUMBER_OF_SLOTS);
-		writeIntoFrame(p, key, value, current_number_of_slots);
+		writeIntoFrame(p, (Integer) record.getKey(),
+			(Integer) record.getValue(), current_number_of_slots);
 		checkReachLimitOfPage(header, p, current_number_of_slots);
 		try {
 			buf.flushPage(pageID, file);
