@@ -10,11 +10,11 @@ import gr.uoa.di.mde515.locks.LockManager;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 
-	private static final BufferManager buf = BufferManager.getInstance();
+	private static final BufferManager<Integer> buf = BufferManager
+		.getInstance();
 	// storage layer
 	private final DiskFile file;
 	// useful constants
@@ -89,7 +89,7 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	// }
 	// // fileheader = file.readPage(0);
 	// }
-	public BufferManager buf() {
+	public BufferManager<Integer> buf() {
 		return buf;
 	}
 
@@ -108,10 +108,6 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		p.writeShort(OFFSET_RECORD_SIZE, (short) RECORD_SIZE);
 		buf.setFrameDirty(0);
 		buf.flushFileHeader(file);
-	}
-
-	private void readPageHeader() {
-		throw new UnsupportedOperationException("Not implemented"); // TODO
 	}
 
 	/**
@@ -138,10 +134,6 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		}
 	}
 
-	public ByteBuffer getHeaderBuffer() {
-		return null;
-	}
-
 	/**
 	 * Insert a Record<K, V> to the file. It dynamically creates new pages if
 	 * the file does not have them and modify appropriately the file and header
@@ -157,13 +149,13 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 			InterruptedException {
 		final int key = (Integer) record.getKey();
 		final int value = (Integer) record.getValue();
-		Page header = buf.allocFrame(0, file);
+		Page<Integer> header = buf.allocFrame(0, file);
 		int pageID = getFreeListPageId(header);
 		System.out.println("The pageID is " + pageID);
 		// PageId<Integer> p = nextAvailablePage();
 		// Request<Integer> request = new LockManager.Request<>(p, tr, Lock.E);
 		// lock manager request
-		Page p = buf.allocFrame(pageID, file);
+		Page<Integer> p = buf.allocFrame(pageID, file);
 		int current_number_of_slots = p.readInt(OFFSET_CURRENT_NUMBER_OF_SLOTS);
 		writeIntoFrame(p, key, value, current_number_of_slots);
 		checkReachLimitOfPage(header, p, current_number_of_slots);
@@ -202,7 +194,7 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		return pageID;
 	}
 
-	private void writeIntoFrame(Page p, int key, int value,
+	private void writeIntoFrame(Page<Integer> p, int key, int value,
 			int current_number_of_slots) { // FIXME STRING
 		int freeSlot = p.readInt(OFFSET_NEXT_FREE_SLOT);
 		System.out.println("The freeSlot is " + freeSlot);
@@ -210,19 +202,19 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		p.writeInt(freeSlot + ENTRY_SIZE, value);
 		p.writeInt(OFFSET_NEXT_FREE_SLOT, freeSlot + RECORD_SIZE);
 		p.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS, current_number_of_slots + 1);
-		buf.setFrameDirty(p.getPageId());
+		buf.setFrameDirty(p.getPageId().getId());
 	}
 
-	private void checkReachLimitOfPage(Page header, Page p,
+	private void checkReachLimitOfPage(Page<Integer> header, Page<Integer> p,
 			int current_number_of_slots) throws IOException,
 			InterruptedException {
 		if (current_number_of_slots + 1 == MAXIMUM_NUMBER_OF_SLOTS) {
 			int next_page = p.readInt(OFFSET_NEXT_PAGE);
 			header.writeInt(OFFSET_FREE_LIST, next_page);
 			if (next_page != -1) {
-				Page s = buf.allocFrame(next_page, file);
+				Page<Integer> s = buf.allocFrame(next_page, file);
 				s.writeInt(OFFSET_PREVIOUS_PAGE, 0);
-				buf.setFrameDirty(s.getPageId());
+				buf.setFrameDirty(s.getPageId().getId());
 				buf.flushPage(next_page, file);
 			}
 		}

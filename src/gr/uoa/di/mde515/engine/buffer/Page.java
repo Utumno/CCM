@@ -1,14 +1,16 @@
 package gr.uoa.di.mde515.engine.buffer;
 
+import gr.uoa.di.mde515.index.PageId;
+
 import java.nio.ByteBuffer;
 
-public class Page {
+public class Page<T> {
 
-	private int pageid;
+	private PageId<T> pageid;
 	private ByteBuffer dat;
 	public boolean dirty = false;
 
-	public Page(int pageid, ByteBuffer dat) {
+	public Page(PageId<T> pageid, ByteBuffer dat) {
 		this.pageid = pageid;
 		this.dat = dat;
 	}
@@ -17,11 +19,11 @@ public class Page {
 		return dat;
 	}
 
-	public int getPageId() {
+	public PageId<T> getPageId() {
 		return pageid;
 	}
 
-	public void setPageId(int pageid) {
+	public void setPageId(PageId<T> pageid) {
 		this.pageid = pageid;
 	}
 
