@@ -7,7 +7,6 @@ import java.nio.ByteBuffer;
 
 public class DiskFile {
 
-	// TODO CLOSE THE FILE
 	// The page size constant
 	private static int PAGE_SIZE = 48; // TODO globals
 	private final RandomAccessFile file;

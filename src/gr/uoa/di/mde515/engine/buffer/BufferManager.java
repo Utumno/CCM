@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 
 public final class BufferManager<T> {
 
@@ -171,11 +170,5 @@ public final class BufferManager<T> {
 
 	private void removeKey(int key) {
 		map.remove(key);
-	}
-
-	private void print() {
-		for (Entry<T, Integer> entry : map.entrySet()) {
-			System.out.println(entry);
-		}
 	}
 }

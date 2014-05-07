@@ -13,16 +13,17 @@ import java.util.TreeMap;
 
 /**
  * B plus tree. When a node that accepts an EVEN number of items splits the
- * midle node is moved to the RIGHT sibling. For instance (for max number of
- * items equal to 4):
+ * middle node is moved to the RIGHT sibling. For instance (for max number of
+ * items equal to 4 (N=2, 2*N + 1 = 5)):
  *
  * 12345 -> 12 345
  *
  * @param <K>
- *            the key of the records to be stored in the leaf nodes
+ *            the type of the key of the records to be stored in the leaf *and*
+ *            internal nodes. Must extend Comparable.
  * @param <V>
- *            the value of the records to be stored in the leaf nodes (non key
- *            attributes)
+ *            the type of the value of the records to be stored in the leaf
+ *            nodes (non key attributes)
  */
 public class BPlusJava<K extends Comparable<K>, V> implements BPlusTree<K, V> {
 
@@ -36,6 +37,7 @@ public class BPlusJava<K extends Comparable<K>, V> implements BPlusTree<K, V> {
 	// API
 	// =========================================================================
 	@Override
+	/** Insert a key-value pair into a leaf node. */
 	public <R extends Record<K, V>> void insert(R rec) {
 		final K key = rec.getKey();
 		final LeafNode<K, V> leafNode = root.findLeaf(key); // find where the

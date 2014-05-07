@@ -178,7 +178,9 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		lm.requestLock(new LockManager.Request(new PageId<>(0), tr, e));
 	}
 
-	// helpers
+	// =========================================================================
+	// Helpers
+	// =========================================================================
 	private int getFreeListPageId(Page<?> header) throws IOException,
 			InterruptedException {
 		// if ((header.readInt(OFFSET_CURRENT_PAGE)))
