@@ -1,5 +1,11 @@
 package gr.uoa.di.mde515.engine;
 
+import gr.uoa.di.mde515.files.DataFile;
+import gr.uoa.di.mde515.index.PageId;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class Transaction {
@@ -7,6 +13,7 @@ public class Transaction {
 	private static final AtomicLong transactionId;
 	private final long threadId; // not really needed
 	private final String threadName;
+	private final List<PageId<Integer>> lockedDataPages = new ArrayList<>();
 	// TODO Random unique trans identifier added to thread name
 	// http://www.javapractices.com/topic/TopicAction.do?Id=56
 	// http://bugs.java.com/view_bug.do?bug_id=6611830
@@ -31,7 +38,8 @@ public class Transaction {
 		}
 	}
 
-	public void flush() {
-		throw new UnsupportedOperationException("Not implemented"); // TODO
+	public <K extends Comparable<K>, V> void
+			flush(final DataFile<K, V> dataFile) throws IOException {
+		dataFile.flush(lockedDataPages);
 	}
 }

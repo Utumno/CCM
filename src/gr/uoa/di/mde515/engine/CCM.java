@@ -5,6 +5,7 @@ import gr.uoa.di.mde515.index.Index;
 import gr.uoa.di.mde515.index.Index.KeyExistsException;
 import gr.uoa.di.mde515.index.Record;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -45,11 +46,12 @@ public interface CCM {
 
 	void abort(Transaction tr);
 
-	void commit(Transaction tr);
-
 	void bulkLoad(Transaction tr, Path fileOfRecords);
 
 	void bulkDelete(Transaction tr, Path fileOfKeys, Object newParam);
 
 	void shutdown() throws InterruptedException;
+
+	<K extends Comparable<K>, V> void commit(Transaction tr,
+			DataFile<K, V> dataFile, Index<K, ?> index) throws IOException;
 }

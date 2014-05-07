@@ -1,10 +1,12 @@
 package gr.uoa.di.mde515.files;
 
 import gr.uoa.di.mde515.engine.Transaction;
+import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.locks.DBLock;
 
 import java.io.IOException;
+import java.util.List;
 
 public abstract class DataFile<K extends Comparable<K>, V> {
 
@@ -17,6 +19,9 @@ public abstract class DataFile<K extends Comparable<K>, V> {
 			throws IOException, InterruptedException;
 
 	public abstract void close() throws IOException;
+
+	public abstract void flush(List<PageId<Integer>> pageIds)
+			throws IOException;
 
 	/**
 	 * Attempts to lock the header page on behalf of transaction {@code tr},

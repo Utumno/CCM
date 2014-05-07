@@ -59,6 +59,8 @@ public abstract class Engine<K extends Comparable<K>, V> {
 			throws TransactionRequiredException, KeyExistsException,
 			TransactionFailedException;
 
+	public abstract void commit(Transaction tr) throws IOException;
+
 	// Record<K,V> delete(T key);
 	//
 	// Record<K,V> lookup(T key);
@@ -70,8 +72,6 @@ public abstract class Engine<K extends Comparable<K>, V> {
 	// boolean waitTransaction(long t);
 	//
 	// void abort();
-	//
-	public abstract void commit(Transaction tr);
 
 	// File bulk_load(File fileOfRecords);
 	//
@@ -116,8 +116,8 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V> {
 	}
 
 	@Override
-	public void commit(Transaction tr) {
-		tr.flush();
+	public void commit(Transaction tr) throws IOException {
+		ccm.commit(tr, dataFile, index);
 	}
 
 	@Override

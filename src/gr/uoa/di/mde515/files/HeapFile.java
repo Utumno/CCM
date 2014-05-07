@@ -10,6 +10,7 @@ import gr.uoa.di.mde515.locks.LockManager;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.List;
 
 public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 
@@ -157,15 +158,17 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		writeIntoFrame(p, (Integer) record.getKey(),
 			(Integer) record.getValue(), current_number_of_slots);
 		checkReachLimitOfPage(header, p, current_number_of_slots);
-		try {
-			buf.flushPage(pageID, file);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
 	}
 
-	public void commit() {
-		throw new UnsupportedOperationException("Not implemented"); // TODO
+	@Override
+	public void flush(List<PageId<Integer>> pageIds) throws IOException {
+		for (PageId<Integer> pageID : pageIds) {
+			try {
+				buf.flushPage(pageID.getId(), file);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 
 	@Override
