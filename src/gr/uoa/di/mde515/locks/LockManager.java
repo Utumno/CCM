@@ -77,14 +77,13 @@ public class LockManager {
 			switch (lock) {
 			case E:
 				w.lock();
-				granted.put(req.tr, req);
-				return;
+				break;
 			case S:
 				r.lock();
-				granted.put(req.tr, req);
-				return;
+				break;
 			}
-			throw new RuntimeException("Forgotten enum constant");
+			granted.put(req.tr, req);
+			req.tr.addLockedDataPage((PageId<Integer>) req.pageId);
 		}
 
 		synchronized void add(Request request) {

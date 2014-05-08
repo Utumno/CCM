@@ -42,4 +42,10 @@ public class Transaction {
 			flush(final DataFile<K, V> dataFile) throws IOException {
 		dataFile.flush(lockedDataPages);
 	}
+
+	public void addLockedDataPage(PageId<Integer> pageId) {
+		if (!(pageId.getId() instanceof Integer)) return;
+		System.out.println("ADDED " + pageId.getId());
+		lockedDataPages.add(pageId);
+	}
 }
