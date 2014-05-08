@@ -94,7 +94,8 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	}
 
 	/**
-	 * Creates the file header. FIXME use allocateNewPage(0)
+	 * Creates the file header. Allocates a frame AND FLUSHES IT. TODO move in
+	 * header class
 	 *
 	 * @throws IOException
 	 * @throws InterruptedException
@@ -107,12 +108,10 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		p.writeShort(OFFSET_RECORD_SIZE, (short) RECORD_SIZE);
 		buf.setFrameDirty(0);
 		buf.flushFileHeader(file); // TODO wild flush
-		System.out.println("The freelist value is "
-			+ p.readInt(OFFSET_FREE_LIST));
 	}
 
 	/**
-	 * Creates the page header
+	 * Creates the page header.
 	 *
 	 * @param pageID
 	 * @throws IOException

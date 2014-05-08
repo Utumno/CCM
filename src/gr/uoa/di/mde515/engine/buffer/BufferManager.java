@@ -49,7 +49,7 @@ public final class BufferManager<T> {
 	public void setFrameDirty(T pageID) {
 		synchronized (POOL_LOCK) {
 			int frameNumber = map.get(pageID);
-			getBuffer(frameNumber).setDirty();
+			getFrame(frameNumber).setDirty();
 		}
 	}
 
@@ -107,7 +107,7 @@ public final class BufferManager<T> {
 			final Integer frameNum = map.get(pageID);
 			if (frameNum != null) {
 				increasePinCount(frameNum);
-				return new Page<>(new PageId<>(pageID), getBuffer(frameNum)
+				return new Page<>(new PageId<>(pageID), getFrame(frameNum)
 					.getBufferFromFrame());
 			}
 			while (freeList.isEmpty()) {
@@ -117,8 +117,8 @@ public final class BufferManager<T> {
 			int numFrame = freeList.remove(0);
 			map.put((T) pageID, numFrame);
 			increasePinCount(numFrame);
-			disk.readPage(pageID, getBuffer(numFrame).getBufferFromFrame());
-			return new Page<>(new PageId<>(pageID), getBuffer(numFrame)
+			disk.readPage(pageID, getFrame(numFrame).getBufferFromFrame());
+			return new Page<>(new PageId<>(pageID), getFrame(numFrame)
 				.getBufferFromFrame());
 		}
 	}
@@ -141,13 +141,14 @@ public final class BufferManager<T> {
 			}
 			int numFrame = freeList.remove(0);
 			map.put((T) pageID, numFrame);
-			increasePinCount(numFrame); // FIXME same tarnsaction
-			return new Page<>(new PageId<>(pageID), getBuffer(numFrame)
+			increasePinCount(numFrame); // FIXME same transaction should not
+										// increase
+			return new Page<>(new PageId<>(pageID), getFrame(numFrame)
 				.getBufferFromFrame());
 		}
 	}
 
-	private Frame getBuffer(int i) {
+	private Frame getFrame(int i) {
 		return pool.get(i);
 	}
 
