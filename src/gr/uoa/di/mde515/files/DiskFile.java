@@ -19,8 +19,6 @@ public class DiskFile {
 	 */
 	public DiskFile(String path) throws FileNotFoundException {
 		file = new RandomAccessFile(path, "rw");
-		// create as well the index file
-		// last_allocated_pageID = 0;
 	}
 
 	/**
@@ -52,5 +50,9 @@ public class DiskFile {
 
 	public void close() throws IOException {
 		file.close();
+	}
+
+	public int read() throws IOException {
+		return file.read();
 	}
 }

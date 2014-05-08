@@ -18,6 +18,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		.getInstance();
 	// storage layer
 	private final DiskFile file;
+	private final Header header;
 	// useful constants
 	private static final int PAGE_SIZE = 48; // TODO move to globals
 	private static final int RECORD_SIZE = 8; // TODO read from header
@@ -25,7 +26,6 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	// it the size of entry in the fileheader
 	private static final int ENTRY_SIZE = 4;
 	private static final int PAGE_FILE_HEADER_LENGTH = 20;
-	// private final Header head;
 	private static final int OFFSET_FREE_LIST = 0;
 	private static final int OFFSET_FULL_LIST = 4;
 	private static final int OFFSET_LAST_FREE_HEADER = 8;
@@ -46,7 +46,14 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	public HeapFile(String filename) throws IOException, InterruptedException {
 		try {
 			file = new DiskFile(filename);
-			createFileHeader();
+			if (file.read() != -1) {
+				System.out.println("File already exists"); // FIXME read header
+			} else {
+				createFileHeader();
+				System.out.println("Creating the file");
+			}
+			Page<Integer> header_frame = buf.allocFrame(0, file);
+			header = new Header(header_frame);
 		} catch (FileNotFoundException e) {
 			throw new RuntimeException("Can't access db file", e);
 		}
@@ -60,35 +67,33 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		// preallocateFile();
 	}
 
-	// private final static class Header {
-	//
-	// private int freeListStart;
-	// private int fullListStart;
-	// private int numPages;
-	// final short RECORD_SIZE;
-	//
-	// public Header(Page header) {
-	// freeListStart = header.readInt(OFFSET_FREE_LIST);
-	// fullListStart = header.readInt(OFFSET_FULL_LIST);
-	// RECORD_SIZE = header.readShort(OFFSET_RECORD_SIZE);
-	// numPages = header.readInt(OFFSET_PAGES_COUNT);
-	// try {
-	// Path path = Paths.get("/home/temp/", "hugefile.txt");
-	// SeekableByteChannel sbc = Files.newByteChannel(path,
-	// StandardOpenOption.READ);
-	// ByteBuffer bf = ByteBuffer.allocate(941);// line size
-	// int i = 0;
-	// while ((i = sbc.read(bf)) > 0) {
-	// bf.flip();
-	// System.out.println(new String(bf.array()));
-	// bf.clear();
-	// }
-	// } catch (Exception e) {
-	// e.printStackTrace();
-	// }
-	// }
-	// // fileheader = file.readPage(0);
-	// }
+	private final static class Header {
+
+		private int freeList;
+		private int fullList;
+
+		public Header(Page header) {
+			freeList = header.readInt(OFFSET_FREE_LIST);
+			fullList = header.readInt(OFFSET_FULL_LIST);
+		}
+
+		public int getFreeList() {
+			return freeList;
+		}
+
+		public int getFullList() {
+			return fullList;
+		}
+
+		public void setFreeList(int freepageID){
+			freeList = freepageID;
+		}
+
+		public void setFullList(int fullpageID){
+			fullList = fullpageID;
+		}
+	}
+
 	public BufferManager<Integer> buf() {
 		return buf;
 	}
@@ -141,8 +146,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	@Override
 	public void insert(Transaction tr, Record<K, V> record) throws IOException,
 			InterruptedException {
-		Page<Integer> header = buf.allocFrame(0, file); // FIXME pin
-		int pageID = getFreeListPageId(header);
+		int pageID = getFreeListPageId();
 		System.out.println("The pageID is " + pageID);
 		// PageId<Integer> p = nextAvailablePage();
 		// Request<Integer> request = new LockManager.Request<>(p, tr, Lock.E);
@@ -178,16 +182,16 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	// =========================================================================
 	// Helpers
 	// =========================================================================
-	private int getFreeListPageId(Page<?> header) throws IOException,
+	private int getFreeListPageId() throws IOException,
 			InterruptedException {
 		// if ((header.readInt(OFFSET_CURRENT_PAGE)))
-		if (header.readInt(OFFSET_FREE_LIST) == UNDEFINED) {
+		if (header.getFreeList() == UNDEFINED) {
 			createPageInMemory(last_allocated_page + 1);
-			header.writeInt(OFFSET_FREE_LIST, last_allocated_page + 1);
-			// buf.flushFileHeader(file); // FIXME
+			header.setFreeList(last_allocated_page + 1);
+			buf.flushFileHeader(file); // FIXME
 			++last_allocated_page;
 		}
-		int pageID = header.readInt(OFFSET_FREE_LIST);
+		int pageID = header.getFreeList();
 		return pageID;
 	}
 
@@ -202,12 +206,12 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		buf.setFrameDirty(p.getPageId().getId());
 	}
 
-	private void checkReachLimitOfPage(Page<Integer> header, Page<Integer> p,
+	private void checkReachLimitOfPage(Header header, Page<Integer> p,
 			int current_number_of_slots) throws IOException,
 			InterruptedException {
 		if (current_number_of_slots + 1 == MAXIMUM_NUMBER_OF_SLOTS) {
 			int next_page = p.readInt(OFFSET_NEXT_PAGE);
-			header.writeInt(OFFSET_FREE_LIST, next_page);
+			header.setFreeList(next_page);
 			if (next_page != UNDEFINED) {
 				Page<Integer> s = buf.allocFrame(next_page, file);
 				s.writeInt(OFFSET_PREVIOUS_PAGE, 0);
