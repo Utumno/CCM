@@ -69,7 +69,7 @@ public final class BufferManager<T> {
 				disk.writePage(pageID, pool.get(frameNumber)
 					.getBufferFromFrame());
 			cleanPage(frameNumber);
-			removeKey(pageID);
+			map.remove(pageID); // TODO move to decreasePinCount
 		}
 	}
 
@@ -96,7 +96,6 @@ public final class BufferManager<T> {
 	 *
 	 * @param pageID
 	 * @param disk
-	 * @return ByteBuffer
 	 * @throws IOException
 	 * @throws InterruptedException
 	 */
@@ -137,9 +136,9 @@ public final class BufferManager<T> {
 	}
 
 	/**
-	 * Decrease the pinCount of the frame. If the pin count of the frame reaches
-	 * zero it adds it to the free list and notifiesAll(). TODO throw on
-	 * negative pinCount
+	 * Decrease the pinCount of the frame. MuST BE USED FROM SYNCHONIZED BLOCK.
+	 * If the pin count of the frame reaches zero it adds it to the free list
+	 * and notifiesAll(). TODO throw on negative pinCount
 	 *
 	 * @param frameNumber
 	 * @return
@@ -148,12 +147,10 @@ public final class BufferManager<T> {
 		final Frame frame = pool.get(frameNumber);
 		final int pinCount = frame.decreasePincount();
 		if (pinCount == 0) {
-			synchronized (POOL_LOCK) {
-				if (freeList.isEmpty()) {
-					POOL_LOCK.notifyAll();
-				}
-				freeList.add(frameNumber);
+			if (freeList.isEmpty()) {
+				POOL_LOCK.notifyAll();
 			}
+			freeList.add(frameNumber);
 		}
 		return pinCount;
 	}
@@ -166,9 +163,5 @@ public final class BufferManager<T> {
 	 */
 	private void cleanPage(int frameNumber) {
 		pool.get(frameNumber).setEmpty();
-	}
-
-	private void removeKey(int key) {
-		map.remove(key);
 	}
 }
