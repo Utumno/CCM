@@ -82,7 +82,7 @@ public final class BufferManager<T> {
 		// if it does not exist?
 		synchronized (POOL_LOCK) {
 			disk.writePage(0, pool.get(0).getBufferFromFrame());
-			pool.get(0).setDirty(false);
+			// pool.get(0).setDirty(false);
 		}
 	}
 

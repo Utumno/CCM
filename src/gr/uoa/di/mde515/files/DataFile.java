@@ -11,8 +11,9 @@ import java.util.List;
 public abstract class DataFile<K extends Comparable<K>, V> {
 
 	public static <L extends Comparable<L>, M> DataFile<L, M> init(
-			String filename) throws IOException, InterruptedException {
-		return new HeapFile<>(filename);
+			String filename, short recordSize) throws IOException,
+			InterruptedException {
+		return new HeapFile<>(filename, recordSize);
 	}
 
 	public abstract void insert(Transaction tr, Record<K, V> rec)

@@ -8,7 +8,6 @@ public class Page<T> {
 
 	private PageId<T> pageid;
 	private ByteBuffer dat;
-	public boolean dirty = false;
 
 	public Page(PageId<T> pageid, ByteBuffer dat) {
 		this.pageid = pageid;
@@ -27,10 +26,6 @@ public class Page<T> {
 		this.pageid = pageid;
 	}
 
-	public void setDirty() {
-		dirty = true;
-	}
-
 	public byte readByte(int pos) {
 		return dat.get(pos);
 	}
@@ -44,17 +39,14 @@ public class Page<T> {
 	}
 
 	public void writeShort(int pos, short value) {
-		setDirty();
 		dat.putShort(pos, value);
 	}
 
 	public void writeByte(int pos, byte value) {
-		setDirty();
 		dat.put(pos, value);
 	}
 
 	public void writeInt(int pos, int value) {
-		setDirty();
 		dat.putInt(pos, value);
 	}
 }
