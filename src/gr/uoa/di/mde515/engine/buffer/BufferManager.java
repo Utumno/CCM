@@ -123,6 +123,30 @@ public final class BufferManager<T> {
 		}
 	}
 
+	/**
+	 * Returns a Page backed up by a frame in the main memory. It first finds an
+	 * empty buffer from the free list and then updates the map of pageIDs and
+	 * frameNumbers along with returning the specified Page. FIXME thread safe
+	 *
+	 * FIXME FIXME FIXME - let Lock manager know
+	 *
+	 * @param pageID
+	 * @throws InterruptedException
+	 */
+	public Page<Integer> allocFrameForNewPage(Integer pageID) throws InterruptedException {
+		synchronized (POOL_LOCK) {
+			while (freeList.isEmpty()) {
+				System.out.println("No available buffer");
+				POOL_LOCK.wait();
+			}
+			int numFrame = freeList.remove(0);
+			map.put((T) pageID, numFrame);
+			increasePinCount(numFrame); // FIXME same tarnsaction
+			return new Page<>(new PageId<>(pageID), getBuffer(numFrame)
+				.getBufferFromFrame());
+		}
+	}
+
 	private Frame getBuffer(int i) {
 		return pool.get(i);
 	}
