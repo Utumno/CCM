@@ -1,6 +1,5 @@
 package gr.uoa.di.mde515.trees;
 
-import gr.uoa.di.mde515.engine.buffer.BufferManager;
 import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
 
@@ -11,7 +10,6 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * B plus tree. When a node that accepts an EVEN number of items splits the
@@ -27,14 +25,13 @@ import java.util.concurrent.atomic.AtomicInteger;
  *            the type of the value of the records to be stored in the leaf
  *            nodes (non key attributes)
  */
-public class BPlusJava<K extends Comparable<K>, V> implements BPlusTree<K, V> {
+public class BPlusDisk<K extends Comparable<K>, V> implements BPlusTree<K, V> {
 
-	private static final BufferManager<Integer> buf = BufferManager
-		.getInstance();
-	private Node<K, V> root = new LeafNode<>(-1);
+	private Node<K, V> root = new LeafNode<>();
 	private static final int N = 1;
 	private static final int MAX_ITEMS = 2 * N + 1; // TODO, not only odd
-	private AtomicInteger nodes = new AtomicInteger(-1);
+	private int _leafs = 1; // to be used in printing
+	private int _levels = 1; // to be used in printing
 
 	// =========================================================================
 	// API
@@ -93,7 +90,7 @@ public class BPlusJava<K extends Comparable<K>, V> implements BPlusTree<K, V> {
 		while (!items.isEmpty()) {
 			List<Node<K, V>> children = new ArrayList<>();
 			for (Node<K, V> node : items) {
-				final Collection<Node<K, V>> print = node.print();
+				final Collection<Node<K, V>> print = node.print(_leafs);
 				if (print != null) children.addAll(print);
 			}
 			System.out.println();
@@ -104,16 +101,8 @@ public class BPlusJava<K extends Comparable<K>, V> implements BPlusTree<K, V> {
 	// =========================================================================
 	// Nodes
 	// =========================================================================
-	public abstract class Node<K extends Comparable<K>, V> {
+	public static abstract class Node<K extends Comparable<K>, V> {
 
-		private PageId<Integer> pageId;
-		private ByteBuffer data;
-		private short numOfKeys;
-		// WE NEED A BOOLEAN TO INDICATE LEAF
-
-		public Node(int pageId) {
-			this.pageId = pageId;
-		}
 		// TODO list of parents (?)
 		/** Return the Leaf that should contain key k starting from this Node */
 		abstract LeafNode<K, V> findLeaf(K k);
@@ -137,7 +126,7 @@ public class BPlusJava<K extends Comparable<K>, V> implements BPlusTree<K, V> {
 
 		abstract int items();
 
-		abstract Collection<Node<K, V>> print();
+		abstract Collection<Node<K, V>> print(int leafs);
 
 		@Override
 		public String toString() {
@@ -145,11 +134,7 @@ public class BPlusJava<K extends Comparable<K>, V> implements BPlusTree<K, V> {
 		}
 	}
 
-	class InternalNode<K extends Comparable<K>, V> extends Node<K, V> {
-
-		public InternalNode(int pageId) {
-			super(pageId);
-		}
+	static class InternalNode<K extends Comparable<K>, V> extends Node<K, V> {
 
 		/**
 		 * A Sorted Map mapping Key k to Node n (Internal or Leaf) with
@@ -161,8 +146,7 @@ public class BPlusJava<K extends Comparable<K>, V> implements BPlusTree<K, V> {
 		Node<K, V> greaterOrEqual; // TODO rename to next and move to Node
 
 		Node<K, V> _lookup(final K k) {
-			// KLEO
-			if (k.compareTo(_lastKey()) >= 0) return greaterOrEqual;
+			if (k.compareTo(children.lastKey()) >= 0) return greaterOrEqual;
 			// tailMap contains at least children.lastKey()
 			SortedMap<K, Node<K, V>> tailMap = this.children.tailMap(k);
 			final K firstKey = tailMap.firstKey(); // [tm0, tm1,...] where
@@ -174,11 +158,6 @@ public class BPlusJava<K extends Comparable<K>, V> implements BPlusTree<K, V> {
 			return children.get(firstKey);
 		}
 
-		Integer _lastKey(){
-
-			for (Integer key = data.readInt(0);
-
-		}
 		/**
 		 * Wrappers around _lookup(K k) - look a node up means look its lastKey
 		 * up
@@ -214,8 +193,7 @@ public class BPlusJava<K extends Comparable<K>, V> implements BPlusTree<K, V> {
 
 		@Override
 		Record<K, Node<K, V>> split() {
-			final InternalNode<K, V> sibling = new InternalNode<>(
-				nodes.decrementAndGet());
+			final InternalNode<K, V> sibling = new InternalNode<>();
 			sibling.greaterOrEqual = greaterOrEqual;
 			final K median = new ArrayList<>(children.keySet()).get(N);
 			greaterOrEqual = children.get(median);
@@ -249,7 +227,7 @@ public class BPlusJava<K extends Comparable<K>, V> implements BPlusTree<K, V> {
 		}
 
 		@Override
-		Collection<Node<K, V>> print() {
+		Collection<Node<K, V>> print(int leafs) {
 			System.out.print(this + "::");
 			System.out.print(Arrays.toString(children.entrySet().toArray()));
 			System.out.print(greaterOrEqual + "\t");
@@ -260,11 +238,7 @@ public class BPlusJava<K extends Comparable<K>, V> implements BPlusTree<K, V> {
 		}
 	}
 
-	class LeafNode<K extends Comparable<K>, V> extends Node<K, V> {
-
-		public LeafNode(int pageId) {
-			super(pageId);
-		}
+	static class LeafNode<K extends Comparable<K>, V> extends Node<K, V> {
 
 		SortedMap<K, V> records = new TreeMap<>();
 		Node<K, V> next;
@@ -289,7 +263,7 @@ public class BPlusJava<K extends Comparable<K>, V> implements BPlusTree<K, V> {
 
 		@Override
 		Record<K, Node<K, V>> split() {
-			LeafNode<K, V> sibling = new LeafNode<>(nodes.decrementAndGet());
+			LeafNode<K, V> sibling = new LeafNode<>();
 			sibling.next = next;
 			next = sibling;
 			final K median = new ArrayList<>(records.keySet()).get(N);
@@ -306,7 +280,7 @@ public class BPlusJava<K extends Comparable<K>, V> implements BPlusTree<K, V> {
 		}
 
 		@Override
-		Collection<Node<K, V>> print() {
+		Collection<Node<K, V>> print(int leafs) {
 			System.out.print(this + "::");
 			System.out.print(Arrays.toString(records.entrySet().toArray()));
 			System.out.print(next + "\t");
@@ -320,8 +294,8 @@ public class BPlusJava<K extends Comparable<K>, V> implements BPlusTree<K, V> {
 	private void insertInternal(Node<K, V> justSplit,
 			Record<K, Node<K, V>> insert) {
 		if (root == justSplit) { // root must split (leaf or not)
-			InternalNode<K, V> newRoot = new InternalNode<>(
-				nodes.decrementAndGet());
+			++_levels;
+			InternalNode<K, V> newRoot = new InternalNode<>();
 			newRoot.children.put(insert.getKey(), justSplit);
 			newRoot.greaterOrEqual = insert.getValue();
 			root = newRoot;
@@ -341,6 +315,7 @@ public class BPlusJava<K extends Comparable<K>, V> implements BPlusTree<K, V> {
 			throw new IllegalArgumentException("Key exists");
 		Record<K, Node<K, V>> insert = leafNode.insertInLeaf(rec);
 		if (insert != null) { // got a key back, so leafNode split
+			++_leafs;
 			insertInternal(leafNode, insert); // all parents are locked
 		}
 	}
