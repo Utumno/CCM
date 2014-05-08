@@ -130,7 +130,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		p.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS, 0);
 		p.writeInt(OFFSET_NEXT_PAGE, UNDEFINED);
 		p.writeInt(OFFSET_PREVIOUS_PAGE, 0);
-		buf.setFrameDirty(pageID);
+		buf.setPageDirty(pageID);
 	}
 
 	/**
@@ -203,7 +203,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		p.writeInt(freeSlot + ENTRY_SIZE, value);
 		p.writeInt(OFFSET_NEXT_FREE_SLOT, freeSlot + RECORD_SIZE);
 		p.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS, current_number_of_slots + 1);
-		buf.setFrameDirty(p.getPageId().getId());
+		buf.setPageDirty(p.getPageId().getId());
 	}
 
 	private void checkReachLimitOfPage(Header header, Page<Integer> p,
@@ -215,7 +215,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 			if (next_page != UNDEFINED) {
 				Page<Integer> s = buf.allocFrame(next_page, file);
 				s.writeInt(OFFSET_PREVIOUS_PAGE, 0);
-				buf.setFrameDirty(s.getPageId().getId());
+				buf.setPageDirty(s.getPageId().getId());
 				buf.flushPage(next_page, file);
 			}
 		}

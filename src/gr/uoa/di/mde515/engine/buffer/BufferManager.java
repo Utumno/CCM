@@ -46,10 +46,9 @@ public final class BufferManager<T> {
 		return instance;
 	}
 
-	public void setFrameDirty(T pageID) {
+	public void setPageDirty(T pageID) {
 		synchronized (POOL_LOCK) {
-			int frameNumber = map.get(pageID);
-			getFrame(frameNumber).setDirty();
+			getFrame(map.get(pageID)).setDirty(true);
 		}
 	}
 
@@ -64,11 +63,11 @@ public final class BufferManager<T> {
 	public void flushPage(int pageID, DiskFile disk) throws IOException {
 		synchronized (POOL_LOCK) {
 			int frameNumber = map.get(pageID);
-			decreasePinCount(frameNumber);
+			decreasePinCount(frameNumber); // TODO public
 			if (pool.get(frameNumber).isDirty())
 				disk.writePage(pageID, pool.get(frameNumber)
 					.getBufferFromFrame());
-			cleanPage(frameNumber);
+			getFrame(frameNumber).setDirty(false);
 			map.remove(pageID); // TODO move to decreasePinCount
 		}
 	}
@@ -83,7 +82,7 @@ public final class BufferManager<T> {
 		// if it does not exist?
 		synchronized (POOL_LOCK) {
 			disk.writePage(0, pool.get(0).getBufferFromFrame());
-			pool.get(0).setEmpty();
+			pool.get(0).setDirty(false);
 		}
 	}
 
@@ -179,15 +178,5 @@ public final class BufferManager<T> {
 			freeList.add(frameNumber);
 		}
 		return pinCount;
-	}
-
-	/**
-	 * Just changes the dirty and empty fields of the Frame class. This can be
-	 * used to decide whether flush or not flush a page.
-	 *
-	 * @param frameNumber
-	 */
-	private void cleanPage(int frameNumber) {
-		pool.get(frameNumber).setEmpty();
 	}
 }

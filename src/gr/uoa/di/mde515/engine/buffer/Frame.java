@@ -4,19 +4,17 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /** A wrapper around a ByteBuffer representing a frame in the main memory */
-public final class Frame {
+final class Frame {
 
 	private static final int PAGE_SIZE = 48;
-	private int framenumber;
+	private final int framenumber;
 	private final AtomicInteger pincount = new AtomicInteger();
-	private boolean dirty;
-	private boolean empty;
-	private ByteBuffer data;
+	private volatile boolean dirty;
+	private final ByteBuffer data;
 
 	public Frame(int i) {
 		framenumber = i;
 		dirty = false;
-		empty = true;
 		data = ByteBuffer.allocate(PAGE_SIZE);
 	}
 
@@ -49,13 +47,7 @@ public final class Frame {
 		return pincount.decrementAndGet();
 	}
 
-	public void setDirty() {
-		dirty = true;
-		empty = false;
-	}
-
-	public void setEmpty() {
-		empty = true;
-		dirty = false;
+	public void setDirty(boolean dirty) {
+		this.dirty = dirty;
 	}
 }
