@@ -10,10 +10,6 @@ public class DiskFile {
 	// The page size constant
 	private static int PAGE_SIZE = 48; // TODO globals
 	private final RandomAccessFile file;
-	public int last_allocated_pageID;
-	// used to create a write a blank page in the disk
-	// it is used by the allocateNewPage method
-	private static final byte[] BLANK_PAGE = new byte[PAGE_SIZE];
 
 	/**
 	 * The constructor creates the database file or opens it if already exists
@@ -52,19 +48,6 @@ public class DiskFile {
 	public void writePage(int pageID, ByteBuffer buffer) throws IOException {
 		file.seek(pageID * PAGE_SIZE);
 		file.write(buffer.array());
-	}
-
-	/**
-	 * This method allows to increase the available pages of the file. It works
-	 * by increasing additively to the already size file the number of pageID.
-	 *
-	 * @param PageID
-	 * @throws IOException
-	 */
-	public void allocateNewPage(int PageID) throws IOException {
-		file.seek(PageID * PAGE_SIZE);
-		file.write(BLANK_PAGE, 0, PAGE_SIZE);
-		last_allocated_pageID = PageID;
 	}
 
 	public void close() throws IOException {

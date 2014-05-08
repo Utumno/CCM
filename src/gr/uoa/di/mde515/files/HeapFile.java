@@ -94,20 +94,21 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	}
 
 	/**
-	 * Creates the file header
+	 * Creates the file header. FIXME use allocateNewPage(0)
 	 *
 	 * @throws IOException
 	 * @throws InterruptedException
 	 */
 	private void createFileHeader() throws IOException, InterruptedException {
-		file.allocateNewPage(0);
-		Page<?> p = buf.allocFrame(0, file);
+		Page<?> p = buf.allocFrameForNewPage(0);
 		p.writeInt(OFFSET_FREE_LIST, UNDEFINED);
 		p.writeInt(OFFSET_FULL_LIST, UNDEFINED);
 		p.writeInt(OFFSET_LAST_FREE_HEADER, UNDEFINED);
 		p.writeShort(OFFSET_RECORD_SIZE, (short) RECORD_SIZE);
 		buf.setFrameDirty(0);
-		buf.flushFileHeader(file);
+		buf.flushFileHeader(file); // TODO wild flush
+		System.out.println("The freelist value is "
+			+ p.readInt(OFFSET_FREE_LIST));
 	}
 
 	/**
@@ -117,21 +118,24 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	 * @throws IOException
 	 * @throws InterruptedException
 	 */
-	public void createPageHeader(int pageID) throws IOException,
+	private void createPageInMemory(int pageID) throws IOException,
 			InterruptedException {
-		file.allocateNewPage(pageID);
-		Page<?> p = buf.allocFrame(pageID, file);
+		Page<?> p = buf.allocFrameForNewPage(pageID);
 		p.writeInt(OFFSET_CURRENT_PAGE, pageID);
 		p.writeInt(OFFSET_NEXT_FREE_SLOT, PAGE_FILE_HEADER_LENGTH);
 		p.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS, 0);
 		p.writeInt(OFFSET_NEXT_PAGE, UNDEFINED);
 		p.writeInt(OFFSET_PREVIOUS_PAGE, 0);
 		buf.setFrameDirty(pageID);
-		try {
-			buf.flushPage(pageID, file);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		System.out.println("The current page is "+p.readInt(OFFSET_FREE_LIST));
+		System.out.println("The next free slot is "
+			+ p.readInt(OFFSET_NEXT_FREE_SLOT));
+		System.out.println("The current number of slots is "
+			+ p.readInt(OFFSET_CURRENT_NUMBER_OF_SLOTS));
+		System.out.println("The next page is " + p.readInt(OFFSET_NEXT_PAGE));
+		System.out.println("The previous page is "
+			+ p.readInt(OFFSET_PREVIOUS_PAGE));
+
 	}
 
 	/**
@@ -147,7 +151,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	@Override
 	public void insert(Transaction tr, Record<K, V> record) throws IOException,
 			InterruptedException {
-		Page<Integer> header = buf.allocFrame(0, file); // FIXME block
+		Page<Integer> header = buf.allocFrame(0, file); // FIXME pin
 		int pageID = getFreeListPageId(header);
 		System.out.println("The pageID is " + pageID);
 		// PageId<Integer> p = nextAvailablePage();
@@ -188,12 +192,13 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 			InterruptedException {
 		// if ((header.readInt(OFFSET_CURRENT_PAGE)))
 		if (header.readInt(OFFSET_FREE_LIST) == UNDEFINED) {
-			createPageHeader(last_allocated_page + 1);
+			createPageInMemory(last_allocated_page + 1);
 			header.writeInt(OFFSET_FREE_LIST, last_allocated_page + 1);
-			buf.flushFileHeader(file); // FIXME
+			// buf.flushFileHeader(file); // FIXME
 			++last_allocated_page;
 		}
 		int pageID = header.readInt(OFFSET_FREE_LIST);
+		System.out.println("PAGE ID " + pageID);
 		return pageID;
 	}
 
@@ -212,6 +217,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 			int current_number_of_slots) throws IOException,
 			InterruptedException {
 		if (current_number_of_slots + 1 == MAXIMUM_NUMBER_OF_SLOTS) {
+			System.out.println("HERE");
 			int next_page = p.readInt(OFFSET_NEXT_PAGE);
 			header.writeInt(OFFSET_FREE_LIST, next_page);
 			if (next_page != UNDEFINED) {

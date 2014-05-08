@@ -4,7 +4,9 @@ import gr.uoa.di.mde515.files.DiskFile;
 import gr.uoa.di.mde515.index.PageId;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -88,9 +90,10 @@ public final class BufferManager<T> {
 	}
 
 	/**
-	 * Returns a Page It first finds an empty buffer from the free list (TODO:
-	 * list full) and then updates the map of pageIDs and frameNumbers along
-	 * with returning the specified Page. FIXME thread safe
+	 * Returns a Page corresponding to an existing block of {@code file}, backed
+	 * up by a frame in the main memory. It first finds an empty buffer from the
+	 * free list and then updates the map of pageIDs and frameNumbers along with
+	 * returning the specified Page. FIXME thread safe
 	 *
 	 * FIXME FIXME FIXME - let Lock manager know
 	 *
@@ -105,9 +108,13 @@ public final class BufferManager<T> {
 			/* if the page already in the buffer return the buffer */
 			final Integer frameNum = map.get(pageID);
 			if (frameNum != null) {
-				increasePinCount(frameNum);
-				return new Page<>(new PageId<>(pageID), getBuffer(frameNum)
-					.getBufferFromFrame());
+				System.out.println("FRAME NUM " + frameNum);
+				increasePinCount(frameNum); // FIXME transaction
+				final ByteBuffer bufferFromFrame = getBuffer(frameNum)
+					.getBufferFromFrame();
+				System.out.println("Buffer "
+					+ Arrays.toString(bufferFromFrame.array()));
+				return new Page<>(new PageId<>(pageID), bufferFromFrame);
 			}
 			while (freeList.isEmpty()) {
 				System.out.println("No available buffer");
@@ -117,6 +124,30 @@ public final class BufferManager<T> {
 			map.put((T) pageID, numFrame);
 			increasePinCount(numFrame);
 			disk.readPage(pageID, getBuffer(numFrame).getBufferFromFrame());
+			return new Page<>(new PageId<>(pageID), getBuffer(numFrame)
+				.getBufferFromFrame());
+		}
+	}
+
+	/**
+	 * Returns a Page backed up by a frame in the main memory. It first finds an
+	 * empty buffer from the free list and then updates the map of pageIDs and
+	 * frameNumbers along with returning the specified Page. FIXME thread safe
+	 *
+	 * FIXME FIXME FIXME - let Lock manager know
+	 *
+	 * @param pageID
+	 * @throws InterruptedException
+	 */
+	public Page<Integer> allocFrameForNewPage(Integer pageID) throws InterruptedException {
+		synchronized (POOL_LOCK) {
+			while (freeList.isEmpty()) {
+				System.out.println("No available buffer");
+				POOL_LOCK.wait();
+			}
+			int numFrame = freeList.remove(0);
+			map.put((T) pageID, numFrame);
+			increasePinCount(numFrame); // FIXME same tarnsaction
 			return new Page<>(new PageId<>(pageID), getBuffer(numFrame)
 				.getBufferFromFrame());
 		}
