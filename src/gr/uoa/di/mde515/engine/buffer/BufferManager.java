@@ -11,7 +11,7 @@ import java.util.Map;
 
 public final class BufferManager<T> {
 
-	private static final int NUM_BUFFERS = 10;
+	private static final int NUM_BUFFERS = 1000;
 	// the pool of frames
 	private final List<Frame> pool = new ArrayList<>(); // TODO unmodifiable
 	// the structure that maintains information about pageIDs and their

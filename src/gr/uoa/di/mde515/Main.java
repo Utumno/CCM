@@ -28,8 +28,8 @@ public class Main {
 			for (int i = 0; i < 100; i++) {
 				Record<Integer, Integer> rec = new Record<>(i, i);
 				eng.insert(tr, rec);
-				eng.commit(tr);
 			}
+			eng.commit(tr);
 			// eng.e_xaction(tr);
 			eng.print();
 		} finally {
