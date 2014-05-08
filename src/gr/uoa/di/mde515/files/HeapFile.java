@@ -12,7 +12,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.List;
 
-public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
+public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 
 	private static final BufferManager<Integer> buf = BufferManager
 		.getInstance();
@@ -99,7 +99,7 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	 * @throws IOException
 	 * @throws InterruptedException
 	 */
-	public void createFileHeader() throws IOException, InterruptedException {
+	private void createFileHeader() throws IOException, InterruptedException {
 		file.allocateNewPage(0);
 		Page<?> p = buf.allocFrame(0, file);
 		p.writeInt(OFFSET_FREE_LIST, UNDEFINED);
@@ -191,7 +191,7 @@ public class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 			createPageHeader(last_allocated_page + 1);
 			header.writeInt(OFFSET_FREE_LIST, last_allocated_page + 1);
 			buf.flushFileHeader(file); // FIXME
-			last_allocated_page++;
+			++last_allocated_page;
 		}
 		int pageID = header.readInt(OFFSET_FREE_LIST);
 		return pageID;
