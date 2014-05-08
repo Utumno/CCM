@@ -41,10 +41,6 @@ public final class Frame {
 		return dirty;
 	}
 
-	public boolean isEmpty() {
-		return empty;
-	}
-
 	public int increasePincount() {
 		return pincount.incrementAndGet();
 	}

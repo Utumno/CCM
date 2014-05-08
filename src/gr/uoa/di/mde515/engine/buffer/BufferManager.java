@@ -88,9 +88,10 @@ public final class BufferManager<T> {
 	}
 
 	/**
-	 * Returns a Page It first finds an empty buffer from the free list (TODO:
-	 * list full) and then updates the map of pageIDs and frameNumbers along
-	 * with returning the specified Page. FIXME thread safe
+	 * Returns a Page corresponding to an existing block of {@code file}, backed
+	 * up by a frame in the main memory. It first finds an empty buffer from the
+	 * free list and then updates the map of pageIDs and frameNumbers along with
+	 * returning the specified Page. FIXME thread safe
 	 *
 	 * FIXME FIXME FIXME - let Lock manager know
 	 *
