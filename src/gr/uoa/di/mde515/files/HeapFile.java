@@ -66,6 +66,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				freeList = header.readInt(OFFSET_FREE_LIST);
 				fullList = header.readInt(OFFSET_FULL_LIST);
 				RECORD_SIZE = header.readInt(OFFSET_RECORD_SIZE);
+				RECORD_SIZE = header.readShort(OFFSET_RECORD_SIZE);
 			} else { // FILE EMPTY - CREATE THE HEADER
 				System.out.println("Creating the file");
 				Page<?> p = buf.allocFrameForNewPage(0);
@@ -134,11 +135,19 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	@Override
 	public void insert(Transaction tr, Record<K, V> record) throws IOException,
 			InterruptedException {
+		Page<Integer> p;
 		int pageID = getFreeListPageId();
 		System.out.println("The pageID is " + pageID);
 		// PageId<Integer> p = nextAvailablePage();
 		// Request<Integer> request = new LockManager.Request<>(p, tr, Lock.E);
 		// lock manager request
+		if (!tr.checkIfExists(new PageId<Integer>(pageID))) {
+			lockPage(pageID, tr, DBLock.E); // if not capable of locking then
+											// wait
+			p = buf.allocFrame(pageID, file);
+		} else {
+			p = buf.getAssociatedFrame(pageID);
+		}
 		Page<Integer> p = buf.allocFrame(pageID, file);
 		int current_number_of_slots = p.readInt(OFFSET_CURRENT_NUMBER_OF_SLOTS);
 		writeIntoFrame(p, (Integer) record.getKey(),
@@ -167,6 +176,9 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		lm.requestLock(new LockManager.Request(new PageId<>(0), tr, e));
 	}
 
+	private void lockPage(int pageID, Transaction tr, DBLock e) {
+		lm.requestLock(new LockManager.Request(new PageId<>(pageID), tr, e));
+	}
 	// =========================================================================
 	// Helpers
 	// =========================================================================
