@@ -47,5 +47,7 @@ public class Transaction {
 		if (!(pageId.getId() instanceof Integer)) return;
 		System.out.println("ADDED " + pageId.getId());
 		lockedDataPages.add(pageId);
+	public boolean checkIfExists(PageId<Integer> pageID) {
+		return lockedDataPages.contains(pageID);
 	}
 }
