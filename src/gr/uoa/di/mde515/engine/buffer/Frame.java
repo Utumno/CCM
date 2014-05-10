@@ -50,4 +50,8 @@ final class Frame {
 	public void setDirty(boolean dirty) {
 		this.dirty = dirty;
 	}
+
+	public AtomicInteger getPinCount() {
+		return pincount;
+	}
 }

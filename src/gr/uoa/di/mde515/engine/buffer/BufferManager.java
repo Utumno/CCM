@@ -63,6 +63,8 @@ public final class BufferManager<T> {
 	public void flushPage(int pageID, DiskFile disk) throws IOException {
 		synchronized (POOL_LOCK) {
 			int frameNumber = map.get(pageID);
+			System.out.println("The  PINCOUNT is "
+				+ getFrame(frameNumber).getPinCount());
 			decreasePinCount(frameNumber); // TODO public
 			if (pool.get(frameNumber).isDirty())
 				disk.writePage(pageID, pool.get(frameNumber)
