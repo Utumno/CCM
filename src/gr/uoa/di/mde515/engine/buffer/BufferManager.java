@@ -156,6 +156,7 @@ public final class BufferManager<T> {
 				.getBufferFromFrame());
 		}
 	}
+
 	private Frame getFrame(int i) {
 		return pool.get(i);
 	}
@@ -182,9 +183,9 @@ public final class BufferManager<T> {
 		final int pinCount = frame.decreasePincount();
 		if (pinCount == 0) {
 			if (freeList.isEmpty()) {
+				freeList.add(frameNumber);
 				POOL_LOCK.notifyAll();
 			}
-			freeList.add(frameNumber);
 		}
 		return pinCount;
 	}
