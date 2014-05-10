@@ -134,7 +134,8 @@ public final class BufferManager<T> {
 	 * @param pageID
 	 * @throws InterruptedException
 	 */
-	public Page<Integer> allocFrameForNewPage(Integer pageID) throws InterruptedException {
+	public Page<Integer> allocFrameForNewPage(Integer pageID)
+			throws InterruptedException {
 		synchronized (POOL_LOCK) {
 			while (freeList.isEmpty()) {
 				System.out.println("No available buffer");

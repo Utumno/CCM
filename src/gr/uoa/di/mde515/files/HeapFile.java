@@ -50,6 +50,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		private int freeList = UNDEFINED;
 		private int fullList = UNDEFINED;
 		private int numOfPages; // TODO
+		private final Page<Integer> header_page;
 		private final int RECORD_SIZE;
 		private final double MAXIMUM_NUMBER_OF_SLOTS;
 		// OFFSETS
@@ -57,23 +58,25 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		private static final int OFFSET_FULL_LIST = 4;
 		private static final int OFFSET_LAST_FREE_HEADER = 8;
 		private static final int OFFSET_RECORD_SIZE = 12;
+		private static final int OFFSET_NUM_OF_PAGES = 14;
 
 		Header(DiskFile file, short recordSize) throws IOException,
 				InterruptedException {
 			if (file.read() != -1) {
 				System.out.println("File already exists"); // FIXME read header
-				Page<Integer> header = buf.allocFrame(0, file);
-				freeList = header.readInt(OFFSET_FREE_LIST);
-				fullList = header.readInt(OFFSET_FULL_LIST);
-				RECORD_SIZE = header.readInt(OFFSET_RECORD_SIZE);
-				RECORD_SIZE = header.readShort(OFFSET_RECORD_SIZE);
+				header_page = buf.allocFrame(0, file);
+				freeList = header_page.readInt(OFFSET_FREE_LIST);
+				fullList = header_page.readInt(OFFSET_FULL_LIST);
+				RECORD_SIZE = header_page.readShort(OFFSET_RECORD_SIZE);
+				numOfPages = header_page.readInt(OFFSET_NUM_OF_PAGES);
 			} else { // FILE EMPTY - CREATE THE HEADER
 				System.out.println("Creating the file");
-				Page<?> p = buf.allocFrameForNewPage(0);
-				p.writeInt(OFFSET_FREE_LIST, UNDEFINED);
-				p.writeInt(OFFSET_FULL_LIST, UNDEFINED);
-				p.writeInt(OFFSET_LAST_FREE_HEADER, UNDEFINED);
-				p.writeShort(OFFSET_RECORD_SIZE, recordSize);
+				header_page = buf.allocFrameForNewPage(0);
+				header_page.writeInt(OFFSET_FREE_LIST, UNDEFINED);
+				header_page.writeInt(OFFSET_FULL_LIST, UNDEFINED);
+				header_page.writeInt(OFFSET_LAST_FREE_HEADER, UNDEFINED);
+				header_page.writeShort(OFFSET_RECORD_SIZE, recordSize);
+				header_page.writeInt(OFFSET_NUM_OF_PAGES, 0);
 				RECORD_SIZE = recordSize;
 				buf.setPageDirty(0);
 				buf.flushFileHeader(file); // TODO wild flush
@@ -88,6 +91,10 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 
 		void setFreeList(int freepageID) {
 			freeList = freepageID;
+		}
+
+		void writeFreeListHeader(int freeList) {
+			header_page.writeInt(OFFSET_FREE_LIST, freeList);
 		}
 
 		@Override
@@ -148,7 +155,6 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		} else {
 			p = buf.getAssociatedFrame(pageID);
 		}
-		Page<Integer> p = buf.allocFrame(pageID, file);
 		int current_number_of_slots = p.readInt(OFFSET_CURRENT_NUMBER_OF_SLOTS);
 		writeIntoFrame(p, (Integer) record.getKey(),
 			(Integer) record.getValue(), current_number_of_slots);
@@ -157,6 +163,8 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 
 	@Override
 	public void flush(List<PageId<Integer>> pageIds) throws IOException {
+		int i = header.getFreeList();
+		header.writeFreeListHeader(i);
 		for (PageId<Integer> pageID : pageIds) {
 			try {
 				buf.flushPage(pageID.getId(), file);
@@ -179,6 +187,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	private void lockPage(int pageID, Transaction tr, DBLock e) {
 		lm.requestLock(new LockManager.Request(new PageId<>(pageID), tr, e));
 	}
+
 	// =========================================================================
 	// Helpers
 	// =========================================================================
