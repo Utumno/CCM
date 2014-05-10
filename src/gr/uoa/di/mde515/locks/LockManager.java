@@ -71,7 +71,8 @@ public class LockManager {
 
 		void lock(Request req) {
 			final DBLock lock = req.lock;
-			final Request grant = granted.get(req.tr);
+			final Transaction trans = req.tr;
+			final Request grant = granted.get(trans);
 			if (grant != null && grant.pageId.equals(req.pageId)
 				&& grant.lock == lock) return;
 			switch (lock) {
@@ -82,8 +83,8 @@ public class LockManager {
 				r.lock();
 				break;
 			}
-			granted.put(req.tr, req);
 			req.tr.addLockedDataPage((PageId<Integer>) req.pageId);
+			granted.put(trans, req);
 		}
 
 		synchronized void add(Request request) {

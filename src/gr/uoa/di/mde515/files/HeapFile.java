@@ -142,15 +142,13 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	@Override
 	public void insert(Transaction tr, Record<K, V> record) throws IOException,
 			InterruptedException {
-		Page<Integer> p;
 		int pageID = getFreeListPageId();
-		System.out.println("The pageID is " + pageID);
 		// PageId<Integer> p = nextAvailablePage();
 		// Request<Integer> request = new LockManager.Request<>(p, tr, Lock.E);
 		// lock manager request
-		if (!tr.checkIfExists(new PageId<Integer>(pageID))) {
-			lockPage(pageID, tr, DBLock.E); // if not capable of locking then
-											// wait
+		Page<Integer> p;
+		if (!tr.hasLockedPage(new PageId<>(pageID))) {
+			lockPage(pageID, tr, DBLock.E); // may block
 			p = buf.allocFrame(pageID, file);
 		} else {
 			p = buf.getAssociatedFrame(pageID);
@@ -184,13 +182,13 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		lm.requestLock(new LockManager.Request(new PageId<>(0), tr, e));
 	}
 
+	// =========================================================================
+	// Helpers
+	// =========================================================================
 	private void lockPage(int pageID, Transaction tr, DBLock e) {
 		lm.requestLock(new LockManager.Request(new PageId<>(pageID), tr, e));
 	}
 
-	// =========================================================================
-	// Helpers
-	// =========================================================================
 	private int getFreeListPageId() throws IOException, InterruptedException {
 		if (header.getFreeList() == UNDEFINED) {
 			createPageInMemory(last_allocated_page + 1);

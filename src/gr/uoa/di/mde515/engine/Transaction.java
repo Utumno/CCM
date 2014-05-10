@@ -44,12 +44,13 @@ public class Transaction {
 	}
 
 	public void addLockedDataPage(PageId<Integer> pageId) {
-		if (!(pageId.getId() instanceof Integer)) return;
+		if (!(pageId.getId() instanceof Integer)) return; // FIXME horrible hack
+		// - actually the pageId may wrap a node at this stage
 		System.out.println("ADDED " + pageId.getId());
 		lockedDataPages.add(pageId);
 	}
 
-	public boolean checkIfExists(PageId<Integer> pageID) {
+	public boolean hasLockedPage(PageId<Integer> pageID) {
 		return lockedDataPages.contains(pageID);
 	}
 }

@@ -33,12 +33,12 @@ public class Index<K extends Comparable<K>, V> { // V --> rename to T
 	public void lookupLocked(Transaction tr, K key, DBLock el)
 			throws KeyExistsException {
 		SortedMap<K, V> sm = new TreeMap<>();
-		lock(tr, key, el, sm);
+		lockPath(tr, key, el, sm);
 		V v = sm.get(key);
 		if (v != null) throw new KeyExistsException(key + "");
 	}
 
-	private void lock(Transaction tr, K key, DBLock el, SortedMap<K, V> sm) {
+	private void lockPath(Transaction tr, K key, DBLock el, SortedMap<K, V> sm) {
 		PageId<Node<K, V>> indexPage = bplus.getRootPageId();
 		while (indexPage != null) {
 			lm.requestLock(new LockManager.Request(indexPage, tr, el));

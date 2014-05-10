@@ -16,7 +16,7 @@ public final class BufferManager<T> {
 	private final List<Frame> pool = new ArrayList<>(); // TODO unmodifiable
 	// the structure that maintains information about pageIDs and their
 	// corresponding frame numbers
-	private final Map<T, Integer> map = new HashMap<>();
+	private final Map<T, Integer> pageIdToFrameNumber = new HashMap<>();
 	// contains the available frames that can be used
 	private final List<Integer> freeList = new ArrayList<>();
 	private static final BufferManager<Integer> instance = new BufferManager<>(
@@ -48,7 +48,7 @@ public final class BufferManager<T> {
 
 	public void setPageDirty(T pageID) {
 		synchronized (POOL_LOCK) {
-			getFrame(map.get(pageID)).setDirty(true);
+			getFrame(pageIdToFrameNumber.get(pageID)).setDirty(true);
 		}
 	}
 
@@ -62,7 +62,7 @@ public final class BufferManager<T> {
 	 */
 	public void flushPage(int pageID, DiskFile disk) throws IOException {
 		synchronized (POOL_LOCK) {
-			int frameNumber = map.get(pageID);
+			int frameNumber = pageIdToFrameNumber.get(pageID);
 			System.out.println("The  PINCOUNT is "
 				+ getFrame(frameNumber).getPinCount());
 			decreasePinCount(frameNumber); // TODO public
@@ -70,7 +70,7 @@ public final class BufferManager<T> {
 				disk.writePage(pageID, pool.get(frameNumber)
 					.getBufferFromFrame());
 			getFrame(frameNumber).setDirty(false);
-			map.remove(pageID); // TODO move to decreasePinCount
+			pageIdToFrameNumber.remove(pageID); // TODO move to decreasePinCount
 		}
 	}
 
@@ -105,7 +105,7 @@ public final class BufferManager<T> {
 			throws IOException, InterruptedException {
 		synchronized (POOL_LOCK) {
 			/* if the page already in the buffer return the buffer */
-			final Integer frameNum = map.get(pageID);
+			final Integer frameNum = pageIdToFrameNumber.get(pageID);
 			if (frameNum != null) {
 				increasePinCount(frameNum);
 				return new Page<>(new PageId<>(pageID), getFrame(frameNum)
@@ -116,7 +116,7 @@ public final class BufferManager<T> {
 				POOL_LOCK.wait();
 			}
 			int numFrame = freeList.remove(0);
-			map.put((T) pageID, numFrame);
+			pageIdToFrameNumber.put((T) pageID, numFrame);
 			increasePinCount(numFrame);
 			disk.readPage(pageID, getFrame(numFrame).getBufferFromFrame());
 			return new Page<>(new PageId<>(pageID), getFrame(numFrame)
@@ -142,7 +142,7 @@ public final class BufferManager<T> {
 				POOL_LOCK.wait();
 			}
 			int numFrame = freeList.remove(0);
-			map.put((T) pageID, numFrame);
+			pageIdToFrameNumber.put((T) pageID, numFrame);
 			increasePinCount(numFrame); // FIXME same transaction should not
 										// increase
 			return new Page<>(new PageId<>(pageID), getFrame(numFrame)
@@ -150,10 +150,11 @@ public final class BufferManager<T> {
 		}
 	}
 
+	/** Essentially the same as {@link #allocFrame(Integer, DiskFile)} */
 	public Page<Integer> getAssociatedFrame(int pageID) {
 		synchronized (POOL_LOCK) {
-			return new Page<>(new PageId<>(pageID), getFrame(map.get(pageID))
-				.getBufferFromFrame());
+			return new Page<>(new PageId<>(pageID), getFrame(
+				pageIdToFrameNumber.get(pageID)).getBufferFromFrame());
 		}
 	}
 
