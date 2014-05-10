@@ -2,6 +2,8 @@ package gr.uoa.di.mde515.engine;
 
 import gr.uoa.di.mde515.files.DataFile;
 import gr.uoa.di.mde515.index.PageId;
+import gr.uoa.di.mde515.locks.DBLock;
+import gr.uoa.di.mde515.locks.LockManager;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -11,6 +13,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class Transaction {
 
 	private static final AtomicLong transactionId;
+	private static final LockManager lm = LockManager.getInstance();
 	private final long threadId; // not really needed
 	private final String threadName;
 	private final List<PageId<Integer>> lockedDataPages = new ArrayList<>();
@@ -50,7 +53,25 @@ public class Transaction {
 		lockedDataPages.add(pageId);
 	}
 
-	public boolean hasLockedPage(PageId<Integer> pageID) {
-		return lockedDataPages.contains(pageID);
+	/**
+	 * Tries to lock a page if not already locked. May block. Returns true if
+	 * the page was locked or false if the page was already locked.
+	 *
+	 * @param pageID
+	 *            the pageId to be locked
+	 * @param lock
+	 *            the type of lock
+	 * @return true if the page was locked for the first time by this
+	 *         transaction, false otherwise
+	 */
+	public boolean lock(int pageID, DBLock lock) {
+		final PageId<Integer> pid = new PageId<>(pageID);
+		if (!this.lockedDataPages.contains(pid)) {
+			lm.requestLock(new LockManager.Request(pid, this,
+				lock));
+			addLockedDataPage(pid);
+			return true;
+		}
+		return false;
 	}
 }

@@ -6,7 +6,6 @@ import gr.uoa.di.mde515.engine.buffer.Page;
 import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.locks.DBLock;
-import gr.uoa.di.mde515.locks.LockManager;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -32,8 +31,6 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	private static final int OFFSET_CURRENT_NUMBER_OF_SLOTS = 8;
 	private static final int OFFSET_NEXT_PAGE = 12;
 	private static final int OFFSET_PREVIOUS_PAGE = 16;
-	// LockManager
-	private final LockManager lm = LockManager.getInstance();
 
 	public HeapFile(String filename, short recordSize) throws IOException,
 			InterruptedException {
@@ -93,8 +90,8 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 			freeList = freepageID;
 		}
 
-		void writeFreeListHeader(int freeList) {
-			header_page.writeInt(OFFSET_FREE_LIST, freeList);
+		private void pageWriteFreeList(int freelist) {
+			header_page.writeInt(OFFSET_FREE_LIST, freelist);
 		}
 
 		@Override
@@ -104,6 +101,10 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 			builder.append(freeList);
 			builder.append("]");
 			return builder.toString();
+		}
+
+		void pageWrite() {
+			pageWriteFreeList(freeList);
 		}
 	}
 
@@ -147,9 +148,9 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		// Request<Integer> request = new LockManager.Request<>(p, tr, Lock.E);
 		// lock manager request
 		Page<Integer> p;
-		if (!tr.hasLockedPage(new PageId<>(pageID))) {
-			lockPage(pageID, tr, DBLock.E); // may block
+		if (tr.lock(pageID, DBLock.E)) {
 			p = buf.allocFrame(pageID, file);
+			pinPage(pageID);
 		} else {
 			p = buf.getAssociatedFrame(pageID);
 		}
@@ -161,14 +162,11 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 
 	@Override
 	public void flush(List<PageId<Integer>> pageIds) throws IOException {
-		int i = header.getFreeList();
-		header.writeFreeListHeader(i);
+		header.pageWrite();
 		for (PageId<Integer> pageID : pageIds) {
-			try {
-				buf.flushPage(pageID.getId(), file);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+			final Integer pid = pageID.getId();
+			buf.flushPage(pid, file);
+			buf.unpinPage(pid);
 		}
 	}
 
@@ -179,16 +177,17 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 
 	@Override
 	public void lockHeader(Transaction tr, DBLock e) {
-		lm.requestLock(new LockManager.Request(new PageId<>(0), tr, e));
+		tr.lock(0, e); // FIXME pin
+	}
+
+	@Override
+	public void pinPage(int pageId) {
+		buf.pinPage(pageId);
 	}
 
 	// =========================================================================
 	// Helpers
 	// =========================================================================
-	private void lockPage(int pageID, Transaction tr, DBLock e) {
-		lm.requestLock(new LockManager.Request(new PageId<>(pageID), tr, e));
-	}
-
 	private int getFreeListPageId() throws IOException, InterruptedException {
 		if (header.getFreeList() == UNDEFINED) {
 			createPageInMemory(last_allocated_page + 1);

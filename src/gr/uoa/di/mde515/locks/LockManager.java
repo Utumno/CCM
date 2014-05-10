@@ -83,7 +83,6 @@ public class LockManager {
 				r.lock();
 				break;
 			}
-			req.tr.addLockedDataPage((PageId<Integer>) req.pageId);
 			granted.put(trans, req);
 		}
 

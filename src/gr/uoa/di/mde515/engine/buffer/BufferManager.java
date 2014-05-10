@@ -39,6 +39,28 @@ public final class BufferManager<T> {
 	// API
 	// =========================================================================
 	/**
+	 * Increases the pin count of the frame that corresponds to the
+	 * {@code pageID} given.
+	 *
+	 * @param pageID
+	 *            the id of the page to pin - an integer probably
+	 */
+	public void pinPage(T pageID) {
+		increasePinCount(pageIdToFrameNumber.get(pageID));
+	}
+
+	/**
+	 * Decreases the pin count of the frame that corresponds to the
+	 * {@code pageID} given.
+	 *
+	 * @param pageID
+	 *            the id of the page to unpin - an integer probably
+	 */
+	public void unpinPage(T pageID) {
+		decreasePinCount(pageIdToFrameNumber.get(pageID));
+	}
+
+	/**
 	 * The BufferManager follows the singleton pattern. So one BufferManager is
 	 * created.
 	 */
@@ -107,7 +129,6 @@ public final class BufferManager<T> {
 			/* if the page already in the buffer return the buffer */
 			final Integer frameNum = pageIdToFrameNumber.get(pageID);
 			if (frameNum != null) {
-				increasePinCount(frameNum);
 				return new Page<>(new PageId<>(pageID), getFrame(frameNum)
 					.getBufferFromFrame());
 			}
@@ -117,7 +138,6 @@ public final class BufferManager<T> {
 			}
 			int numFrame = freeList.remove(0);
 			pageIdToFrameNumber.put((T) pageID, numFrame);
-			increasePinCount(numFrame);
 			disk.readPage(pageID, getFrame(numFrame).getBufferFromFrame());
 			return new Page<>(new PageId<>(pageID), getFrame(numFrame)
 				.getBufferFromFrame());
@@ -143,8 +163,6 @@ public final class BufferManager<T> {
 			}
 			int numFrame = freeList.remove(0);
 			pageIdToFrameNumber.put((T) pageID, numFrame);
-			increasePinCount(numFrame); // FIXME same transaction should not
-										// increase
 			return new Page<>(new PageId<>(pageID), getFrame(numFrame)
 				.getBufferFromFrame());
 		}
