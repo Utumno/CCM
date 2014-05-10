@@ -57,7 +57,9 @@ public final class BufferManager<T> {
 	 *            the id of the page to unpin - an integer probably
 	 */
 	public void unpinPage(T pageID) {
-		decreasePinCount(pageIdToFrameNumber.get(pageID));
+		final Integer frameNumber = pageIdToFrameNumber.get(pageID);
+		System.out.println("FRAME NUM " + frameNumber);
+		decreasePinCount(frameNumber);
 	}
 
 	/**

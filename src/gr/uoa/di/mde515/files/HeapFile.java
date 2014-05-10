@@ -166,6 +166,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		for (PageId<Integer> pageID : pageIds) {
 			final Integer pid = pageID.getId();
 			buf.flushPage(pid, file);
+			System.out.println("PID " + pid);
 			buf.unpinPage(pid);
 		}
 	}
