@@ -11,7 +11,7 @@ import java.util.Map;
 
 public final class BufferManager<T> {
 
-	private static final int NUM_BUFFERS = 1000;
+	private static final int NUM_BUFFERS = 35;
 	// the pool of frames
 	private final List<Frame> pool = new ArrayList<>(); // TODO unmodifiable
 	// the structure that maintains information about pageIDs and their
@@ -147,6 +147,12 @@ public final class BufferManager<T> {
 		}
 	}
 
+	public Page<Integer> getAssociatedFrame(int pageID) {
+		synchronized (POOL_LOCK) {
+			return new Page<>(new PageId<>(pageID), getFrame(map.get(pageID))
+				.getBufferFromFrame());
+		}
+	}
 	private Frame getFrame(int i) {
 		return pool.get(i);
 	}
