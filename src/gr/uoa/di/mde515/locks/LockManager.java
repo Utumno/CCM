@@ -14,6 +14,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class LockManager {
 
+	private LockManager() {}
+
 	public final static class Request {
 
 		PageId<?> pageId;
@@ -26,8 +28,6 @@ public class LockManager {
 			this.lock = lock;
 		}
 	}
-
-	private LockManager() {}
 
 	private static final ConcurrentMap<PageId<?>, LockStructure> locks = new ConcurrentHashMap<>();
 	private static final LockManager instance = new LockManager();
