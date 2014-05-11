@@ -20,7 +20,6 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	private final Header header;
 	// useful constants
 	private static final int PAGE_SIZE = 48; // TODO move to globals
-	private int last_allocated_page = 0;
 	// it the size of entry in the fileheader
 	private static final int ENTRY_SIZE = 4;
 	private static final int PAGE_FILE_HEADER_LENGTH = 20;
@@ -46,7 +45,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 
 		private int freeList = UNDEFINED;
 		private int fullList = UNDEFINED;
-		private int numOfPages; // TODO
+		private int numOfPages;
 		private final Page<Integer> header_page;
 		private final int RECORD_SIZE;
 		private final double MAXIMUM_NUMBER_OF_SLOTS;
@@ -76,7 +75,6 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				header_page.writeInt(OFFSET_NUM_OF_PAGES, 0);
 				RECORD_SIZE = recordSize;
 				buf.setPageDirty(0);
-				buf.flushFileHeader(file); // TODO wild flush
 			}
 			MAXIMUM_NUMBER_OF_SLOTS = Math
 				.floor((PAGE_SIZE - PAGE_FILE_HEADER_LENGTH) / RECORD_SIZE);
@@ -105,6 +103,19 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 
 		void pageWrite() {
 			pageWriteFreeList(freeList);
+			pageWriteNumOfPages(numOfPages);
+		}
+
+		int getNumOfPages() {
+			return numOfPages;
+		}
+
+		void setNumOfPages(int num) {
+			numOfPages = num;
+		}
+
+		void pageWriteNumOfPages(int numOfPages) {
+			header_page.writeInt(OFFSET_NUM_OF_PAGES, numOfPages);
 		}
 	}
 
@@ -191,10 +202,10 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	// =========================================================================
 	private int getFreeListPageId() throws IOException, InterruptedException {
 		if (header.getFreeList() == UNDEFINED) {
-			createPageInMemory(last_allocated_page + 1);
-			header.setFreeList(last_allocated_page + 1);
-			buf.flushFileHeader(file); // FIXME
-			++last_allocated_page;
+			createPageInMemory(header.getNumOfPages() + 1);
+			header.setFreeList(header.getNumOfPages() + 1);
+			header.setNumOfPages(header.getNumOfPages() + 1);
+			buf.setPageDirty(0);
 		}
 		int pageID = header.getFreeList();
 		System.out.println("PageId " + pageID);

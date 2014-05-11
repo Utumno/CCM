@@ -57,9 +57,12 @@ public final class BufferManager<T> {
 	 *            the id of the page to unpin - an integer probably
 	 */
 	public void unpinPage(T pageID) {
-		final Integer frameNumber = pageIdToFrameNumber.get(pageID);
-		System.out.println("FRAME NUM " + frameNumber);
-		decreasePinCount(frameNumber);
+		synchronized (POOL_LOCK) {
+			final Integer frameNumber = pageIdToFrameNumber.get(pageID);
+			System.out.println("FRAME NUM " + frameNumber);
+			System.out.println("The PIN is"
+				+ decreasePinCount(frameNumber, pageID));
+		}
 	}
 
 	/**
@@ -87,14 +90,10 @@ public final class BufferManager<T> {
 	public void flushPage(int pageID, DiskFile disk) throws IOException {
 		synchronized (POOL_LOCK) {
 			int frameNumber = pageIdToFrameNumber.get(pageID);
-			System.out.println("The  PINCOUNT is "
-				+ getFrame(frameNumber).getPinCount());
-			decreasePinCount(frameNumber); // TODO public
 			if (pool.get(frameNumber).isDirty())
 				disk.writePage(pageID, pool.get(frameNumber)
 					.getBufferFromFrame());
 			getFrame(frameNumber).setDirty(false);
-			pageIdToFrameNumber.remove(pageID); // TODO move to decreasePinCount
 		}
 	}
 
@@ -199,12 +198,13 @@ public final class BufferManager<T> {
 	 * @param frameNumber
 	 * @return
 	 */
-	private int decreasePinCount(int frameNumber) {
+	private int decreasePinCount(int frameNumber, T pageID) {
 		final Frame frame = pool.get(frameNumber);
 		final int pinCount = frame.decreasePincount();
 		if (pinCount == 0) {
+			pageIdToFrameNumber.remove(pageID);
+			freeList.add(frameNumber);
 			if (freeList.isEmpty()) {
-				freeList.add(frameNumber);
 				POOL_LOCK.notifyAll();
 			}
 		}
