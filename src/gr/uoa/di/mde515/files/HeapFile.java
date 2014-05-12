@@ -60,7 +60,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				InterruptedException {
 			if (file.read() != -1) {
 				System.out.println("File already exists"); // FIXME read header
-				header_page = buf.allocFrame(0, file);
+				header_page = buf.allocPinPage(0, file);
 				freeList = header_page.readInt(OFFSET_FREE_LIST);
 				fullList = header_page.readInt(OFFSET_FULL_LIST);
 				RECORD_SIZE = header_page.readShort(OFFSET_RECORD_SIZE);
@@ -75,6 +75,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				header_page.writeInt(OFFSET_NUM_OF_PAGES, 0);
 				RECORD_SIZE = recordSize;
 				buf.setPageDirty(0);
+				buf.flushFileHeader(file);
 			}
 			MAXIMUM_NUMBER_OF_SLOTS = Math
 				.floor((PAGE_SIZE - PAGE_FILE_HEADER_LENGTH) / RECORD_SIZE);
