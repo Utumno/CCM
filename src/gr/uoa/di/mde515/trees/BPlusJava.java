@@ -205,19 +205,19 @@ public class BPlusJava<K extends Comparable<K>, V> implements BPlusTree<K, V> {
 
 		Record<K, Node<K, V>> insertInternal(Node<K, V> justSplit,
 				Record<K, Node<K, V>> insert) {
-			final K keyToInsert = insert.getKey();
 			final Node<K, V> newNode = insert.getValue();
 			K _keyOfAnchor = _keyWithValue(justSplit);
 			if (_keyOfAnchor != null) {
 				children.put(_keyOfAnchor, newNode);
-				children.put(keyToInsert, justSplit); // all keys in anchor
-				// node are smaller than the key to insert
 			} else {
 				// _keyOfAnchor == null - anchor used to be for keys greater or
 				// equal to lastKey
-				children.put(keyToInsert, justSplit);
 				greaterOrEqual = newNode;
 			}
+			final K keyToInsert = insert.getKey();
+			children.put(keyToInsert, justSplit); // all keys in anchor
+			// node (the justSplit) are smaller than the key to insert - do this
+			// AFTER getting the _keyOfAnchor !
 			return overflow() ? split() : null;
 		}
 
