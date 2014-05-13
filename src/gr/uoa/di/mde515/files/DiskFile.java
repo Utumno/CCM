@@ -1,5 +1,7 @@
 package gr.uoa.di.mde515.files;
 
+import gr.uoa.di.mde515.engine.Engine;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -7,8 +9,7 @@ import java.nio.ByteBuffer;
 
 public class DiskFile {
 
-	// The page size constant
-	private static int PAGE_SIZE = 48; // TODO globals
+	private static int PAGE_SIZE = Engine.PAGE_SIZE;
 	private final RandomAccessFile file;
 
 	/**
@@ -52,6 +53,7 @@ public class DiskFile {
 		file.close();
 	}
 
+	/** Used to check if file exists */
 	public int read() throws IOException {
 		return file.read();
 	}

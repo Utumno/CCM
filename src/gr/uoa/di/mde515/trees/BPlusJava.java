@@ -142,7 +142,7 @@ public class BPlusJava<K extends Comparable<K>, V> implements BPlusTree<K, V> {
 		 * children.lastKey() and likewise for firstKey.
 		 */
 		SortedMap<K, Node<K, V>> children = new TreeMap<>();
-		/** Node with keys strictly greater or equal to this.firstKey */
+		/** Node with keys strictly greater or equal to this.lastKey */
 		Node<K, V> greaterOrEqual; // TODO rename to next and move to Node
 
 		Node<K, V> _lookup(final K k) {

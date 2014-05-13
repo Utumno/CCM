@@ -40,6 +40,7 @@ public abstract class Engine<K extends Comparable<K>, V> {
 		}
 	}
 
+	public static final short PAGE_SIZE = 48;
 	private static final Engine instance = new EngineImpl();
 
 	public static Engine newInstance() {
