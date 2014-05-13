@@ -44,7 +44,8 @@ public interface CCM {
 
 	boolean waitTransaction(Transaction tr, long t);
 
-	void abort(Transaction tr);
+	<K extends Comparable<K>, V> void abort(Transaction tr,
+			DataFile<K, V> dataFile, Index<K, ?> index) throws IOException;
 
 	void bulkLoad(Transaction tr, Path fileOfRecords);
 

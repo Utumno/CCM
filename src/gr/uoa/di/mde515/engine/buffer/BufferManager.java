@@ -83,6 +83,12 @@ public final class BufferManager<T> {
 		}
 	}
 
+	public void setPageEmtpy(T pageID) {
+		synchronized (POOL_LOCK) {
+			getFrame(pageIdToFrameNumber.get(pageID)).setDirty(false);
+		}
+	}
+
 	/**
 	 * It flushes the content of the frame associated with the given pageID to
 	 * the disk at correct block.
@@ -98,20 +104,6 @@ public final class BufferManager<T> {
 				disk.writePage(pageID, pool.get(frameNumber)
 					.getBufferFromFrame());
 			getFrame(frameNumber).setDirty(false);
-		}
-	}
-
-	/**
-	 * Flushes the header of the file while keeping it pinned in main memory.
-	 *
-	 * @param disk
-	 * @throws IOException
-	 */
-	public void flushFileHeader(DiskFile disk) throws IOException {
-		// if it does not exist?
-		synchronized (POOL_LOCK) {
-			disk.writePage(0, pool.get(0).getBufferFromFrame());
-			// pool.get(0).setDirty(false);
 		}
 	}
 

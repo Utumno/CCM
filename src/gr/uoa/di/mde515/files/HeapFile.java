@@ -170,6 +170,18 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		writeIntoFrame(p, (Integer) record.getKey(),
 			(Integer) record.getValue(), current_number_of_slots);
 		checkReachLimitOfPage(p, current_number_of_slots);
+
+	}
+
+	@Override
+	public void abort(List<PageId<Integer>> pageIds) {
+		System.out.println("FINALLY REACHED");
+		for (PageId<Integer> pageID : pageIds) {
+			buf.setPageEmtpy(pageID.getId());
+			buf.unpinPage(pageID.getId());
+		}
+
+
 	}
 
 	@Override

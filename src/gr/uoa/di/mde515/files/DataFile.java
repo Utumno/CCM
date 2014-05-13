@@ -24,6 +24,8 @@ public abstract class DataFile<K extends Comparable<K>, V> {
 	public abstract void flush(List<PageId<Integer>> pageIds)
 			throws IOException;
 
+	public abstract void abort(List<PageId<Integer>> pageIds);
+
 	/**
 	 * Attempts to lock the header page on behalf of transaction {@code tr},
 	 * blocks till it manages to do so.

@@ -29,6 +29,7 @@ public class Main {
 				Record<Integer, Integer> rec = new Record<>(i, i);
 				eng.insert(tr, rec);
 			}
+			// eng.abort(tr);
 			eng.commit(tr);
 			// eng.e_xaction(tr);
 			eng.print();

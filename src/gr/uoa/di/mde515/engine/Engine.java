@@ -61,6 +61,8 @@ public abstract class Engine<K extends Comparable<K>, V> {
 
 	public abstract void commit(Transaction tr) throws IOException;
 
+	public abstract void abort(Transaction tr) throws IOException;
+
 	// Record<K,V> delete(T key);
 	//
 	// Record<K,V> lookup(T key);
@@ -71,8 +73,6 @@ public abstract class Engine<K extends Comparable<K>, V> {
 	//
 	// boolean waitTransaction(long t);
 	//
-	// void abort();
-
 	// File bulk_load(File fileOfRecords);
 	//
 	// File bulk_delete(File fileOfKeys);
@@ -119,6 +119,11 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V> {
 	@Override
 	public void commit(Transaction tr) throws IOException {
 		ccm.commit(tr, dataFile, index);
+	}
+
+	@Override
+	public void abort(Transaction tr) throws IOException {
+		ccm.abort(tr, dataFile, index);
 	}
 
 	@Override

@@ -46,6 +46,11 @@ public class Transaction {
 		dataFile.flush(lockedDataPages);
 	}
 
+	public <K extends Comparable<K>, V> void
+			abort(final DataFile<K, V> dataFile) throws IOException {
+		dataFile.abort(lockedDataPages);
+	}
+
 	public void addLockedDataPage(PageId<Integer> pageId) {
 		if (!(pageId.getId() instanceof Integer)) return; // FIXME horrible hack
 		// - actually the pageId may wrap a node at this stage
@@ -73,5 +78,9 @@ public class Transaction {
 			return true;
 		}
 		return false;
+	}
+
+	public String getThreadId() {
+		return threadName;
 	}
 }

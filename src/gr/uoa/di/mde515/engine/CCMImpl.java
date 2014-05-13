@@ -174,8 +174,11 @@ enum CCMImpl implements CCM {
 	}
 
 	@Override
-	public void abort(Transaction tr) {
-		throw new UnsupportedOperationException("Not supported yet."); // TODO
+	public <K extends Comparable<K>, V> void
+ abort(Transaction tr,
+			DataFile<K, V> dataFile, Index<K, ?> index) throws IOException {
+		// perhaps it needs the index as well
+		tr.abort(dataFile);
 	}
 
 	@Override
