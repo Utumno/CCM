@@ -149,7 +149,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 			p = buf.allocFrame(pageID, file);
 			buf.pinPage(pageID);
 		} else {
-			p = buf.getAssociatedFrame(pageID);
+			p = buf.allocFrame(pageID, file);
 		}
 		int current_number_of_slots = p.readInt(OFFSET_CURRENT_NUMBER_OF_SLOTS);
 		writeIntoFrame(p, (Integer) record.getKey(),

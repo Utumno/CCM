@@ -190,14 +190,6 @@ public final class BufferManager<T> {
 		}
 	}
 
-	/** Essentially the same as {@link #allocFrame(Integer, DiskFile)} */
-	public Page<Integer> getAssociatedFrame(int pageID) {
-		synchronized (POOL_LOCK) {
-			return new Page<>(new PageId<>(pageID), getFrame(
-				pageIdToFrameNumber.get(pageID)).getBufferFromFrame());
-		}
-	}
-
 	private Frame getFrame(int i) {
 		return pool.get(i);
 	}
