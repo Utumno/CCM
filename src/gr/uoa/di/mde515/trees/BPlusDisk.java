@@ -208,7 +208,8 @@ public final class BPlusDisk<V> {
 			return new InternalNode();
 		}
 
-		Node newNodeFromDisk(int id) throws IOException, InterruptedException {
+		Node newNodeFromDiskOrBuffer(Transaction tr, DBLock lock, int pageID)
+				throws IOException, InterruptedException {
 			Page<Integer> allocFrame = buf.allocFrame(id, file);
 			boolean leaf = allocFrame.readByte(LEAF_OFFSET) == 1;
 			if (leaf) return new LeafNode(id);
@@ -475,11 +476,11 @@ public final class BPlusDisk<V> {
 			for (int i = HEADER_SIZE; i < numOfKeys; i++) {
 				int key = readInt(i);
 				int val = readInt(i + key_size);
-				values.add(newNodeFromDisk(val));
+				values.add(newNodeFromDiskOrBuffer(val));
 				System.out.print(key + ";" + val + ",");
 			}
 			System.out.print(greaterOrEqual() + "\t");
-			values.add(newNodeFromDisk(greaterOrEqual()));
+			values.add(newNodeFromDiskOrBuffer(greaterOrEqual()));
 			return values;
 		}
 	}
