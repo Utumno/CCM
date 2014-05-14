@@ -196,15 +196,19 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	// Helpers
 	// =========================================================================
 	private int getFreeListPageId() throws InterruptedException {
-		if (head.getFreeList() == UNDEFINED) {
-			createPageInMemory(head.getNumOfPages() + 1);
-			head.setFreeList(head.getNumOfPages() + 1);
-			head.setNumOfPages(head.getNumOfPages() + 1);
-			buf.setPageDirty(0);
+		// TODO maybe sync is excessive - only one writer - still memory model..
+		synchronized (head) {
+			final int freeList = head.getFreeList();
+			if (freeList == UNDEFINED) {
+				final int pageID = head.getNumOfPages() + 1;
+				createPageInMemory(pageID);
+				head.setFreeList(pageID);
+				head.setNumOfPages(pageID);
+				buf.setPageDirty(0);
+				return pageID;
+			}
+			return freeList;
 		}
-		int pageID = head.getFreeList();
-		System.out.println("PageId " + pageID);
-		return pageID;
 	}
 
 	/**
