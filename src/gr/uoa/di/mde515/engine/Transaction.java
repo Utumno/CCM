@@ -71,9 +71,8 @@ public class Transaction {
 	 */
 	public boolean lock(int pageID, DBLock lock) {
 		final PageId<Integer> pid = new PageId<>(pageID);
-		if (!this.lockedDataPages.contains(pid)) {
-			lm.requestLock(new LockManager.Request(pid, this,
-				lock));
+		if (!lockedDataPages.contains(pid)) {
+			lm.requestLock(new LockManager.Request(pid, this, lock));
 			addLockedDataPage(pid);
 			return true;
 		}

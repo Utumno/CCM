@@ -14,7 +14,7 @@ import java.util.Set;
 public final class BufferManager<T> {
 
 	private static final int NUM_BUFFERS = 35;
-	// the pool of frames
+	/** the pool of frames */
 	private final List<Frame> pool = new ArrayList<>(); // TODO unmodifiable
 	// the structure that maintains information about pageIDs and their
 	// corresponding frame numbers
@@ -123,7 +123,7 @@ public final class BufferManager<T> {
 	public Page<Integer> allocFrame(Integer pageID, DiskFile disk)
 			throws IOException, InterruptedException {
 		synchronized (POOL_LOCK) {
-			/* if the page already in the buffer return the buffer */
+			// if the page already in the buffer return the buffer
 			final Integer frameNum = pageIdToFrameNumber.get(pageID);
 			if (frameNum != null) {
 				return new Page<>(new PageId<>(pageID), getFrame(frameNum)

@@ -36,6 +36,4 @@ public abstract class DataFile<K extends Comparable<K>, V> {
 	 *            the type of lock requested
 	 */
 	public abstract void lockHeader(Transaction tr, DBLock e);
-
-	public abstract void pinPage(int pageId);
 }

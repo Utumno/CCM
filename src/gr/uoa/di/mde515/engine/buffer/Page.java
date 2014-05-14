@@ -6,8 +6,9 @@ import java.nio.ByteBuffer;
 
 public class Page<T> {
 
-	private PageId<T> pageid;
-	private ByteBuffer dat;
+	// FIXME immutable
+	private final PageId<T> pageid;
+	private final ByteBuffer dat;
 
 	public Page(PageId<T> pageid, ByteBuffer dat) {
 		this.pageid = pageid;
@@ -26,10 +27,9 @@ public class Page<T> {
 		return pageid;
 	}
 
-	public void setPageId(PageId<T> pageid) {
-		this.pageid = pageid;
-	}
-
+	// =========================================================================
+	// Read/Write
+	// =========================================================================
 	public byte readByte(int pos) {
 		return dat.get(pos);
 	}

@@ -79,7 +79,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				header_page.writeInt(OFFSET_NUM_OF_PAGES, 0);
 				RECORD_SIZE = recordSize;
 				buff.setPageDirty(0);
-				buff.flushPage(0, file);
+				buff.flushPage(0, file); // TODO - watch out: wild flush
 			}
 			MAXIMUM_NUMBER_OF_SLOTS = Math
 				.floor((PAGE_SIZE - PAGE_FILE_HEADER_LENGTH) / RECORD_SIZE);
@@ -131,23 +131,6 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	}
 
 	/**
-	 * Creates the page header.
-	 *
-	 * @param pageID
-	 * @throws InterruptedException
-	 */
-	private static void createPageInMemory(int pageID)
-			throws InterruptedException {
-		Page<?> p = buf.allocFrameForNewPage(pageID);
-		p.writeInt(OFFSET_CURRENT_PAGE, pageID);
-		p.writeInt(OFFSET_NEXT_FREE_SLOT, PAGE_FILE_HEADER_LENGTH);
-		p.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS, 0);
-		p.writeInt(OFFSET_NEXT_PAGE, UNDEFINED);
-		p.writeInt(OFFSET_PREVIOUS_PAGE, 0);
-		buf.setPageDirty(pageID);
-	}
-
-	/**
 	 * Insert a Record<K, V> to the file. It dynamically creates new pages if
 	 * the file does not have them and modify appropriately the file and header
 	 * pages if necessary. The header of the file should be locked beforehand
@@ -161,13 +144,10 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	public void insert(Transaction tr, Record<K, V> record) throws IOException,
 			InterruptedException {
 		int pageID = getFreeListPageId();
-		// PageId<Integer> p = nextAvailablePage();
-		// Request<Integer> request = new LockManager.Request<>(p, tr, Lock.E);
-		// lock manager request
 		Page<Integer> p;
 		if (tr.lock(pageID, DBLock.E)) {
 			p = buf.allocFrame(pageID, file);
-			pinPage(pageID);
+			buf.pinPage(pageID);
 		} else {
 			p = buf.getAssociatedFrame(pageID);
 		}
@@ -207,11 +187,6 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		tr.lock(0, e); // FIXME pin
 	}
 
-	@Override
-	public void pinPage(int pageId) {
-		buf.pinPage(pageId);
-	}
-
 	// =========================================================================
 	// Helpers
 	// =========================================================================
@@ -225,6 +200,23 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		int pageID = head.getFreeList();
 		System.out.println("PageId " + pageID);
 		return pageID;
+	}
+
+	/**
+	 * Allocates a frame in memory for a new page and writes its header.
+	 *
+	 * @param pageID
+	 * @throws InterruptedException
+	 */
+	private static void createPageInMemory(int pageID)
+			throws InterruptedException {
+		Page<?> p = buf.allocFrameForNewPage(pageID);
+		p.writeInt(OFFSET_CURRENT_PAGE, pageID);
+		p.writeInt(OFFSET_NEXT_FREE_SLOT, PAGE_FILE_HEADER_LENGTH);
+		p.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS, 0);
+		p.writeInt(OFFSET_NEXT_PAGE, UNDEFINED);
+		p.writeInt(OFFSET_PREVIOUS_PAGE, 0);
+		buf.setPageDirty(pageID);
 	}
 
 	private void writeIntoFrame(Page<Integer> p, int key, int value,
