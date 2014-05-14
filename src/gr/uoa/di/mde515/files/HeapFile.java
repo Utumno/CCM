@@ -156,10 +156,9 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		} else {
 			p = buf.allocFrame(pageID, file);
 		}
-		int current_number_of_slots = p.readInt(OFFSET_CURRENT_NUMBER_OF_SLOTS);
 		writeIntoFrame(p, (Integer) record.getKey(),
-			(Integer) record.getValue(), current_number_of_slots);
-		checkReachLimitOfPage(p, current_number_of_slots);
+			(Integer) record.getValue());
+		checkReachLimitOfPage(p);
 	}
 
 	@Override
@@ -228,21 +227,21 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		buf.setPageDirty(pageID);
 	}
 
-	private void writeIntoFrame(Page<Integer> p, int key, int value,
-			int current_number_of_slots) { // FIXME STRING
+	private void writeIntoFrame(Page<Integer> p, int key, int value) {
 		int freeSlot = p.readInt(OFFSET_NEXT_FREE_SLOT);
 		System.out.println("The freeSlot is " + freeSlot);
 		p.writeInt(freeSlot, key);
 		p.writeInt(freeSlot + ENTRY_SIZE, value);
 		p.writeInt(OFFSET_NEXT_FREE_SLOT, freeSlot + head.RECORD_SIZE);
+		int current_number_of_slots = p.readInt(OFFSET_CURRENT_NUMBER_OF_SLOTS);
 		p.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS, current_number_of_slots + 1);
 		buf.setPageDirty(p.getPageId().getId());
 	}
 
-	private void checkReachLimitOfPage(Page<Integer> p,
-			int current_number_of_slots) throws IOException,
+	private void checkReachLimitOfPage(Page<Integer> p) throws IOException,
 			InterruptedException {
-		if (current_number_of_slots + 1 == head.MAXIMUM_NUMBER_OF_SLOTS) {
+		int current_number_of_slots = p.readInt(OFFSET_CURRENT_NUMBER_OF_SLOTS);
+		if (current_number_of_slots == head.MAXIMUM_NUMBER_OF_SLOTS) {
 			int next_page = p.readInt(OFFSET_NEXT_PAGE);
 			head.setFreeList(next_page);
 			if (next_page != UNDEFINED) {
