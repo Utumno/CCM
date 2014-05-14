@@ -14,6 +14,10 @@ public class Page<T> {
 		this.dat = dat;
 	}
 
+	public Page(Page<T> allocFrame) {
+		this(allocFrame.pageid, allocFrame.dat);
+	}
+
 	public ByteBuffer getData() {
 		return dat;
 	}
