@@ -137,8 +137,10 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	/**
 	 * Insert a Record<K, V> to the file. It dynamically creates new pages if
 	 * the file does not have them and modify appropriately the file and header
-	 * pages if necessary. The header of the file should be locked beforehand
-	 * for writing. Blocks if the buffer manager has no available frames.
+	 * pages if necessary. New pages are created on insert which means that head
+	 * is locked for writing therefore there is no race in locking the newly
+	 * created page. The header of the file should be locked beforehand for
+	 * writing. Blocks if the buffer manager has no available frames.
 	 *
 	 * @param record
 	 * @throws IOException

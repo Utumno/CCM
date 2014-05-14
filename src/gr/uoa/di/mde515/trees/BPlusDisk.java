@@ -1,11 +1,13 @@
 package gr.uoa.di.mde515.trees;
 
 import gr.uoa.di.mde515.engine.Engine;
+import gr.uoa.di.mde515.engine.Transaction;
 import gr.uoa.di.mde515.engine.buffer.BufferManager;
 import gr.uoa.di.mde515.engine.buffer.Page;
 import gr.uoa.di.mde515.files.IndexDiskFile;
 import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
+import gr.uoa.di.mde515.locks.DBLock;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -17,7 +19,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -101,16 +102,16 @@ public final class BPlusDisk<V> {
 			nodeId.set(Root.nodesFromFile());
 		} else { // FILE EMPTY - CREATE THE ROOT
 			System.out.println(file + ": Creating...");
-			root = new LeafNode();
+			root = new LeafNode(null); // null transaction !
 			buf.setPageDirty(-1);
 			buf.flushPage(-1, file); // TODO wild flush
 		}
 	}
 
-	public <R extends Record<Integer, Integer>> void insert(R rec)
-			throws IOException, InterruptedException {
-		final LeafNode leafNode = root.findLeaf(rec.getKey());
-		_insertInLeaf(rec, leafNode);
+	public <R extends Record<Integer, Integer>> void insert(Transaction tr,
+			R rec) throws IOException, InterruptedException {
+		final LeafNode leafNode = root.findLeaf(tr, DBLock.E, rec.getKey());
+		_insertInLeaf(tr, rec, leafNode);
 	}
 
 	/** Return a page id for the root node */
@@ -125,44 +126,47 @@ public final class BPlusDisk<V> {
 	 * populating the sm output parameter with the map of keys and page ids in
 	 * the leaf node.
 	 *
+	 * @param tr
+	 * @param lock
+	 *
 	 * @throws InterruptedException
 	 * @throws IOException
 	 */
-	public PageId<Node> getNextPageId(PageId<Node> grantedPage, Integer key,
-			SortedMap<Integer, Integer> sm) throws IOException,
+	// public PageId<Node> getNextPageId(PageId<Node> grantedPage, Integer key,
+	// SortedMap<Integer, Integer> sm) throws IOException,
+	// InterruptedException {
+	// Node node = grantedPage.getId();
+	// if (node.isLeaf()) {
+	// sm.putAll(((LeafNode) node).records());
+	// return null; // locked the path to the key
+	// }
+	// InternalNode in = (InternalNode) node;
+	// final Node nextNode = in._lookup(key);
+	// return new PageId<>(nextNode);
+	// }
+	//
+	// public <R extends Record<Integer, Integer>> PageId<Node> getLeaf(
+	// PageId<Node> grantedPage, R rec) throws IOException,
+	// InterruptedException {
+	// Node node = grantedPage.getId();
+	// final Integer key = rec.getKey();
+	// if (node.isLeaf()) {
+	// _insertInLeaf(rec, (LeafNode) node); // all parents are
+	// // locked
+	// return null; // granted
+	// }
+	// InternalNode in = (InternalNode) node;
+	// final Node nextNode = in._lookup(key);
+	// return new PageId<>(nextNode);
+	// }
+	public void print(Transaction tr, DBLock lock) throws IOException,
 			InterruptedException {
-		Node node = grantedPage.getId();
-		if (node.isLeaf()) {
-			sm.putAll(((LeafNode) node).records());
-			return null; // locked the path to the key
-		}
-		InternalNode in = (InternalNode) node;
-		final Node nextNode = in._lookup(key);
-		return new PageId<>(nextNode);
-	}
-
-	public <R extends Record<Integer, Integer>> PageId<Node> getLeaf(
-			PageId<Node> grantedPage, R rec) throws IOException,
-			InterruptedException {
-		Node node = grantedPage.getId();
-		final Integer key = rec.getKey();
-		if (node.isLeaf()) {
-			_insertInLeaf(rec, (LeafNode) node); // all parents are
-			// locked
-			return null; // granted
-		}
-		InternalNode in = (InternalNode) node;
-		final Node nextNode = in._lookup(key);
-		return new PageId<>(nextNode);
-	}
-
-	public void print() throws IOException, InterruptedException {
 		List<Node> items = new ArrayList<>();
 		items.add(root);
 		while (!items.isEmpty()) {
 			List<Node> children = new ArrayList<>();
 			for (Node node : items) {
-				final Collection<Node> print = node.print();
+				final Collection<Node> print = node.print(tr, lock);
 				if (print != null) children.addAll(print);
 			}
 			System.out.println();
@@ -186,44 +190,55 @@ public final class BPlusDisk<V> {
 			System.out.println("MAX KEYS " + max_keys);
 		}
 
+		/**
+		 * Called only from
+		 * {@link #newNodeFromDiskOrBuffer(Transaction, DBLock, int)} where
+		 * there is a transaction (and locking) OR in the tree constructor where
+		 * no locking is needed. So we do not request locks here.
+		 */
 		private Node(int id) throws IOException, InterruptedException {
 			super(buf.allocFrame(id, file));
 			isLeaf = readByte(LEAF_OFFSET) == 1;
 			numOfKeys = readShort(NUM_KEYS_OFFSET);
 		}
 
-		/**
-		 * Allocates a Node IN MEMORY
-		 */
-		private Node(boolean leaf) throws InterruptedException {
+		/** Allocates a Node IN MEMORY */
+		private Node(Transaction tr, boolean leaf) throws InterruptedException {
 			super(buf.allocFrameForNewPage(nodeId.decrementAndGet()));
+			if (tr != null) { // if null we create the root for the first time
+				final Integer id = getPageId().getId();
+				if (tr.lock(id, DBLock.E)) { // should always return true //
+					// lock for WRITING !
+					buf.pinPage(id);
+				}
+			}
 			isLeaf = leaf;
 			writeByte(LEAF_OFFSET, (byte) ((leaf) ? 1 : 0));
 			numOfKeys = 0;
 			writeShort(NUM_KEYS_OFFSET, (short) 0);
 		}
 
-		Node newMemoryNode(boolean leaf) throws InterruptedException {
-			if (leaf) return new LeafNode();
-			return new InternalNode();
-		}
-
 		Node newNodeFromDiskOrBuffer(Transaction tr, DBLock lock, int pageID)
 				throws IOException, InterruptedException {
-			Page<Integer> allocFrame = buf.allocFrame(id, file);
-			boolean leaf = allocFrame.readByte(LEAF_OFFSET) == 1;
-			if (leaf) return new LeafNode(id);
-			return new InternalNode(id);
+			Page<Integer> p;
+			if (tr.lock(pageID, lock)) {
+				p = buf.allocFrame(pageID, file);
+				// FIXME - race in pin ??? - add boolean pin param in allocFrame
+				buf.pinPage(pageID);
+			} else {
+				p = buf.allocFrame(pageID, file);
+			}
+			boolean leaf = p.readByte(LEAF_OFFSET) == 1;
+			if (leaf) return new LeafNode(pageID);
+			return new InternalNode(pageID);
 		}
 
 		/**
-		 * Return the Leaf that should contain key k starting from this Node
-		 *
-		 * @throws InterruptedException
-		 * @throws IOException
+		 * Return the Leaf that should contain key k starting from this Node.
+		 * Locks the path up to the leaf.
 		 */
-		abstract LeafNode findLeaf(Integer k) throws IOException,
-				InterruptedException;
+		abstract LeafNode findLeaf(Transaction tr, DBLock e, Integer k)
+				throws IOException, InterruptedException;
 
 		/**
 		 * Do not call *on* tree root. For (non tree root) Node n,
@@ -235,8 +250,9 @@ public final class BPlusDisk<V> {
 		 * @throws ClassCastException
 		 *             if no parent found (tries to find child nodes of leafs)
 		 */
-		abstract InternalNode parent(InternalNode candidateParent)
-				throws IOException, InterruptedException;
+		abstract InternalNode parent(Transaction tr, DBLock lock,
+				InternalNode candidateParent) throws IOException,
+				InterruptedException;
 
 		boolean overflow() {
 			return numOfKeys == max_keys; // FIXME ............ Test
@@ -250,8 +266,8 @@ public final class BPlusDisk<V> {
 			return numOfKeys;
 		}
 
-		abstract Collection<Node> print() throws IOException,
-				InterruptedException;
+		abstract Collection<Node> print(Transaction tr, DBLock lock)
+				throws IOException, InterruptedException;
 
 		@Override
 		public String toString() {
@@ -275,6 +291,7 @@ public final class BPlusDisk<V> {
 		void _put(Record<Integer, Integer> rec) {
 			_put(rec.getKey(), rec.getValue());
 		}
+
 		// byte[] readBytes(int position, short howMany) {
 		// byte[] result = new byte[howMany];
 		// data.get(result, position, howMany);
@@ -362,40 +379,40 @@ public final class BPlusDisk<V> {
 	@SuppressWarnings("synthetic-access")
 	class InternalNode extends Node {
 
-		public InternalNode() throws InterruptedException {
-			super(false);
+		/**
+		 * Used in {@link #split(Record)} and when the tree grows (the root
+		 * splits, {@link BPlusDisk#insertInternal(Node, Record)}).
+		 */
+		public InternalNode(Transaction tr) throws InterruptedException {
+			super(tr, false);
 		}
 
 		public InternalNode(int id) throws IOException, InterruptedException {
 			super(id);
 		}
 
-		Node _lookup(final Integer k) throws IOException, InterruptedException {
+		Node _lookup(Transaction tr, DBLock lock, final Integer k)
+				throws IOException, InterruptedException {
 			if (k.compareTo(_lastKey()) >= 0)
-				return newNodeFromDisk(greaterOrEqual());
+				return newNodeFromDiskOrBuffer(tr, lock, greaterOrEqual());
 			// tailMap contains at least children.lastKey()
 			for (short i = HEADER_SIZE; i < numOfKeys; i += record_size) {
 				int readInt = readInt(i);
-				if (k.compareTo(readInt) >= 0) {
-					if (k.compareTo(readInt) > 0)
-						return newNodeFromDisk(readInt(i + key_size));
-					return newNodeFromDisk(readInt(i + 2 * key_size
-						+ value_size));
-				}
+				if (k.compareTo(readInt) < 0)
+					return newNodeFromDiskOrBuffer(tr, lock, readInt(i
+						+ key_size));
 			}
-			throw new RuntimeException("key " + k + " not found");
+			throw new RuntimeException("key " + k + " not found"); // TODO keep?
 		}
 
 		/**
 		 * Wrappers around _lookup(K k) - look a node up means look its lastKey
 		 * up
-		 *
-		 * @throws InterruptedException
-		 * @throws IOException
 		 */
-		private Node _lookup(InternalNode internalNode) throws IOException,
+		private Node _lookup(Transaction tr, DBLock lock,
+				InternalNode internalNode) throws IOException,
 				InterruptedException {
-			return _lookup(internalNode._lastKey());
+			return _lookup(tr, lock, internalNode._lastKey());
 		}
 
 		private Integer _keyWithValue(Node anchor) {
@@ -408,29 +425,31 @@ public final class BPlusDisk<V> {
 			}
 			// if (greaterOrEqual.equals(anchor))
 			// throw new RuntimeException("Node " + anchor
-			// + " is not child of " + this);
+			// + " is not child of " + this); // TODO get back
 			return null; // No key for this node
 		}
 
 		@Override
-		InternalNode parent(InternalNode root1) throws IOException,
-				InterruptedException {
+		InternalNode parent(Transaction tr, DBLock lock, InternalNode root1)
+				throws IOException, InterruptedException {
 			if (greaterOrEqual() == root1.greaterOrEqual()) return root1;
 			final int id = getPageId().getId();
 			for (short i = HEADER_SIZE; i < numOfKeys; i += record_size) {
 				if (id == root1.readInt(i)) return root1;
 			}
-			return parent((InternalNode) root1._lookup(this)); // the CCE
+			return parent(tr, lock,
+				(InternalNode) root1._lookup(tr, lock, this)); // the CCE
 		}
 
 		@Override
-		LeafNode findLeaf(final Integer k) throws IOException,
-				InterruptedException {
-			return _lookup(k).findLeaf(k);
+		LeafNode findLeaf(Transaction tr, DBLock lock, Integer k)
+				throws IOException, InterruptedException {
+			return _lookup(tr, lock, k).findLeaf(tr, lock, k);
 		}
 
-		Record<Integer, Node> split(Record<Integer, Node> insert)
-				throws InterruptedException {
+		Record<Integer, Node>
+				split(Transaction tr, Record<Integer, Node> insert)
+						throws InterruptedException {
 			final int keyToInsert = insert.getKey();
 			final BPlusDisk<V>.Node justSplitvalueToInsert = insert.getValue();
 			int medianKey = _medianKey();
@@ -442,8 +461,7 @@ public final class BPlusDisk<V> {
 			} else {
 				median = _median();
 			}
-			final InternalNode sibling = new InternalNode(); // FIXME LOCK
-																// !!!?????
+			final InternalNode sibling = new InternalNode(tr);
 			sibling.setGreaterOrEqual(greaterOrEqual());
 			setGreaterOrEqual(median.getValue());
 			_copyTail(sibling, (numOfKeys + 1) / 2);
@@ -451,7 +469,7 @@ public final class BPlusDisk<V> {
 			return new Record<Integer, Node>(median.getKey(), sibling);
 		}
 
-		Record<Integer, Node> insertInternal(Node justSplit,
+		Record<Integer, Node> insertInternal(Transaction tr, Node justSplit,
 				Record<Integer, Node> insert) throws InterruptedException {
 			final Node newNode = insert.getValue();
 			Integer _keyOfAnchor = _keyWithValue(justSplit);
@@ -463,37 +481,40 @@ public final class BPlusDisk<V> {
 				setGreaterOrEqual(newNode.getPageId().getId());
 			}
 			if (overflow()) {// split
-				return split(new Record<>(insert.getKey(), justSplit));
+				return split(tr, new Record<>(insert.getKey(), justSplit));
 			}
 			_put(insert.getKey(), justSplit.getPageId().getId());
 			return null;
 		}
 
 		@Override
-		Collection<Node> print() throws IOException, InterruptedException {
+		Collection<Node> print(Transaction tr, DBLock lock) throws IOException,
+				InterruptedException {
 			System.out.print(getPageId().getId() + "::");
 			Collection<BPlusDisk<V>.Node> values = new ArrayList<>();
 			for (int i = HEADER_SIZE; i < numOfKeys; i++) {
 				int key = readInt(i);
 				int val = readInt(i + key_size);
-				values.add(newNodeFromDiskOrBuffer(val));
+				values.add(newNodeFromDiskOrBuffer(tr, lock, val));
 				System.out.print(key + ";" + val + ",");
 			}
 			System.out.print(greaterOrEqual() + "\t");
-			values.add(newNodeFromDiskOrBuffer(greaterOrEqual()));
+			values.add(newNodeFromDiskOrBuffer(tr, lock, greaterOrEqual()));
 			return values;
 		}
 	}
 
+	@SuppressWarnings("synthetic-access")
 	class LeafNode extends Node {
 
-		Record<Integer, Node> insertInLeaf(Record<Integer, Integer> rec)
-				throws InterruptedException {
-			if (overflow()) return split(rec);
+		Record<Integer, Node> insertInLeaf(Transaction tr,
+				Record<Integer, Integer> rec) throws InterruptedException {
+			if (overflow()) return split(tr, rec);
 			_put(rec.getKey(), rec.getValue());
 			return null;
 		}
 
+		@Deprecated
 		public Map<Integer, Integer> records() {
 			Map<Integer, Integer> m = new TreeMap<>();
 			for (short i = HEADER_SIZE; i < numOfKeys; i += record_size) {
@@ -502,8 +523,13 @@ public final class BPlusDisk<V> {
 			return m;
 		}
 
-		public LeafNode() throws InterruptedException {
-			super(true);
+		/**
+		 * Used in {@link #split(Record)} and in creating the tree for the first
+		 * time (see {@link BPlusDisk#BPlusDisk(IndexDiskFile, short, short)}).
+		 * In the latter case the transaction must be null.
+		 */
+		public LeafNode(Transaction tr) throws InterruptedException {
+			super(tr, true);
 		}
 
 		public LeafNode(int id) throws InterruptedException, IOException {
@@ -511,27 +537,29 @@ public final class BPlusDisk<V> {
 		}
 
 		@Override
-		InternalNode parent(InternalNode root1) throws IOException,
-				InterruptedException {
+		InternalNode parent(Transaction tr, DBLock lock, InternalNode root1)
+				throws IOException, InterruptedException {
 			if (root1._keyWithValue(this) != null
 				|| greaterOrEqual() == root1.greaterOrEqual()) return root1;
-			return parent((InternalNode) root1
-				._lookup(this.getPageId().getId())); // the CCE
+			return parent(tr, lock, (InternalNode) root1._lookup(tr, lock, this
+				.getPageId().getId())); // the CCE
 		}
 
 		@Override
-		LeafNode findLeaf(Integer k) {
+		LeafNode findLeaf(Transaction tr, DBLock lock, Integer k) {
 			return this;
 		}
 
-		Record<Integer, Node> split(Record<Integer, Integer> rec)
-				throws InterruptedException {
-			LeafNode sibling = new LeafNode(); // FIXME LOCK !!!?????
+		Record<Integer, Node>
+				split(Transaction tr, Record<Integer, Integer> rec)
+						throws InterruptedException {
+			LeafNode sibling = new LeafNode(tr);
 			sibling.setGreaterOrEqual(greaterOrEqual());
 			setGreaterOrEqual(sibling.getPageId().getId());
+			// FIXME ALGORITHM
 			final int _medianKeyPreSplit = _medianKey();
 			// move median and up to sibling
-			_copyTail(sibling, (numOfKeys + 1) / 2 - 1);
+			_copyTail(sibling, (numOfKeys + 1) / 2 - 1); // ...
 			// keep the rest
 			numOfKeys /= 2;
 			// insert
@@ -547,7 +575,7 @@ public final class BPlusDisk<V> {
 		}
 
 		@Override
-		Collection<Node> print() {
+		Collection<Node> print(Transaction tr, DBLock lock) {
 			System.out.print(getPageId().getId() + "::");
 			for (int i = HEADER_SIZE; i < numOfKeys; i++) {
 				int key = readInt(i);
@@ -562,32 +590,41 @@ public final class BPlusDisk<V> {
 	// =========================================================================
 	// Helpers
 	// =========================================================================
-	private void insertInternal(Node justSplit, Record<Integer, Node> insert)
-			throws InterruptedException, IOException {
+	private void insertInternal(Transaction tr, Node justSplit,
+			Record<Integer, Node> insert) throws InterruptedException,
+			IOException {
 		if (root.getPageId().equals(justSplit.getPageId())) { // root must split
-																// (leaf or not)
-			InternalNode newRoot = new InternalNode();
+			// (leaf or not) // TODO use PageId<T> equals
+			InternalNode newRoot = new InternalNode(tr);
+			// FIXME ALGORITHM
 			newRoot._put(insert.getKey(), justSplit.getPageId().getId());
 			newRoot.setGreaterOrEqual(insert.getValue().getPageId().getId());
-			root = newRoot; // FIXME write to file
+			root = newRoot; // FIXME write to file "root.txt"
 			return;
 		}
 		// justSplit is not tree root so has a parent
-		InternalNode parent = justSplit.parent((InternalNode) root);
+		InternalNode parent = justSplit.parent(tr, DBLock.E,
+			(InternalNode) root);
 		// moreover root is not leaf so I cast it to InternalNode safely
-		Record<Integer, Node> newInternalNode = parent.insertInternal(
+		Record<Integer, Node> newInternalNode = parent.insertInternal(tr,
 			justSplit, insert);
-		if (newInternalNode != null) insertInternal(parent, newInternalNode);
+		if (newInternalNode != null)
+			insertInternal(tr, parent, newInternalNode);
 	}
 
-	private <R extends Record<Integer, Integer>> void _insertInLeaf(R rec,
-			final LeafNode leafNode) throws IllegalArgumentException,
-			InterruptedException, IOException {
+	/**
+	 * Inserts the record in the leaf - if it exists throws
+	 * IllegalArgumentException. Must be called AFTER I lock the path to the
+	 * leaf for writing.
+	 */
+	private <R extends Record<Integer, Integer>> void _insertInLeaf(
+			Transaction tr, R rec, final LeafNode leafNode)
+			throws IllegalArgumentException, InterruptedException, IOException {
 		if (leafNode.records().containsKey(rec.getKey())) // FIXME records()!!!!
 			throw new IllegalArgumentException("Key exists");
-		Record<Integer, Node> insert = leafNode.insertInLeaf(rec);
+		Record<Integer, Node> insert = leafNode.insertInLeaf(tr, rec);
 		if (insert != null) { // got a key back, so leafNode split
-			insertInternal(leafNode, insert); // all parents are locked
+			insertInternal(tr, leafNode, insert); // all parents are locked
 		}
 	}
 }
