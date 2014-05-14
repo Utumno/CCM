@@ -46,7 +46,7 @@ public final class BPlusDisk<V> {
 	private final IndexDiskFile file;
 	// fields
 	private Node root;
-	private AtomicInteger nodeId = new AtomicInteger(-1);
+	private AtomicInteger nodeId = new AtomicInteger(0);
 	// sizes of the key and value to be used in the tree
 	private final short key_size;
 	private final short value_size;
@@ -101,7 +101,7 @@ public final class BPlusDisk<V> {
 			nodeId.set(Root.nodesFromFile());
 		} else { // FILE EMPTY - CREATE THE ROOT
 			System.out.println(file + ": Creating...");
-			root = new LeafNode(-1);
+			root = new LeafNode();
 			buf.setPageDirty(-1);
 			buf.flushPage(-1, file); // TODO wild flush
 		}
@@ -186,8 +186,8 @@ public final class BPlusDisk<V> {
 			System.out.println("MAX KEYS " + max_keys);
 		}
 
-		private Node(int keyFromBytes) throws IOException, InterruptedException {
-			super(buf.allocFrame(keyFromBytes, file));
+		private Node(int id) throws IOException, InterruptedException {
+			super(buf.allocFrame(id, file));
 			isLeaf = readByte(LEAF_OFFSET) == 1;
 			numOfKeys = readShort(NUM_KEYS_OFFSET);
 		}

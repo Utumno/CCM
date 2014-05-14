@@ -33,6 +33,6 @@ public final class IndexDiskFile extends DiskFile {
 	 */
 	@Override
 	public void writePage(int pageID, ByteBuffer buffer) throws IOException {
-		super.readPage(-pageID - 1, buffer);
+		super.writePage(-pageID - 1, buffer);
 	}
 }

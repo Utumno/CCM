@@ -1,5 +1,6 @@
 package gr.uoa.di.mde515.files;
 
+import gr.uoa.di.mde515.engine.Engine;
 import gr.uoa.di.mde515.engine.Transaction;
 import gr.uoa.di.mde515.engine.buffer.BufferManager;
 import gr.uoa.di.mde515.engine.buffer.Page;
@@ -19,7 +20,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	private final DiskFile file;
 	private final Header head;
 	// useful constants
-	private static final int PAGE_SIZE = 48; // TODO move to globals
+	private static final int PAGE_SIZE = Engine.PAGE_SIZE;
 	// it the size of entry in the fileheader
 	private static final int ENTRY_SIZE = 4;
 	private static final int PAGE_FILE_HEADER_LENGTH = 20;
@@ -130,6 +131,9 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		}
 	}
 
+	// =========================================================================
+	// API
+	// =========================================================================
 	/**
 	 * Insert a Record<K, V> to the file. It dynamically creates new pages if
 	 * the file does not have them and modify appropriately the file and header
@@ -147,6 +151,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		Page<Integer> p;
 		if (tr.lock(pageID, DBLock.E)) {
 			p = buf.allocFrame(pageID, file);
+			// FIXME - race in pin ??? - add boolean pin param in allocFrame
 			buf.pinPage(pageID);
 		} else {
 			p = buf.allocFrame(pageID, file);
