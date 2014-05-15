@@ -126,6 +126,11 @@ public final class BPlusDisk<V> {
 		return root.getPageId();
 	}
 
+	public void flushRootAndNodes() throws IOException {
+		Root.rootToFile(root.getPageId().getId());
+		Root.nodesToFile(nodeId.get());
+	}
+
 	/**
 	 * Returns the next page id of the index we need to lock in our search for
 	 * the given key. When the grantedPage is a leaf node this function returns

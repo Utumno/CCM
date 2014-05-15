@@ -47,7 +47,7 @@ public abstract class Engine<K extends Comparable<K>, V> {
 		return instance;
 	}
 
-	public abstract void shutEngine() throws InterruptedException, IOException;
+	public abstract void shutdown() throws InterruptedException, IOException;
 
 	// =========================================================================
 	// Abstract methods
@@ -128,7 +128,7 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V> {
 	}
 
 	@Override
-	public void shutEngine() throws InterruptedException, IOException {
+	public void shutdown() throws InterruptedException, IOException {
 		ccm.shutdown();
 		dataFile.close();
 	}
