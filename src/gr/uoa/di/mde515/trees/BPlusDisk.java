@@ -40,8 +40,6 @@ public final class BPlusDisk<V> {
 
 	// FIXME flush on engine shutdown
 	//
-	// function object - to be used in generifying
-	// private final T diskRec;
 	private static final BufferManager<Integer> buf = BufferManager
 		.getInstance();
 	private final IndexDiskFile file;
@@ -50,6 +48,7 @@ public final class BPlusDisk<V> {
 	private AtomicInteger nodeId = new AtomicInteger(0);
 	// sizes of the key and value to be used in the tree
 	private final short key_size;
+	@SuppressWarnings("unused")
 	private final short value_size;
 	private final short record_size;
 
@@ -185,6 +184,7 @@ public final class BPlusDisk<V> {
 	// =========================================================================
 	// Nodes
 	// =========================================================================
+	@SuppressWarnings("synthetic-access")
 	public abstract class Node extends Page<Integer> {
 
 		short numOfKeys; // NEVER ZERO
@@ -209,10 +209,10 @@ public final class BPlusDisk<V> {
 		/** Allocates a Node IN MEMORY */
 		private Node(Transaction tr, boolean leaf) throws InterruptedException {
 			super(buf.allocFrameForNewPage(nodeId.decrementAndGet()));
-			if (tr != null) { // if null we create the root for the first time
+			if (tr != null) { // if null we are creating the first root !
 				final Integer id = getPageId().getId();
 				if (tr.lock(id, DBLock.E)) { // should always return true //
-					// lock for WRITING !
+					// notice the lock is for WRITING !
 					buf.pinPage(id);
 				}
 			}
@@ -270,6 +270,10 @@ public final class BPlusDisk<V> {
 			return numOfKeys;
 		}
 
+		boolean isLeaf() { // TODO UNUSED
+			return isLeaf;
+		}
+
 		abstract Collection<Node> print(Transaction tr, DBLock lock)
 				throws IOException, InterruptedException;
 
@@ -278,12 +282,6 @@ public final class BPlusDisk<V> {
 			return "@" + getPageId().getId();
 		}
 
-		// private Node greaterOrEqual() {
-		// int offset = Engine.PAGE_SIZE - key_size;
-		// final Integer keyFromBytes = diskRec.getKeyFromBytes(readBytes(
-		// offset, key_size));
-		// return new Node(keyFromBytes);
-		// }
 		int greaterOrEqual() {
 			return readInt(Engine.PAGE_SIZE - key_size);
 		}
@@ -292,32 +290,11 @@ public final class BPlusDisk<V> {
 			writeInt(Engine.PAGE_SIZE - key_size, goe);
 		}
 
+		// =====================================================================
+		// Methods that go to a Page subclass for Sorted Data files TODO
+		// =====================================================================
 		void _put(Record<Integer, Integer> rec) {
 			_put(rec.getKey(), rec.getValue());
-		}
-
-		// byte[] readBytes(int position, short howMany) {
-		// byte[] result = new byte[howMany];
-		// data.get(result, position, howMany);
-		// return result;
-		// }
-		boolean isLeaf() {
-			return isLeaf;
-		}
-
-		int _lastKey() {
-			int offset = HEADER_SIZE + (numOfKeys - 1) * record_size;
-			return readInt(offset);
-		}
-
-		Record<Integer, Integer> _lastPair() {
-			int offset = HEADER_SIZE + (numOfKeys - 1) * record_size;
-			return new Record<>(readInt(offset), readInt(offset + key_size));
-		}
-
-		Record<Integer, Integer> _firstPair() {
-			int offset = HEADER_SIZE;
-			return new Record<>(readInt(offset), readInt(offset + key_size));
 		}
 
 		/**
@@ -345,26 +322,23 @@ public final class BPlusDisk<V> {
 			writeShort(NUM_KEYS_OFFSET, numOfKeys);
 		}
 
-		/** Tries to insert key and value and stops at the middle of the node */
-		Record<Integer, Integer> _newMedian(Record<Integer, Node> rec) {
-			int i, j;
-			int key = rec.getKey();
-			int value = rec.getValue().getPageId().getId();
-			for (i = HEADER_SIZE, j = 0; j < (numOfKeys + 1) / 2; i += record_size, ++j) {
-				int tmpKey = readInt(i);
-				int tmpValue = readInt(i + key_size);
-				if (key < tmpKey) {
-					writeInt(i, key);
-					writeInt(i + key_size, value);
-					key = tmpKey;
-					value = tmpValue;
-				}
-			}
-			return new Record<>(key, value); // return the median node
+		int _lastKey() {
+			int offset = HEADER_SIZE + (numOfKeys - 1) * record_size;
+			return readInt(offset);
 		}
 
-		void _copyTail(Node sibling, int from) {
-			for (int j = from, i = HEADER_SIZE + j * record_size; j < numOfKeys; i += record_size, ++j) {
+		Record<Integer, Integer> _lastPair() {
+			int offset = HEADER_SIZE + (numOfKeys - 1) * record_size;
+			return new Record<>(readInt(offset), readInt(offset + key_size));
+		}
+
+		Record<Integer, Integer> _firstPair() {
+			int offset = HEADER_SIZE;
+			return new Record<>(readInt(offset), readInt(offset + key_size));
+		}
+
+		void _copyTail(Node sibling, final int fromIndex) {
+			for (int j = fromIndex, i = HEADER_SIZE + j * record_size; j < numOfKeys; i += record_size, ++j) {
 				sibling._put(readInt(i), readInt(i + key_size));
 			}
 		}
@@ -382,17 +356,17 @@ public final class BPlusDisk<V> {
 	}
 
 	@SuppressWarnings("synthetic-access")
-	class InternalNode extends Node {
+	final class InternalNode extends Node {
 
 		/**
 		 * Used in {@link #split(Record)} and when the tree grows (the root
 		 * splits, {@link BPlusDisk#insertInternal(Node, Record)}).
 		 */
-		public InternalNode(Transaction tr) throws InterruptedException {
+		InternalNode(Transaction tr) throws InterruptedException {
 			super(tr, false);
 		}
 
-		public InternalNode(int id) throws IOException, InterruptedException {
+		InternalNode(int id) throws IOException, InterruptedException {
 			super(id);
 		}
 
@@ -512,7 +486,7 @@ public final class BPlusDisk<V> {
 	}
 
 	@SuppressWarnings("synthetic-access")
-	class LeafNode extends Node {
+	final class LeafNode extends Node {
 
 		Record<Integer, Node> insertInLeaf(Transaction tr,
 				Record<Integer, Integer> rec) throws InterruptedException {
@@ -535,11 +509,11 @@ public final class BPlusDisk<V> {
 		 * time (see {@link BPlusDisk#BPlusDisk(IndexDiskFile, short, short)}).
 		 * In the latter case the transaction must be null.
 		 */
-		public LeafNode(Transaction tr) throws InterruptedException {
+		LeafNode(Transaction tr) throws InterruptedException {
 			super(tr, true);
 		}
 
-		public LeafNode(int id) throws InterruptedException, IOException {
+		LeafNode(int id) throws InterruptedException, IOException {
 			super(id);
 		}
 
