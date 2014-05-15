@@ -110,6 +110,14 @@ public final class BPlusDisk<V> {
 
 	public <R extends Record<Integer, Integer>> void insert(Transaction tr,
 			R rec) throws IOException, InterruptedException {
+		final Integer id = root.getPageId().getId();
+		if (tr.lock(id, DBLock.E)) {
+			buf.allocFrame(id, file);
+			// FIXME - race in pin ??? - add boolean pin param in allocFrame
+			buf.pinPage(id);
+		} else {
+			buf.allocFrame(id, file);
+		}
 		final LeafNode leafNode = root.findLeaf(tr, DBLock.E, rec.getKey());
 		_insertInLeaf(tr, rec, leafNode);
 	}
@@ -177,18 +185,14 @@ public final class BPlusDisk<V> {
 	// =========================================================================
 	// Nodes
 	// =========================================================================
-	@SuppressWarnings("synthetic-access")
 	public abstract class Node extends Page<Integer> {
 
 		short numOfKeys; // NEVER ZERO
 		static final short HEADER_SIZE = 3; // 2 for numOfKeys, 1 for isLeaf
 		private static final short LEAF_OFFSET = 0;
-		private static final short NUM_KEYS_OFFSET = 1;
+		protected static final short NUM_KEYS_OFFSET = 1;
 		private final boolean isLeaf;
 		private final short max_keys = (short) ((Engine.PAGE_SIZE - HEADER_SIZE - key_size) / record_size);
-		{
-			System.out.println("MAX KEYS " + max_keys);
-		}
 
 		/**
 		 * Called only from
@@ -214,7 +218,7 @@ public final class BPlusDisk<V> {
 			}
 			isLeaf = leaf;
 			writeByte(LEAF_OFFSET, (byte) ((leaf) ? 1 : 0));
-			numOfKeys = 0;
+			numOfKeys = 0; // Unneeded
 			writeShort(NUM_KEYS_OFFSET, (short) 0);
 		}
 
@@ -338,6 +342,7 @@ public final class BPlusDisk<V> {
 			writeInt(i, key);
 			writeInt(i + key_size, value);
 			++numOfKeys;
+			writeShort(NUM_KEYS_OFFSET, numOfKeys);
 		}
 
 		/** Tries to insert key and value and stops at the middle of the node */
@@ -396,7 +401,7 @@ public final class BPlusDisk<V> {
 			if (k.compareTo(_lastKey()) >= 0)
 				return newNodeFromDiskOrBuffer(tr, lock, greaterOrEqual());
 			// tailMap contains at least children.lastKey()
-			for (short i = HEADER_SIZE; i < numOfKeys; i += record_size) {
+			for (short i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
 				int readInt = readInt(i);
 				if (k.compareTo(readInt) < 0)
 					return newNodeFromDiskOrBuffer(tr, lock, readInt(i
@@ -417,10 +422,10 @@ public final class BPlusDisk<V> {
 
 		private Integer _keyWithValue(Node anchor) {
 			final int id = anchor.getPageId().getId();
-			for (short i = HEADER_SIZE; i < numOfKeys; i += record_size) {
-				int readInt = readInt(i);
+			for (short i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
+				int readInt = readInt(i + key_size);
 				if (id == readInt) {
-					return readInt(i - key_size);
+					return readInt(i);
 				}
 			}
 			// if (greaterOrEqual.equals(anchor))
@@ -432,9 +437,9 @@ public final class BPlusDisk<V> {
 		@Override
 		InternalNode parent(Transaction tr, DBLock lock, InternalNode root1)
 				throws IOException, InterruptedException {
-			if (greaterOrEqual() == root1.greaterOrEqual()) return root1;
 			final int id = getPageId().getId();
-			for (short i = HEADER_SIZE; i < numOfKeys; i += record_size) {
+			if (id == root1.greaterOrEqual()) return root1;
+			for (short i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
 				if (id == root1.readInt(i)) return root1;
 			}
 			return parent(tr, lock,
@@ -450,6 +455,7 @@ public final class BPlusDisk<V> {
 		Record<Integer, Node>
 				split(Transaction tr, Record<Integer, Node> insert)
 						throws InterruptedException {
+			System.out.println("SPLIT INTERNAL NODE");
 			final int keyToInsert = insert.getKey();
 			final BPlusDisk<V>.Node justSplitvalueToInsert = insert.getValue();
 			int medianKey = _medianKey();
@@ -466,6 +472,7 @@ public final class BPlusDisk<V> {
 			setGreaterOrEqual(median.getValue());
 			_copyTail(sibling, (numOfKeys + 1) / 2);
 			numOfKeys = (short) (numOfKeys / 2);
+			writeShort(NUM_KEYS_OFFSET, numOfKeys);
 			return new Record<Integer, Node>(median.getKey(), sibling);
 		}
 
@@ -492,7 +499,7 @@ public final class BPlusDisk<V> {
 				InterruptedException {
 			System.out.print(getPageId().getId() + "::");
 			Collection<BPlusDisk<V>.Node> values = new ArrayList<>();
-			for (int i = HEADER_SIZE; i < numOfKeys; i++) {
+			for (short i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
 				int key = readInt(i);
 				int val = readInt(i + key_size);
 				values.add(newNodeFromDiskOrBuffer(tr, lock, val));
@@ -517,7 +524,7 @@ public final class BPlusDisk<V> {
 		@Deprecated
 		public Map<Integer, Integer> records() {
 			Map<Integer, Integer> m = new TreeMap<>();
-			for (short i = HEADER_SIZE; i < numOfKeys; i += record_size) {
+			for (short i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
 				m.put(readInt(i), readInt(i + key_size));
 			}
 			return m;
@@ -539,10 +546,11 @@ public final class BPlusDisk<V> {
 		@Override
 		InternalNode parent(Transaction tr, DBLock lock, InternalNode root1)
 				throws IOException, InterruptedException {
+			final Integer id = getPageId().getId();
 			if (root1._keyWithValue(this) != null
-				|| greaterOrEqual() == root1.greaterOrEqual()) return root1;
-			return parent(tr, lock, (InternalNode) root1._lookup(tr, lock, this
-				.getPageId().getId())); // the CCE
+				|| id == root1.greaterOrEqual()) return root1;
+			return parent(tr, lock, (InternalNode) root1._lookup(tr, lock, id)); // the
+																					// CCE
 		}
 
 		@Override
@@ -553,6 +561,7 @@ public final class BPlusDisk<V> {
 		Record<Integer, Node>
 				split(Transaction tr, Record<Integer, Integer> rec)
 						throws InterruptedException {
+			System.out.println("SPLIT LEAFNODE");
 			LeafNode sibling = new LeafNode(tr);
 			sibling.setGreaterOrEqual(greaterOrEqual());
 			setGreaterOrEqual(sibling.getPageId().getId());
@@ -570,14 +579,15 @@ public final class BPlusDisk<V> {
 			} else {
 				sibling._put(rec.getKey(), rec.getValue());
 			}
+			writeShort(NUM_KEYS_OFFSET, numOfKeys);
 			return new Record<Integer, Node>(sibling._firstPair().getKey(),
 				sibling);
 		}
 
 		@Override
 		Collection<Node> print(Transaction tr, DBLock lock) {
-			System.out.print(getPageId().getId() + "::");
-			for (int i = HEADER_SIZE; i < numOfKeys; i++) {
+			System.out.print(getPageId().getId() + ":"/* + numOfKeys */+ ":");
+			for (short i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
 				int key = readInt(i);
 				int val = readInt(i + key_size);
 				System.out.print(key + ";" + val + ",");

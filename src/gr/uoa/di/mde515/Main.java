@@ -43,11 +43,12 @@ public class Main {
 	private static void treePrint(Transaction tr) throws FileNotFoundException,
 			IOException, InterruptedException {
 		List<Integer> primeNumbers = new ArrayList<>(Arrays.asList(2, 3, 5, 7,
-			11, 13, 19, 23, 37, 41, 43, 47, 53, 59, 67, 71, 61, 73, 79, 89, 97,
-			101, 103, 109, 29, 31, 113, 127, 131, 137, 139, 149, 151, 157, 163,
-			167, 173, 179, 17, 83, 107));
+			11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 61, 59, 67, 71, 73,
+			79, 83, 89, 97, 101, 103, 109, 113, 127, 131, 137, 139, 149, 151,
+			157, 163, 167, 173, 179, 107));
 		// for (int j = 0; ++j < 10;) {
-		List<Integer> perm = permutation(primeNumbers);
+		List<Integer> perm = /* permutation(primeNumbers) */new ArrayList<>(
+			primeNumbers);
 		// List<Integer> perm = primeNumbers;
 		final short key_size = 4;
 		BPlusDisk<Integer> bPlusTree = new BPlusDisk<>(new IndexDiskFile(
@@ -57,7 +58,7 @@ public class Main {
 			final Integer in = perm.get(i);
 			Record<Integer, Integer> rec = new Record<>(in, in);
 			bPlusTree.insert(tr, rec);
-			Thread.sleep(2000);
+			Thread.sleep(500);
 			bPlusTree.print(tr, DBLock.E);
 		}
 		bPlusTree.print(tr, DBLock.E);
