@@ -342,10 +342,14 @@ public final class BPlusDisk<V> {
 			return new Record<>(readInt(offset), readInt(offset + key_size));
 		}
 
-		void _copyTail(Node sibling, final int fromIndex) {
+		void _copyTailAndRemoveIt(Node sibling, final int fromIndex) {
+			short removals = 0;
 			for (int j = fromIndex, i = HEADER_SIZE + j * record_size; j < numOfKeys; i += record_size, ++j) {
 				sibling._put(readInt(i), readInt(i + key_size));
+				++removals;
 			}
+			numOfKeys -= removals;
+			writeShort(NUM_KEYS_OFFSET, numOfKeys);
 		}
 	}
 
@@ -435,14 +439,13 @@ public final class BPlusDisk<V> {
 			// FIXME ALGORITHM
 			final InternalNode sibling = new InternalNode(tr);
 			sibling.setGreaterOrEqual(greaterOrEqual()); // sure
-			_copyTail(sibling, (numOfKeys + 1) / 2); // do NOT copy the median
-			// in case max_keys is odd
-			numOfKeys = (short) (numOfKeys - 1 / 2 + 1); // draw a picture - for
-			// max_keys == odd and max_keys == even
+			_copyTailAndRemoveIt(sibling, (numOfKeys + 1) / 2); // do NOT copy
+			// the median in case max_keys is odd
+			// numOfKeys = (short) ((numOfKeys - 1) / 2 + 1); // draw 2 pictures
+			// - for max_keys == odd and max_keys == even
 			if (keyToInsert < _lastKey()) {
 				_put(new Record<>(keyToInsert, justSplit.getPageId().getId()));
 				// insert it and move last key to the sibling
-				++numOfKeys;// change numOfKeys: _lastPair() depends on it !
 				sibling._put(_lastPair());
 				--numOfKeys;
 			} else {
@@ -528,8 +531,8 @@ public final class BPlusDisk<V> {
 			final Integer id = getPageId().getId();
 			if (root1._keyWithValue(this) != null
 				|| id == root1.greaterOrEqual()) return root1;
-			return parent(tr, lock, (InternalNode) root1._lookup(tr, lock, id)); // the
-																					// CCE
+			return parent(tr, lock, // the CCE will be thrown from this cast
+				(InternalNode) root1._lookup(tr, lock, _firstPair().getKey()));
 		}
 
 		@Override
@@ -546,9 +549,7 @@ public final class BPlusDisk<V> {
 			setGreaterOrEqual(sibling.getPageId().getId());
 			// FIXME ALGORITHM
 			// move median and up to sibling
-			_copyTail(sibling, numOfKeys / 2); // ...
-			// keep the rest
-			numOfKeys /= 2;
+			_copyTailAndRemoveIt(sibling, numOfKeys / 2); // ...
 			// insert
 			if (rec.getKey() < _lastKey()) {
 				_put(rec.getKey(), rec.getValue());// insert in this
@@ -583,6 +584,7 @@ public final class BPlusDisk<V> {
 			IOException {
 		if (root.getPageId().equals(justSplit.getPageId())) { // root must split
 			// (leaf or not) // TODO use PageId<T> equals
+			System.out.println("SPLIT ROOT");
 			InternalNode newRoot = new InternalNode(tr);
 			// FIXME ALGORITHM
 			newRoot._put(insert.getKey(), justSplit.getPageId().getId());
