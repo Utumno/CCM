@@ -22,8 +22,8 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	// useful constants
 	private static final int PAGE_SIZE = Engine.PAGE_SIZE;
 	// it the size of entry in the fileheader
-	private static final int ENTRY_SIZE = 4;
-	private static final int PAGE_FILE_HEADER_LENGTH = 20;
+	private static final int KEY_SIZE = 4;
+	private static final int PAGE_HEADER_LENGTH = 20;
 	private static final int UNDEFINED = -1;
 	// PAGE HEADER OFFSETS
 	private static final int OFFSET_CURRENT_PAGE = 0;
@@ -45,7 +45,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	private final static class Header {
 
 		final int RECORD_SIZE;
-		final double MAXIMUM_NUMBER_OF_SLOTS;
+		final short MAXIMUM_NUMBER_OF_SLOTS;
 		// state fields
 		private int freeList = UNDEFINED;
 		private int fullList = UNDEFINED;
@@ -82,8 +82,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				buff.setPageDirty(0);
 				buff.flushPage(0, file); // TODO - watch out: wild flush
 			}
-			MAXIMUM_NUMBER_OF_SLOTS = Math
-				.floor((PAGE_SIZE - PAGE_FILE_HEADER_LENGTH) / RECORD_SIZE);
+			MAXIMUM_NUMBER_OF_SLOTS = (short) ((PAGE_SIZE - PAGE_HEADER_LENGTH) / RECORD_SIZE);
 		}
 
 		void pageWrite() {
@@ -149,8 +148,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	 */
 	@Override
 	public PageId insert(Transaction tr, Record<K, V> record)
-			throws IOException,
-			InterruptedException {
+			throws IOException, InterruptedException {
 		int pageID = getFreeListPageId();
 		Page<Integer> p;
 		if (tr.lock(pageID, DBLock.E)) {
@@ -225,7 +223,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 			throws InterruptedException {
 		Page<?> p = buf.allocFrameForNewPage(pageID);
 		p.writeInt(OFFSET_CURRENT_PAGE, pageID);
-		p.writeInt(OFFSET_NEXT_FREE_SLOT, PAGE_FILE_HEADER_LENGTH);
+		p.writeInt(OFFSET_NEXT_FREE_SLOT, PAGE_HEADER_LENGTH);
 		p.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS, 0);
 		p.writeInt(OFFSET_NEXT_PAGE, UNDEFINED);
 		p.writeInt(OFFSET_PREVIOUS_PAGE, 0);
@@ -236,7 +234,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		int freeSlot = p.readInt(OFFSET_NEXT_FREE_SLOT);
 		System.out.println("The freeSlot is " + freeSlot);
 		p.writeInt(freeSlot, key);
-		p.writeInt(freeSlot + ENTRY_SIZE, value);
+		p.writeInt(freeSlot + KEY_SIZE, value);
 		p.writeInt(OFFSET_NEXT_FREE_SLOT, freeSlot + head.RECORD_SIZE);
 		int current_number_of_slots = p.readInt(OFFSET_CURRENT_NUMBER_OF_SLOTS);
 		p.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS, current_number_of_slots + 1);

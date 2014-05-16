@@ -464,8 +464,7 @@ public final class BPlusDisk<V> {
 				--numOfKeys;
 			} else {
 				sibling._put((Record<Integer, Integer>) new Record<>(
-					keyToInsert, justSplit.getPageId()
-					.getId()));
+					keyToInsert, justSplit.getPageId().getId()));
 			}
 			Record<Integer, Integer> _lastPair = _lastPair();
 			writeShort(NUM_KEYS_OFFSET, --numOfKeys); // discard _lastPair
