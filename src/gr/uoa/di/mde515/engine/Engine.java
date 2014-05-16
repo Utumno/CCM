@@ -104,6 +104,7 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V> {
 			dataFile = DataFile.init("temp.db", RECORD_SIZE);
 			index = new DiskIndex(new IndexDiskFile("index.db"), KEY_SIZE,
 				KEY_SIZE);
+			System.out.println("ENG IMPL");
 		} catch (IOException | InterruptedException e) {
 			throw new RuntimeException("Can't open db file", e);
 		}

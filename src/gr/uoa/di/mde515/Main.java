@@ -28,13 +28,14 @@ public class Main {
 	private static final ExecutorService exec = Executors
 		.newFixedThreadPool(NUM_OF_THREADS);
 
-	public static <T> void main(String[] args)
-			throws TransactionRequiredException, KeyExistsException,
-			TransactionFailedException, InterruptedException, IOException {
+	public static <T> void main(String[] args) throws InterruptedException,
+			IOException {
 		final Engine<Integer, Integer> eng = Engine.newInstance();
 		try {
 			// treePrint(eng);
-			exec.submit(new Inserter<T>(eng));
+			for (int i = 0; i < 2; ++i) {
+				exec.submit(new Inserter<T>(eng, new Record<>(i, i)));
+			}
 		} finally {
 			exec.shutdown();
 			boolean terminated = exec.awaitTermination(13, TimeUnit.SECONDS);
@@ -83,23 +84,23 @@ public class Main {
 	private static final class Inserter<T> implements Callable<T> {
 
 		private final Engine<Integer, Integer> eng;
+		private final Record<Integer, Integer> rec;
 
-		private Inserter(Engine<Integer, Integer> eng) {
+		Inserter(Engine<Integer, Integer> eng, Record<Integer, Integer> rec) {
 			this.eng = eng;
+			this.rec = rec;
 		}
 
 		@Override
 		public T call() throws Exception {
 			Transaction tr = eng.beginTransaction();
 			try {
-				for (int i = 0; i < 100; ++i) {
-					Record<Integer, Integer> rec = new Record<>(i, i);
-					eng.insert(tr, rec);
-				}
+				eng.insert(tr, rec);
+				System.out.println("Transaction " + tr);
 				eng.commit(tr);
 				eng.print(tr, DBLock.E);
 			} finally {
-				// eng.e_xaction(tr);
+				eng.endTransaction(tr);
 			}
 			return null;
 		}

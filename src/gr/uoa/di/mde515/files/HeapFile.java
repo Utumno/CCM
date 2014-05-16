@@ -103,6 +103,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		// =====================================================================
 		// Accessors/Mutators
 		// =====================================================================
+		// FIXME sync KLEO
 		int getNumOfPages() {
 			return numOfPages;
 		}

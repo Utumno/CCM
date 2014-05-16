@@ -34,6 +34,7 @@ public class Index<K extends Comparable<K>, T> {
 	public T lookupLocked(Transaction tr, K key, DBLock el) throws IOException,
 			InterruptedException {
 		SortedMap<K, T> sm = new TreeMap<>();
+		System.out.println(Thread.currentThread().getName());
 		lockPath(tr, key, el, sm);
 		return sm.get(key);
 	}

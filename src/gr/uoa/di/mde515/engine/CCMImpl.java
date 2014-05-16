@@ -106,6 +106,7 @@ enum CCMImpl implements CCM {
 					InterruptedException {
 				Object lookupLocked = index.lookupLocked(tr, record.getKey(),
 					DBLock.E);
+				System.out.println(tr);
 				if (lookupLocked != null)
 					throw new KeyExistsException("" + record.getKey());
 				dataFile.lockHeader(tr, DBLock.E);
