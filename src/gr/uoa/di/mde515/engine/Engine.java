@@ -3,7 +3,7 @@ package gr.uoa.di.mde515.engine;
 import gr.uoa.di.mde515.engine.CCM.TransactionRequiredException;
 import gr.uoa.di.mde515.files.DataFile;
 import gr.uoa.di.mde515.index.Index;
-import gr.uoa.di.mde515.index.Index.KeyExistsException;
+import gr.uoa.di.mde515.index.KeyExistsException;
 import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
 

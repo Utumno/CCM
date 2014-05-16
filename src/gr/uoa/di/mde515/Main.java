@@ -5,7 +5,7 @@ import gr.uoa.di.mde515.engine.Engine;
 import gr.uoa.di.mde515.engine.Engine.TransactionFailedException;
 import gr.uoa.di.mde515.engine.Transaction;
 import gr.uoa.di.mde515.files.IndexDiskFile;
-import gr.uoa.di.mde515.index.Index.KeyExistsException;
+import gr.uoa.di.mde515.index.KeyExistsException;
 import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.locks.DBLock;
 import gr.uoa.di.mde515.trees.BPlusDisk;

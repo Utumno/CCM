@@ -11,15 +11,6 @@ import java.util.TreeMap;
 
 public class Index<K extends Comparable<K>, V> { // V --> rename to T
 
-	public static final class KeyExistsException extends Exception {
-
-		private static final long serialVersionUID = 720930361671317055L;
-
-		public KeyExistsException(String string) {
-			super("Key " + string + " exists");
-		}
-	}
-
 	private final BPlusJava<K, V> bplus = new BPlusJava<>();
 	private final LockManager lm = LockManager.getInstance();
 
