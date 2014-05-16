@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-public class DiskIndex<K extends Comparable<K>, V> extends Index<K, V> {
+public class DiskIndex<K extends Comparable<K>, T> extends Index<K, T> {
 
 	private final BPlusDisk bplus;
 	private final LockManager lm = LockManager.getInstance();
@@ -33,13 +33,13 @@ public class DiskIndex<K extends Comparable<K>, V> extends Index<K, V> {
 	@Override
 	public void lookupLocked(Transaction tr, K key, DBLock el)
 			throws KeyExistsException, IOException, InterruptedException {
-		SortedMap<K, V> sm = new TreeMap<>();
+		SortedMap<K, T> sm = new TreeMap<>();
 		lockPath(tr, key, el, sm);
-		V v = sm.get(key);
+		T v = sm.get(key);
 		if (v != null) throw new KeyExistsException(key + "");
 	}
 
-	private void lockPath(Transaction tr, K key, DBLock el, SortedMap<K, V> sm)
+	private void lockPath(Transaction tr, K key, DBLock el, SortedMap<K, T> sm)
 			throws IOException, InterruptedException {
 		throw new UnsupportedOperationException("Not implemented"); // TODO
 	}
@@ -56,7 +56,7 @@ public class DiskIndex<K extends Comparable<K>, V> extends Index<K, V> {
 	}
 
 	@Override
-	public void insert(Transaction tr, Record<Integer, Integer> rec)
+	public void insert(Transaction tr, Record<K, Integer> rec)
 			throws IOException, InterruptedException {
 		bplus.insert(tr, rec);
 	}

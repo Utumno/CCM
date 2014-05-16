@@ -67,6 +67,7 @@ public abstract class Engine<K extends Comparable<K>, V> {
 
 	public abstract void abort(Transaction tr) throws IOException;
 
+	// boolean waitTransaction(long t);
 	// Record<K,V> delete(T key);
 	//
 	// Record<K,V> lookup(T key);
@@ -75,16 +76,13 @@ public abstract class Engine<K extends Comparable<K>, V> {
 	//
 	// List<Record<K,V>> range(T key1, T key2);
 	//
-	// boolean waitTransaction(long t);
-	//
 	// File bulk_load(File fileOfRecords);
 	//
 	// File bulk_delete(File fileOfKeys);
 	public abstract void print();
 
-	public abstract void insertIndex(Transaction tr,
-			Record<Integer, Integer> rec) throws IOException,
-			InterruptedException;
+	public abstract void insertIndex(Transaction tr, Record<K, Integer> rec)
+			throws IOException, InterruptedException;
 
 	public abstract void print(Transaction tr, DBLock e) throws IOException,
 			InterruptedException;
@@ -110,7 +108,7 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V> {
 	}
 
 	@Override
-	public void insertIndex(Transaction tr, Record<Integer, Integer> rec)
+	public void insertIndex(Transaction tr, Record<K, Integer> rec)
 			throws IOException, InterruptedException {
 		index.insert(tr, rec);
 	}

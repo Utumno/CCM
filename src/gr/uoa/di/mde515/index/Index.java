@@ -11,9 +11,15 @@ import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-public class Index<K extends Comparable<K>, V> { // V --> rename to T
+/**
+ * @param <K>
+ *            the key type - the primary key in the data file
+ * @param <T>
+ *            the type of the pageId - int in this project
+ */
+public class Index<K extends Comparable<K>, T> {
 
-	private final BPlusJava<K, V> bplus = new BPlusJava<>();
+	private final BPlusJava<K, T> bplus = new BPlusJava<>();
 	private final LockManager lm = LockManager.getInstance();
 
 	/**
@@ -27,14 +33,14 @@ public class Index<K extends Comparable<K>, V> { // V --> rename to T
 	 */
 	public void lookupLocked(Transaction tr, K key, DBLock el)
 			throws KeyExistsException, IOException, InterruptedException {
-		SortedMap<K, V> sm = new TreeMap<>();
+		SortedMap<K, T> sm = new TreeMap<>();
 		lockPath(tr, key, el, sm);
-		V v = sm.get(key);
+		T v = sm.get(key);
 		if (v != null) throw new KeyExistsException(key + "");
 	}
 
-	private void lockPath(Transaction tr, K key, DBLock el, SortedMap<K, V> sm) {
-		PageId<Node<K, V>> indexPage = bplus.getRootPageId();
+	private void lockPath(Transaction tr, K key, DBLock el, SortedMap<K, T> sm) {
+		PageId<Node<K, T>> indexPage = bplus.getRootPageId();
 		while (indexPage != null) {
 			lm.requestLock(new LockManager.Request(indexPage, tr, el));
 			indexPage = bplus.getNextPageId(indexPage, key, sm);
@@ -45,7 +51,6 @@ public class Index<K extends Comparable<K>, V> { // V --> rename to T
 		bplus.print();
 	}
 
-
 	public void flush(List<PageId<Integer>> list) throws IOException {
 		throw new UnsupportedOperationException("Not implemented"); // TODO
 	}
@@ -55,7 +60,7 @@ public class Index<K extends Comparable<K>, V> { // V --> rename to T
 		throw new UnsupportedOperationException("Not implemented"); // TODO
 	}
 
-	public void insert(Transaction tr, Record<Integer, Integer> rec)
+	public void insert(Transaction tr, Record<K, Integer> rec)
 			throws IOException, InterruptedException {
 		throw new UnsupportedOperationException("Not implemented"); // TODO
 	}

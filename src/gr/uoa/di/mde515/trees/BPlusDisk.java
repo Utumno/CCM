@@ -96,7 +96,6 @@ public final class BPlusDisk<V> {
 		} else { // FILE EMPTY - CREATE THE ROOT
 			System.out.println(file + ": Creating...");
 			root = new LeafNode(null); // null transaction !
-			buf.setPageDirty(-1);
 			buf.flushPage(-1, file); // TODO wild flush
 		}
 	}
