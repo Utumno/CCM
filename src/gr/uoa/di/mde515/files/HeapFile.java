@@ -88,7 +88,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		void pageWrite() {
 			pageWriteFreeList(freeList);
 			pageWriteNumOfPages(numOfPages);
-			// FIXME :::: buff.setDirty ?????
+			buff.setPageDirty(0);
 		}
 
 		@Override

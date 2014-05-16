@@ -118,6 +118,21 @@ public class Transaction {
 		return false;
 	}
 
+	public void unlock() {
+		for (Entry<DBLock, List<PageId<Integer>>> entries : lockedDataPages
+			.entrySet()) {
+			for (PageId<Integer> pid : entries.getValue()) {
+				lm.unlock(this, pid);
+			}
+		}
+		for (Entry<DBLock, List<PageId<Integer>>> entries : lockedIndexPages
+			.entrySet()) {
+			for (PageId<Integer> pid : entries.getValue()) {
+				lm.unlock(this, pid);
+			}
+		}
+	}
+
 	public String getThreadId() {
 		return threadName;
 	}

@@ -13,7 +13,7 @@ import java.util.Set;
 
 public final class BufferManager<T> {
 
-	private static final int NUM_BUFFERS = 35;
+	private static final int NUM_BUFFERS = 1000;
 	/** the pool of frames */
 	private final List<Frame> pool = new ArrayList<>(); // TODO unmodifiable
 	// the structure that maintains information about pageIDs and their

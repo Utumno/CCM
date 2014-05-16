@@ -14,26 +14,34 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class Main {
 
 	private static Random r = new Random();
+	// THREADS //
+	private static final int NUM_OF_THREADS = Runtime.getRuntime()
+		.availableProcessors();
+	private static final ExecutorService exec = Executors
+		.newFixedThreadPool(NUM_OF_THREADS);
 
-	public static void main(String[] args) throws TransactionRequiredException,
-			KeyExistsException, TransactionFailedException,
-			InterruptedException, IOException {
-		Engine<Integer, Integer> eng = Engine.newInstance();
+	public static <T> void main(String[] args)
+			throws TransactionRequiredException, KeyExistsException,
+			TransactionFailedException, InterruptedException, IOException {
+		final Engine<Integer, Integer> eng = Engine.newInstance();
 		try {
-			treePrint(eng);
-			// Transaction tr = eng.beginTransaction();
-			// for (int i = 0; i < 100; i++) {
-			// Record<Integer, Integer> rec = new Record<>(i, i);
-			// eng.insert(tr, rec);
-			// }
-			// eng.commit(tr);
-			// // eng.e_xaction(tr);
-			// eng.print();
+			// treePrint(eng);
+			exec.submit(new Inserter<T>(eng));
 		} finally {
+			exec.shutdown();
+			boolean terminated = exec.awaitTermination(13, TimeUnit.SECONDS);
+			// if timed out terminated will be false
+			// if (!terminated) {
+			// List<Runnable> notExecuted = INSTANCE.exec.shutdownNow();
+			// }
 			eng.shutdown();
 		}
 	}
@@ -70,5 +78,30 @@ public class Main {
 			perm.add(primeNumbers.remove(nextInt));
 		}
 		return perm;
+	}
+
+	private static final class Inserter<T> implements Callable<T> {
+
+		private final Engine<Integer, Integer> eng;
+
+		private Inserter(Engine<Integer, Integer> eng) {
+			this.eng = eng;
+		}
+
+		@Override
+		public T call() throws Exception {
+			Transaction tr = eng.beginTransaction();
+			try {
+				for (int i = 0; i < 100; ++i) {
+					Record<Integer, Integer> rec = new Record<>(i, i);
+					eng.insert(tr, rec);
+				}
+				eng.commit(tr);
+				eng.print(tr, DBLock.E);
+			} finally {
+				// eng.e_xaction(tr);
+			}
+			return null;
+		}
 	}
 }

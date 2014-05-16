@@ -6,6 +6,7 @@ import gr.uoa.di.mde515.index.PageId;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.Lock;
@@ -56,6 +57,18 @@ public class LockManager {
 		// out of the synchronized block
 	}
 
+	public void unlock(Transaction tr, PageId<Integer> pid) {
+		synchronized (locks) {
+			LockStructure lockStruct = locks.get(pid);
+			if (lockStruct == null) {
+				throw new RuntimeException(
+					"Requesting unlock for non locked page " + pid.getId()
+						+ " on behalf of transaction " + tr);
+			}
+			if (lockStruct.unlock(tr)) locks.remove(pid);
+		}
+	}
+
 	private final static class LockStructure {
 
 		/** A semi fair lock - FIFO with preference to writers */
@@ -71,7 +84,7 @@ public class LockManager {
 
 		LockStructure() {}
 
-		void lock(Request req) {
+		synchronized void lock(Request req) {
 			final DBLock lock = req.lock;
 			final Transaction trans = req.tr;
 			final Request grant = granted.get(trans);
@@ -90,6 +103,28 @@ public class LockManager {
 
 		synchronized void add(Request request) {
 			requests.put(request.tr, request.lock);
+		}
+
+		synchronized boolean unlock(Transaction tr) {
+			for (Entry<Transaction, Request> transRequest : granted
+				.entrySet()) {
+				if (tr.equals(transRequest.getKey())) {
+					switch (transRequest.getValue().lock) {
+					case E:
+						w.unlock();
+						break;
+					case S:
+						r.unlock();
+						break;
+					}
+					granted.remove(tr);
+				}
+
+			}
+			for (Entry<Transaction, DBLock> transLock : requests.entrySet()) {
+				if (tr.equals(transLock.getKey())) requests.remove(tr);
+			}
+			return requests.isEmpty();
 		}
 	}
 }

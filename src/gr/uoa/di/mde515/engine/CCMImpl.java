@@ -14,21 +14,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 enum CCMImpl implements CCM {
 	INSTANCE;
 
 	final List<Transaction> transactions = Collections
 		.synchronizedList(new ArrayList<Transaction>()); // ...
-	// THREADS //
-	private final int NUM_OF_THREADS = Runtime.getRuntime()
-		.availableProcessors();
-	private final ExecutorService exec = Executors
-		.newFixedThreadPool(NUM_OF_THREADS);
 
 	public static CCM instance() {
 		return INSTANCE;
@@ -83,12 +74,10 @@ enum CCMImpl implements CCM {
 		if (!transactions.contains(trans))
 			throw new TransactionRequiredException();
 		trans.validateThread();
-		Future<?> submit = exec.submit(crud);
 		try {
-			submit.get(); // blocks
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-			Thread.currentThread().interrupt();
+			crud.call();
+		} catch (Exception e) {
+			throw new ExecutionException("Executing callable failed", e);
 		}
 	}
 
@@ -96,14 +85,7 @@ enum CCMImpl implements CCM {
 	// API
 	// =========================================================================
 	@Override
-	public void shutdown() throws InterruptedException {
-		INSTANCE.exec.shutdown();
-		boolean terminated = INSTANCE.exec.awaitTermination(13,
-			TimeUnit.SECONDS); // if timed out terminated will be false
-		// if (!terminated) {
-		// List<Runnable> notExecuted = INSTANCE.exec.shutdownNow();
-		// }
-	}
+	public void shutdown() throws InterruptedException {}
 
 	@Override
 	public Transaction beginTransaction() {
@@ -122,7 +104,10 @@ enum CCMImpl implements CCM {
 			@Override
 			public Record<K, V> call() throws KeyExistsException, IOException,
 					InterruptedException {
-				index.lookupLocked(tr, record.getKey(), DBLock.E);
+				Object lookupLocked = index.lookupLocked(tr, record.getKey(),
+					DBLock.E);
+				if (lookupLocked != null)
+					throw new KeyExistsException("" + record.getKey());
 				dataFile.lockHeader(tr, DBLock.E);
 				PageId pageID = dataFile.insert(tr, record);
 				index.insert(tr,
@@ -150,7 +135,8 @@ enum CCMImpl implements CCM {
 
 	@Override
 	public void endTransaction(Transaction tr) {
-		throw new UnsupportedOperationException("Not supported yet."); // TODO
+		tr.unlock();
+		transactions.remove(tr);
 	}
 
 	@Override

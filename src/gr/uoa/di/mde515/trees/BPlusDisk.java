@@ -565,7 +565,7 @@ public final class BPlusDisk<V> {
 				throws IOException, InterruptedException {
 			final Integer id = (Integer) getPageId().getId();
 			if (root1._keyWithValue(this) != null
-				|| id == root1.greaterOrEqual()) return root1;
+				|| id.equals(root1.greaterOrEqual())) return root1;
 			return parent(tr, lock, // the CCE will be thrown from this cast
 				(InternalNode) root1._lookup(tr, lock, _firstPair().getKey()));
 		}

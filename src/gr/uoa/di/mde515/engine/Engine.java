@@ -93,17 +93,17 @@ public abstract class Engine<K extends Comparable<K>, V> {
 final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V> {
 
 	private static final short RECORD_SIZE = 8;
+	private static final short KEY_SIZE = 4;
 	private final CCM ccm;
 	private final DataFile<K, V> dataFile;
-	private short key_size = 4;
 	private final Index<K, PageId<T>> index;
 
 	EngineImpl() {
 		this.ccm = CCMImpl.instance();
 		try {
 			dataFile = DataFile.init("temp.db", RECORD_SIZE);
-			index = new DiskIndex(new IndexDiskFile("index.db"), key_size,
-				key_size);
+			index = new DiskIndex(new IndexDiskFile("index.db"), KEY_SIZE,
+				KEY_SIZE);
 		} catch (IOException | InterruptedException e) {
 			throw new RuntimeException("Can't open db file", e);
 		}
