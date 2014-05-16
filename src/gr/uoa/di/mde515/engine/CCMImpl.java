@@ -3,6 +3,7 @@ package gr.uoa.di.mde515.engine;
 import gr.uoa.di.mde515.files.DataFile;
 import gr.uoa.di.mde515.index.Index;
 import gr.uoa.di.mde515.index.KeyExistsException;
+import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.locks.DBLock;
 
@@ -123,7 +124,9 @@ enum CCMImpl implements CCM {
 					InterruptedException {
 				index.lookupLocked(tr, record.getKey(), DBLock.E);
 				dataFile.lockHeader(tr, DBLock.E);
-				dataFile.insert(tr, record);
+				PageId pageID = dataFile.insert(tr, record);
+				index.insert(tr,
+					new Record<>(record.getKey(), (Integer) pageID.getId()));
 				// if insertion to file is successful we must now insert into
 				// the index and unlock
 				return record;
@@ -174,8 +177,7 @@ enum CCMImpl implements CCM {
 	}
 
 	@Override
-	public <K extends Comparable<K>, V> void
- abort(Transaction tr,
+	public <K extends Comparable<K>, V> void abort(Transaction tr,
 			DataFile<K, V> dataFile, Index<K, ?> index) throws IOException {
 		// perhaps it needs the index as well
 		tr.abort(dataFile);

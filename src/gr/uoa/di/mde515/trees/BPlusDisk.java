@@ -105,13 +105,13 @@ public final class BPlusDisk<V> {
 	// API
 	// =========================================================================
 	public void flush(List<PageId<Integer>> pageIds) throws IOException {
-		flushRootAndNodes();
 		for (PageId<Integer> pageID : pageIds) {
 			final Integer pid = pageID.getId();
 			buf.flushPage(pid, file);
 			System.out.println("PID " + pid);
 			buf.unpinPage(pid);
 		}
+		flushRootAndNodes();
 	}
 
 	public <R extends Record<Integer, Integer>> void insert(Transaction tr,

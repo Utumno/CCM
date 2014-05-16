@@ -148,7 +148,8 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	 * @throws InterruptedException
 	 */
 	@Override
-	public void insert(Transaction tr, Record<K, V> record) throws IOException,
+	public PageId insert(Transaction tr, Record<K, V> record)
+			throws IOException,
 			InterruptedException {
 		int pageID = getFreeListPageId();
 		Page<Integer> p;
@@ -162,6 +163,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		writeIntoFrame(p, (Integer) record.getKey(),
 			(Integer) record.getValue());
 		checkReachLimitOfPage(p);
+		return new PageId(pageID);
 	}
 
 	@Override

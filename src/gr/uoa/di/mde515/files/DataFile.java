@@ -8,6 +8,7 @@ import gr.uoa.di.mde515.locks.DBLock;
 import java.io.IOException;
 import java.util.List;
 
+// TODO add type params for PageId<T>
 public abstract class DataFile<K extends Comparable<K>, V> {
 
 	public static <L extends Comparable<L>, M> DataFile<L, M> init(
@@ -16,7 +17,7 @@ public abstract class DataFile<K extends Comparable<K>, V> {
 		return new HeapFile<>(filename, recordSize);
 	}
 
-	public abstract void insert(Transaction tr, Record<K, V> rec)
+	public abstract PageId insert(Transaction tr, Record<K, V> rec)
 			throws IOException, InterruptedException;
 
 	public abstract void close() throws IOException;
