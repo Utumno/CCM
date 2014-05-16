@@ -11,7 +11,6 @@ import gr.uoa.di.mde515.locks.DBLock;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -38,8 +37,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public final class BPlusDisk<V> {
 
-	// FIXME flush on engine shutdown
-	//
 	private static final BufferManager<Integer> buf = BufferManager
 		.getInstance();
 	private final IndexDiskFile file;
@@ -61,8 +58,7 @@ public final class BPlusDisk<V> {
 
 		static int rootFromFile() throws IOException {
 			byte[] readAllBytes = Files.readAllBytes(ROOT_PATH);
-			return Integer.valueOf(new String(readAllBytes,
-				StandardCharsets.ISO_8859_1));
+			return ByteBuffer.wrap(readAllBytes).getInt();
 		}
 
 		static void rootToFile(int newRoot) throws IOException {
@@ -72,8 +68,7 @@ public final class BPlusDisk<V> {
 
 		static int nodesFromFile() throws IOException {
 			byte[] readAllBytes = Files.readAllBytes(NODES_PATH);
-			return Integer.valueOf(new String(readAllBytes,
-				StandardCharsets.ISO_8859_1));
+			return ByteBuffer.wrap(readAllBytes).getInt();
 		}
 
 		static void nodesToFile(int newRoot) throws IOException {
@@ -91,14 +86,13 @@ public final class BPlusDisk<V> {
 		this.file = file;
 		if (file.read() != -1) {
 			System.out.println(file + " already exists");
+			nodeId.set(Root.nodesFromFile());
 			int rootFromFile = Root.rootFromFile();
 			Page<Integer> allocFrame = buf.allocFrame(rootFromFile, file);
-			boolean leaf = ((BPlusDisk<V>.Node) allocFrame)
-				.isLeafReadFromPage();
+			boolean leaf = allocFrame.readByte(Node.LEAF_OFFSET) == 1;
 			root = (leaf) ? new LeafNode(rootFromFile) : new InternalNode(
 				rootFromFile);
 			// FIXME permanent alloc (and something else I forgot ...)
-			nodeId.set(Root.nodesFromFile());
 		} else { // FILE EMPTY - CREATE THE ROOT
 			System.out.println(file + ": Creating...");
 			root = new LeafNode(null); // null transaction !
@@ -269,10 +263,6 @@ public final class BPlusDisk<V> {
 
 		boolean overflow() {
 			return numOfKeys == max_keys; // FIXME ............ Test
-		}
-
-		boolean isLeafReadFromPage() {
-			return readByte(LEAF_OFFSET) == 1;
 		}
 
 		int items() {
