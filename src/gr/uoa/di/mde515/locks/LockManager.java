@@ -41,18 +41,18 @@ public class LockManager {
 	}
 
 	public void requestLock(Request request) {
-		LockStructure pageLock = null;
+		LockStructure lockStruct = null;
 		synchronized (locks) {
-			pageLock = locks.get(request.pageId);
-			if (pageLock == null) {
-				pageLock = new LockStructure();
-				locks.put(request.pageId, pageLock);
+			lockStruct = locks.get(request.pageId);
+			if (lockStruct == null) {
+				lockStruct = new LockStructure();
+				locks.put(request.pageId, lockStruct);
 			}
 			// make sure that no other thread deletes the pageLock by adding to
 			// trans
-			pageLock.add(request);
+			lockStruct.add(request);
 		}
-		pageLock.lock(request); // this may block so must be
+		lockStruct.lock(request); // this may block so must be
 		// out of the synchronized block
 	}
 
@@ -63,7 +63,9 @@ public class LockManager {
 		private final Lock r = rw.readLock();
 		private final Lock w = rw.writeLock();
 		// private volatile boolean inUse = true; // in use == !trans.isEmpty()
-		private final LinkedHashMap<Transaction, DBLock> requests = new LinkedHashMap<>();
+		// FIXME excessive synchronization
+		private final Map<Transaction, DBLock> requests = Collections
+			.synchronizedMap(new LinkedHashMap<Transaction, DBLock>());
 		private final Map<Transaction, Request> granted = Collections // FIXME
 			.synchronizedMap(new LinkedHashMap<Transaction, Request>());
 
@@ -74,7 +76,7 @@ public class LockManager {
 			final Transaction trans = req.tr;
 			final Request grant = granted.get(trans);
 			if (grant != null && grant.pageId.equals(req.pageId)
-				&& grant.lock == lock) return;
+				&& grant.lock == lock) return; // maybe reduntant checks ?
 			switch (lock) {
 			case E:
 				w.lock();

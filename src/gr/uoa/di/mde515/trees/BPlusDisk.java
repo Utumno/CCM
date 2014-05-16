@@ -641,7 +641,7 @@ public final class BPlusDisk<V> {
 	private <R extends Record<Integer, Integer>> void _insertInLeaf(
 			Transaction tr, R rec, final LeafNode leafNode)
 			throws IllegalArgumentException, InterruptedException, IOException {
-		if (leafNode.records().containsKey(rec.getKey())) // FIXME records()!!!!
+		if (leafNode._get(rec.getKey()) != null)
 			throw new IllegalArgumentException("Key " + rec.getKey()
 				+ " exists");
 		Record<Integer, Node> insert = leafNode.insertInLeaf(tr, rec);
