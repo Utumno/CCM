@@ -22,9 +22,11 @@ public class Index<K extends Comparable<K>, V> { // V --> rename to T
 	 *
 	 * @throws KeyExistsException
 	 *             if the key exists
+	 * @throws InterruptedException
+	 * @throws IOException
 	 */
 	public void lookupLocked(Transaction tr, K key, DBLock el)
-			throws KeyExistsException {
+			throws KeyExistsException, IOException, InterruptedException {
 		SortedMap<K, V> sm = new TreeMap<>();
 		lockPath(tr, key, el, sm);
 		V v = sm.get(key);
@@ -43,12 +45,18 @@ public class Index<K extends Comparable<K>, V> { // V --> rename to T
 		bplus.print();
 	}
 
+
 	public void flush(List<PageId<Integer>> list) throws IOException {
 		throw new UnsupportedOperationException("Not implemented"); // TODO
 	}
 
 	public void print(Transaction tr, DBLock lock) throws IOException,
 			InterruptedException {
+		throw new UnsupportedOperationException("Not implemented"); // TODO
+	}
+
+	public void insert(Transaction tr, Record<Integer, Integer> rec)
+			throws IOException, InterruptedException {
 		throw new UnsupportedOperationException("Not implemented"); // TODO
 	}
 }

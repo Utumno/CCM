@@ -2,10 +2,13 @@ package gr.uoa.di.mde515.engine;
 
 import gr.uoa.di.mde515.engine.CCM.TransactionRequiredException;
 import gr.uoa.di.mde515.files.DataFile;
+import gr.uoa.di.mde515.files.IndexDiskFile;
+import gr.uoa.di.mde515.index.DiskIndex;
 import gr.uoa.di.mde515.index.Index;
 import gr.uoa.di.mde515.index.KeyExistsException;
 import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
+import gr.uoa.di.mde515.locks.DBLock;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
@@ -78,6 +81,13 @@ public abstract class Engine<K extends Comparable<K>, V> {
 	//
 	// File bulk_delete(File fileOfKeys);
 	public abstract void print();
+
+	public abstract void insertIndex(Transaction tr,
+			Record<Integer, Integer> rec) throws IOException,
+			InterruptedException;
+
+	public abstract void print(Transaction tr, DBLock e) throws IOException,
+			InterruptedException;
 }
 
 final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V> {
@@ -85,15 +95,24 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V> {
 	private static final short RECORD_SIZE = 8;
 	private final CCM ccm;
 	private final DataFile<K, V> dataFile;
-	final Index<K, PageId<T>> index = new Index<>();
+	private short key_size = 4;
+	private final Index<K, PageId<T>> index;
 
 	EngineImpl() {
 		this.ccm = CCMImpl.instance();
 		try {
 			dataFile = DataFile.init("temp.db", RECORD_SIZE);
+			index = new DiskIndex(new IndexDiskFile("index.db"), key_size,
+				key_size);
 		} catch (IOException | InterruptedException e) {
 			throw new RuntimeException("Can't open db file", e);
 		}
+	}
+
+	@Override
+	public void insertIndex(Transaction tr, Record<Integer, Integer> rec)
+			throws IOException, InterruptedException {
+		index.insert(tr, rec);
 	}
 
 	@Override
@@ -136,5 +155,11 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V> {
 	@Override
 	public void print() {
 		index.print();
+	}
+
+	@Override
+	public void print(Transaction tr, DBLock e) throws IOException,
+			InterruptedException {
+		index.print(tr, e);
 	}
 }

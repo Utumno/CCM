@@ -5,7 +5,6 @@ import gr.uoa.di.mde515.files.IndexDiskFile;
 import gr.uoa.di.mde515.locks.DBLock;
 import gr.uoa.di.mde515.locks.LockManager;
 import gr.uoa.di.mde515.trees.BPlusDisk;
-import gr.uoa.di.mde515.trees.BPlusJava.Node;
 
 import java.io.IOException;
 import java.util.List;
@@ -28,22 +27,21 @@ public class DiskIndex<K extends Comparable<K>, V> extends Index<K, V> {
 	 *
 	 * @throws KeyExistsException
 	 *             if the key exists
+	 * @throws InterruptedException
+	 * @throws IOException
 	 */
 	@Override
 	public void lookupLocked(Transaction tr, K key, DBLock el)
-			throws KeyExistsException {
+			throws KeyExistsException, IOException, InterruptedException {
 		SortedMap<K, V> sm = new TreeMap<>();
 		lockPath(tr, key, el, sm);
 		V v = sm.get(key);
 		if (v != null) throw new KeyExistsException(key + "");
 	}
 
-	private void lockPath(Transaction tr, K key, DBLock el, SortedMap<K, V> sm) {
-		PageId<Node<K, V>> indexPage = bplus.getRootPageId();
-		while (indexPage != null) {
-			lm.requestLock(new LockManager.Request(indexPage, tr, el));
-			indexPage = bplus.getNextPageId(indexPage, key, sm, tr, el);
-		}
+	private void lockPath(Transaction tr, K key, DBLock el, SortedMap<K, V> sm)
+			throws IOException, InterruptedException {
+		throw new UnsupportedOperationException("Not implemented"); // TODO
 	}
 
 	@Override
@@ -55,5 +53,11 @@ public class DiskIndex<K extends Comparable<K>, V> extends Index<K, V> {
 	@Override
 	public void flush(List<PageId<Integer>> list) throws IOException {
 		bplus.flush(list);
+	}
+
+	@Override
+	public void insert(Transaction tr, Record<Integer, Integer> rec)
+			throws IOException, InterruptedException {
+		bplus.insert(tr, rec);
 	}
 }

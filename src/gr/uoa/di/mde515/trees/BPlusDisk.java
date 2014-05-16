@@ -18,7 +18,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -152,19 +151,20 @@ public final class BPlusDisk<V> {
 	 * @throws InterruptedException
 	 * @throws IOException
 	 */
-	public PageId<Node> getNextPageId(PageId<Node> grantedPage, Integer key,
-			SortedMap<Integer, Integer> sm, Transaction tr, DBLock lock)
-			throws IOException,
-			InterruptedException {
-		Node node = grantedPage.getId();
-		if (node.isLeaf()) {
-			sm.putAll(((LeafNode) node).records());
-			return null; // locked the path to the key
-		}
-		InternalNode in = (InternalNode) node;
-		final Node nextNode = in._lookup(tr, lock, key);
-		return new PageId<>(nextNode);
-	}
+	// public PageId<Integer> getNextPageId(PageId<Integer> grantedPage,
+	// Integer key,
+	// SortedMap<Integer, Integer> sm, Transaction tr, DBLock lock)
+	// throws IOException,
+	// InterruptedException {
+	// Node node = grantedPage.getId();
+	// if (node.isLeaf()) {
+	// sm.putAll(((LeafNode) node).records());
+	// return null; // locked the path to the key
+	// }
+	// InternalNode in = (InternalNode) node;
+	// final Node nextNode = in._lookup(tr, lock, key);
+	// return new PageId<>(nextNode);
+	// }
 	//
 	// public <R extends Record<Integer, Integer>> PageId<Node> getLeaf(
 	// PageId<Node> grantedPage, R rec) throws IOException,
@@ -627,7 +627,8 @@ public final class BPlusDisk<V> {
 			Transaction tr, R rec, final LeafNode leafNode)
 			throws IllegalArgumentException, InterruptedException, IOException {
 		if (leafNode.records().containsKey(rec.getKey())) // FIXME records()!!!!
-			throw new IllegalArgumentException("Key exists");
+			throw new IllegalArgumentException("Key " + rec.getKey()
+				+ " exists");
 		Record<Integer, Node> insert = leafNode.insertInLeaf(tr, rec);
 		if (insert != null) { // got a key back, so leafNode split
 			insertInternal(tr, leafNode, insert); // all parents are locked

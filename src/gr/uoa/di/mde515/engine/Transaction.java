@@ -70,10 +70,13 @@ public class Transaction {
 	}
 
 	public void addLockedDataPage(PageId<Integer> pageId, DBLock lock) {
-		if (!(pageId.getId() instanceof Integer)) return; // FIXME horrible hack
-		// - actually the pageId may wrap a node at this stage
-		System.out.println("ADDED " + pageId.getId());
-		lockedDataPages.get(lock).add(pageId);
+		// if (!(pageId.getId() instanceof Integer)) return; // FIXME horrible
+		// hack - actually the pageId may wrap a node at this stage
+		final Integer id = pageId.getId();
+		System.out.println("ADDED " + id);
+		if (id >= 0) lockedDataPages.get(lock).add(pageId); // FIXME hack2
+		// I should have one map for each file and pass it as param to add
+		else lockedIndexPages.get(lock).add(pageId);
 	}
 
 	/**
