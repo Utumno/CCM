@@ -54,4 +54,8 @@ final class Frame {
 	public AtomicInteger getPinCount() {
 		return pincount;
 	}
+
+	public void resetPinCount() {
+		pincount.set(0);
+	}
 }

@@ -180,8 +180,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	public void abort(List<PageId<Integer>> pageIds) {
 		System.out.println("FINALLY REACHED");
 		for (PageId<Integer> pageID : pageIds) {
-			buf.setPageEmtpy(pageID.getId());
-			buf.unpinPage(pageID.getId());
+			buf.killPage(pageID.getId());
 		}
 	}
 

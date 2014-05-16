@@ -63,10 +63,13 @@ public class Transaction {
 			index.flush(list);
 	}
 
-	public <K extends Comparable<K>, V> void
-			abort(final DataFile<K, V> dataFile) throws IOException {
+	public <K extends Comparable<K>, V> void abort(
+			final DataFile<K, V> dataFile, final Index<K, ?> index)
+			throws IOException {
 		for (List<PageId<Integer>> list : lockedDataPages.values())
 			dataFile.abort(list);
+		for (List<PageId<Integer>> list : lockedDataPages.values())
+			index.abort(list);
 	}
 
 	public void addLockedDataPage(PageId<Integer> pageId, DBLock lock) {

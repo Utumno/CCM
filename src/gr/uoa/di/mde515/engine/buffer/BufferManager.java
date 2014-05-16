@@ -21,7 +21,7 @@ public final class BufferManager<T> {
 	private final Map<T, Integer> pageIdToFrameNumber = new HashMap<>();
 	// contains the available frames that can be used
 	private final List<Integer> freeList = new ArrayList<>();
-	// contains the frames that need to remain pinned in memory
+	/** Contains the frames that need to remain pinned in memory */
 	private final Set<Integer> pinPerm = new HashSet<>();
 	private static final BufferManager<Integer> instance = new BufferManager<>(
 		NUM_BUFFERS);
@@ -83,10 +83,34 @@ public final class BufferManager<T> {
 		}
 	}
 
-	public void setPageEmtpy(T pageID) {
+	/**
+	 * Used when a transaction calls abort to unpin the page if dirty bypassing
+	 * the {@link #pinPerm} in {@link #decreasePinCount(int, Object)}.
+	 */
+	public void killPage(T pageID) {
 		synchronized (POOL_LOCK) {
-			getFrame(pageIdToFrameNumber.get(pageID)).setDirty(false);
+			final Integer frameNum = pageIdToFrameNumber.get(pageID);
+			final Frame frame = getFrame(frameNum);
+			if (frame.isDirty()) {
+				frame.resetPinCount();
+				frame.setDirty(false);
+				_free(pageID, frameNum);
+			} else decreasePinCount(frameNum, pageID);
 		}
+	}
+
+	/**
+	 * MUST BE USED FROM SYNCHONIZED BLOCK. Move to {@link ReplacementAlgorithm}
+	 *
+	 * @param pageID
+	 * @param frameNum
+	 */
+	private void _free(T pageID, final Integer frameNum) {
+		pageIdToFrameNumber.remove(pageID);
+		if (freeList.isEmpty()) {
+			freeList.add(frameNum);
+			POOL_LOCK.notifyAll();
+		} else freeList.add(frameNum);
 	}
 
 	/**
@@ -204,22 +228,20 @@ public final class BufferManager<T> {
 	}
 
 	/**
-	 * Decrease the pinCount of the frame. MuST BE USED FROM SYNCHONIZED BLOCK.
-	 * If the pin count of the frame reaches zero it adds it to the free list
-	 * and notifiesAll(). TODO throw on negative pinCount
+	 * Decrease the pinCount of the frame. If the pin count of the frame reaches
+	 * zero it adds it to the free list and notifiesAll(). TODO throw on
+	 * negative pinCount
 	 *
 	 * @param frameNumber
 	 * @return
 	 */
 	private int decreasePinCount(int frameNumber, T pageID) {
-		final Frame frame = pool.get(frameNumber);
-		final int pinCount = frame.decreasePincount();
-		if ((pinCount == 0) && (!pinPerm.contains(pageID))) {
-			pageIdToFrameNumber.remove(pageID);
-			freeList.add(frameNumber);
-			if (freeList.isEmpty()) {
-				POOL_LOCK.notifyAll();
-			}
+		final int pinCount;
+		synchronized (POOL_LOCK) { // added this here to be double sure
+			final Frame frame = pool.get(frameNumber);
+			pinCount = frame.decreasePincount();
+			if ((pinCount == 0) && (!pinPerm.contains(pageID)))
+				_free(pageID, frameNumber);
 		}
 		return pinCount;
 	}

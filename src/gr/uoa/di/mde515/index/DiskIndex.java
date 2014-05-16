@@ -65,4 +65,9 @@ public class DiskIndex<K extends Comparable<K>, T> extends Index<K, T> {
 			throws IOException, InterruptedException {
 		bplus.insert(tr, (Record<Integer, Integer>) rec);
 	}
+
+	@Override
+	public void abort(List<PageId<Integer>> list) {
+		bplus.abort(list);
+	}
 }

@@ -164,6 +164,12 @@ public final class BPlusDisk<V> {
 		return nextNode.getPageId();
 	}
 
+	public void abort(List<PageId<Integer>> pageIds) {
+		for (PageId<Integer> pageID : pageIds) {
+			buf.killPage(pageID.getId());
+		}
+	}
+
 	// public <R extends Record<Integer, Integer>> PageId<Node> getLeaf(
 	// PageId<Node> grantedPage, R rec) throws IOException,
 	// InterruptedException {
