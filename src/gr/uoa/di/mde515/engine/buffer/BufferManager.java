@@ -100,10 +100,10 @@ public final class BufferManager<T> {
 	public void flushPage(int pageID, DiskFile disk) throws IOException {
 		synchronized (POOL_LOCK) {
 			int frameNumber = pageIdToFrameNumber.get(pageID);
-			if (pool.get(frameNumber).isDirty())
-				disk.writePage(pageID, pool.get(frameNumber)
-					.getBufferFromFrame());
-			getFrame(frameNumber).setDirty(false);
+			final Frame frame = pool.get(frameNumber);
+			if (frame.isDirty())
+				disk.writePage(pageID, frame.getBufferFromFrame());
+			frame.setDirty(false);
 		}
 	}
 

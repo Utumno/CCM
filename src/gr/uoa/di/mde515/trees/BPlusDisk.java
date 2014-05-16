@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -101,6 +102,19 @@ public final class BPlusDisk<V> {
 		}
 	}
 
+	// =========================================================================
+	// API
+	// =========================================================================
+	public void flush(List<PageId<Integer>> pageIds) throws IOException {
+		flushRootAndNodes();
+		for (PageId<Integer> pageID : pageIds) {
+			final Integer pid = pageID.getId();
+			buf.flushPage(pid, file);
+			System.out.println("PID " + pid);
+			buf.unpinPage(pid);
+		}
+	}
+
 	public <R extends Record<Integer, Integer>> void insert(Transaction tr,
 			R rec) throws IOException, InterruptedException {
 		final Integer id = root.getPageId().getId();
@@ -138,18 +152,19 @@ public final class BPlusDisk<V> {
 	 * @throws InterruptedException
 	 * @throws IOException
 	 */
-	// public PageId<Node> getNextPageId(PageId<Node> grantedPage, Integer key,
-	// SortedMap<Integer, Integer> sm) throws IOException,
-	// InterruptedException {
-	// Node node = grantedPage.getId();
-	// if (node.isLeaf()) {
-	// sm.putAll(((LeafNode) node).records());
-	// return null; // locked the path to the key
-	// }
-	// InternalNode in = (InternalNode) node;
-	// final Node nextNode = in._lookup(key);
-	// return new PageId<>(nextNode);
-	// }
+	public PageId<Node> getNextPageId(PageId<Node> grantedPage, Integer key,
+			SortedMap<Integer, Integer> sm, Transaction tr, DBLock lock)
+			throws IOException,
+			InterruptedException {
+		Node node = grantedPage.getId();
+		if (node.isLeaf()) {
+			sm.putAll(((LeafNode) node).records());
+			return null; // locked the path to the key
+		}
+		InternalNode in = (InternalNode) node;
+		final Node nextNode = in._lookup(tr, lock, key);
+		return new PageId<>(nextNode);
+	}
 	//
 	// public <R extends Record<Integer, Integer>> PageId<Node> getLeaf(
 	// PageId<Node> grantedPage, R rec) throws IOException,

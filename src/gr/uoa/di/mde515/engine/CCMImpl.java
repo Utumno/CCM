@@ -136,7 +136,7 @@ enum CCMImpl implements CCM {
 	public <K extends Comparable<K>, V> void commit(Transaction tr,
 			DataFile<K, V> dataFile, Index<K, ?> index) throws IOException {
 		tr.flush(dataFile);
-		// tr.flushIndex(index);
+		tr.flushIndex(index);
 	}
 
 	@Override

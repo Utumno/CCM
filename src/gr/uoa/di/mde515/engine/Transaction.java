@@ -1,6 +1,7 @@
 package gr.uoa.di.mde515.engine;
 
 import gr.uoa.di.mde515.files.DataFile;
+import gr.uoa.di.mde515.index.Index;
 import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.locks.DBLock;
 import gr.uoa.di.mde515.locks.LockManager;
@@ -20,6 +21,8 @@ public class Transaction {
 	private final String threadName;
 	private final EnumMap<DBLock, List<PageId<Integer>>> lockedDataPages = new EnumMap<>(
 		DBLock.class);
+	private final EnumMap<DBLock, List<PageId<Integer>>> lockedIndexPages = new EnumMap<>(
+		DBLock.class);
 	// TODO Random unique trans identifier added to thread name
 	// http://www.javapractices.com/topic/TopicAction.do?Id=56
 	// http://bugs.java.com/view_bug.do?bug_id=6611830
@@ -35,6 +38,8 @@ public class Transaction {
 		Thread.currentThread().setName(threadName);
 		lockedDataPages.put(DBLock.E, new ArrayList<PageId<Integer>>());
 		lockedDataPages.put(DBLock.S, new ArrayList<PageId<Integer>>());
+		lockedIndexPages.put(DBLock.E, new ArrayList<PageId<Integer>>());
+		lockedIndexPages.put(DBLock.S, new ArrayList<PageId<Integer>>());
 	}
 
 	public void validateThread() {
@@ -50,6 +55,12 @@ public class Transaction {
 			flush(final DataFile<K, V> dataFile) throws IOException {
 		for (List<PageId<Integer>> list : lockedDataPages.values())
 			dataFile.flush(list);
+	}
+
+	public <K extends Comparable<K>> void flushIndex(final Index<K, ?> index)
+			throws IOException {
+		for (List<PageId<Integer>> list : lockedIndexPages.values())
+			index.flush(list);
 	}
 
 	public <K extends Comparable<K>, V> void
