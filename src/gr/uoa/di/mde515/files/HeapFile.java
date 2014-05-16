@@ -165,6 +165,18 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	}
 
 	@Override
+	public <T> V get(Transaction tr, PageId<T> p, K key) throws IOException,
+			InterruptedException {
+		if(key==null)throw new NullPointerException("Trying to get a null key");
+		Page<Integer> allocFrame = buf.allocFrame((Integer) p.getId(), file);
+		for (int i = PAGE_HEADER_LENGTH, j = 0; j < head.MAXIMUM_NUMBER_OF_SLOTS; i += head.RECORD_SIZE, ++j) {
+			if (key.compareTo((K) (Integer) allocFrame.readInt(i)) == 0)
+				return (V) (Integer) allocFrame.readInt(i + KEY_SIZE);
+		}
+		return null;
+	}
+
+	@Override
 	public void abort(List<PageId<Integer>> pageIds) {
 		System.out.println("FINALLY REACHED");
 		for (PageId<Integer> pageID : pageIds) {

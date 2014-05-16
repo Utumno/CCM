@@ -150,21 +150,20 @@ public final class BPlusDisk<V> {
 	 * @throws InterruptedException
 	 * @throws IOException
 	 */
-	// public PageId<Integer> getNextPageId(PageId<Integer> grantedPage,
-	// Integer key,
-	// SortedMap<Integer, Integer> sm, Transaction tr, DBLock lock)
-	// throws IOException,
-	// InterruptedException {
-	// Node node = grantedPage.getId();
-	// if (node.isLeaf()) {
-	// sm.putAll(((LeafNode) node).records());
-	// return null; // locked the path to the key
-	// }
-	// InternalNode in = (InternalNode) node;
-	// final Node nextNode = in._lookup(tr, lock, key);
-	// return new PageId<>(nextNode);
-	// }
-	//
+	public PageId<V> getNextPageId(PageId<Integer> grantedPage, Integer key,
+			Map<Integer, V> m, Transaction tr, DBLock lock) throws IOException,
+			InterruptedException {
+		Integer pageId = grantedPage.getId();
+		BPlusDisk<V>.Node node = root.newNodeFromDiskOrBuffer(tr, lock, pageId);
+		if (node.isLeaf()) {
+			m.put(key, (V) node._get(key));
+			return null; // locked the path to the key
+		}
+		InternalNode in = (InternalNode) node;
+		final Node nextNode = in._lookup(tr, lock, key);
+		return nextNode.getPageId();
+	}
+
 	// public <R extends Record<Integer, Integer>> PageId<Node> getLeaf(
 	// PageId<Node> grantedPage, R rec) throws IOException,
 	// InterruptedException {
@@ -337,6 +336,21 @@ public final class BPlusDisk<V> {
 			++numOfKeys;
 			writeShort(NUM_KEYS_OFFSET, numOfKeys);
 			buf.setPageDirty((Integer) this.getPageId().getId());
+		}
+
+		/**
+		 * Returns the value with key {@code key} or {@code null} if no such key
+		 * exists.
+		 */
+		Integer _get(int key) {
+			int i, j;
+			for (i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
+				int tmpKey = readInt(i);
+				if (key == tmpKey) {
+					return readInt(i + key_size);
+				}
+			}
+			return null;
 		}
 
 		int _lastKey() {

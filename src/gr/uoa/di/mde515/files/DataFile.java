@@ -20,6 +20,9 @@ public abstract class DataFile<K extends Comparable<K>, V> {
 	public abstract PageId insert(Transaction tr, Record<K, V> rec)
 			throws IOException, InterruptedException;
 
+	public abstract <T> V get(Transaction tr, PageId<T> p, K key)
+			throws IOException, InterruptedException;
+
 	public abstract void close() throws IOException;
 
 	public abstract void flush(List<PageId<Integer>> pageIds)

@@ -154,9 +154,12 @@ enum CCMImpl implements CCM {
 	}
 
 	@Override
-	public <K extends Comparable<K>, V> Record<K, V> lookup(Transaction tr,
-			K key, DataFile<K, V> file) {
-		throw new UnsupportedOperationException("Not supported yet."); // TODO
+	public <K extends Comparable<K>, V, T> Record<K, V> lookup(Transaction tr,
+			K key, DBLock el, final DataFile<K, V> dataFile, Index<K, T> index)
+			throws KeyExistsException, IOException, InterruptedException {
+		T id = index.lookupLocked(tr, key, el);
+		if (id == null) return null;
+		return new Record<K, V>(key, dataFile.get(tr, new PageId<>(id), key));
 	}
 
 	@Override

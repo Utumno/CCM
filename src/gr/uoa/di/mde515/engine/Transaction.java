@@ -99,7 +99,15 @@ public class Transaction {
 					+ entries.getKey() + " lock for page " + pageID
 					+ ". You can't acquire a " + lock + " lock.");
 		}
-		if (!lockedDataPages.get(lock).contains(pid)) {
+		for (Entry<DBLock, List<PageId<Integer>>> entries : lockedIndexPages
+			.entrySet()) {
+			if (entries.getKey() != lock && entries.getValue().contains(pid))
+				throw new IllegalStateException("You already hold a "
+					+ entries.getKey() + " lock for page " + pageID
+					+ ". You can't acquire a " + lock + " lock.");
+		}
+		if (!lockedDataPages.get(lock).contains(pid)
+			&& !lockedIndexPages.get(lock).contains(pid)) {
 			lm.requestLock(new LockManager.Request(pid, this, lock));
 			addLockedDataPage(pid, lock);
 			return true;

@@ -31,12 +31,11 @@ public class Index<K extends Comparable<K>, T> {
 	 * @throws InterruptedException
 	 * @throws IOException
 	 */
-	public void lookupLocked(Transaction tr, K key, DBLock el)
-			throws KeyExistsException, IOException, InterruptedException {
+	public T lookupLocked(Transaction tr, K key, DBLock el) throws IOException,
+			InterruptedException {
 		SortedMap<K, T> sm = new TreeMap<>();
 		lockPath(tr, key, el, sm);
-		T v = sm.get(key);
-		if (v != null) throw new KeyExistsException(key + "");
+		return sm.get(key);
 	}
 
 	private void lockPath(Transaction tr, K key, DBLock el, SortedMap<K, T> sm) {

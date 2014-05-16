@@ -4,6 +4,7 @@ import gr.uoa.di.mde515.files.DataFile;
 import gr.uoa.di.mde515.index.Index;
 import gr.uoa.di.mde515.index.KeyExistsException;
 import gr.uoa.di.mde515.index.Record;
+import gr.uoa.di.mde515.locks.DBLock;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -33,8 +34,9 @@ public interface CCM {
 	<K extends Comparable<K>, V> Record<K, V> delete(Transaction tr, K key,
 			DataFile<K, V> file);
 
-	<K extends Comparable<K>, V> Record<K, V> lookup(Transaction tr, K key,
-			DataFile<K, V> file);
+	<K extends Comparable<K>, V, T> Record<K, V> lookup(Transaction tr, K key,
+			DBLock el, DataFile<K, V> dataFile, Index<K, T> index)
+			throws KeyExistsException, IOException, InterruptedException;
 
 	<K extends Comparable<K>, V> Record<K, V> update(Transaction tr, K key,
 			DataFile<K, V> file);

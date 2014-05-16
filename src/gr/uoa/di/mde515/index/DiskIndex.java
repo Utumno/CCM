@@ -7,13 +7,13 @@ import gr.uoa.di.mde515.locks.LockManager;
 import gr.uoa.di.mde515.trees.BPlusDisk;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
-import java.util.SortedMap;
-import java.util.TreeMap;
+import java.util.Map;
 
 public class DiskIndex<K extends Comparable<K>, T> extends Index<K, T> {
 
-	private final BPlusDisk bplus;
+	private final BPlusDisk<T> bplus;
 	private final LockManager lm = LockManager.getInstance();
 
 	public DiskIndex(IndexDiskFile file, short key_size, short value_size)
@@ -25,23 +25,28 @@ public class DiskIndex<K extends Comparable<K>, T> extends Index<K, T> {
 	 * Locks the path from the root to the leaf where a key is to be inserted on
 	 * behalf of a given transaction - WIP
 	 *
-	 * @throws KeyExistsException
-	 *             if the key exists
+	 * @return
+	 *
+	 *
 	 * @throws InterruptedException
 	 * @throws IOException
 	 */
 	@Override
-	public void lookupLocked(Transaction tr, K key, DBLock el)
-			throws KeyExistsException, IOException, InterruptedException {
-		SortedMap<K, T> sm = new TreeMap<>();
+	public T lookupLocked(Transaction tr, K key, DBLock el) throws IOException,
+			InterruptedException {
+		Map<K, T> sm = new HashMap<>();
 		lockPath(tr, key, el, sm);
-		T v = sm.get(key);
-		if (v != null) throw new KeyExistsException(key + "");
+		return sm.get(key);
 	}
 
-	private void lockPath(Transaction tr, K key, DBLock el, SortedMap<K, T> sm)
+	private void lockPath(Transaction tr, K key, DBLock el, Map<K, T> sm)
 			throws IOException, InterruptedException {
-		throw new UnsupportedOperationException("Not implemented"); // TODO
+		PageId<T> indexPage = bplus.getRootPageId();
+		while (indexPage != null) {
+			lm.requestLock(new LockManager.Request(indexPage, tr, el));
+			indexPage = bplus.getNextPageId((PageId<Integer>) indexPage,
+				(Integer) key, (Map<Integer, T>) sm, tr, el);
+		}
 	}
 
 	@Override
@@ -58,6 +63,6 @@ public class DiskIndex<K extends Comparable<K>, T> extends Index<K, T> {
 	@Override
 	public void insert(Transaction tr, Record<K, Integer> rec)
 			throws IOException, InterruptedException {
-		bplus.insert(tr, rec);
+		bplus.insert(tr, (Record<Integer, Integer>) rec);
 	}
 }
