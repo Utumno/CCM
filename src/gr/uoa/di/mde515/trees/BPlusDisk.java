@@ -223,6 +223,7 @@ public final class BPlusDisk<V> {
 			writeByte(LEAF_OFFSET, (byte) ((leaf) ? 1 : 0));
 			numOfKeys = 0; // Unneeded
 			writeShort(NUM_KEYS_OFFSET, (short) 0);
+			buf.setPageDirty(this.getPageId().getId());
 		}
 
 		Node newNodeFromDiskOrBuffer(Transaction tr, DBLock lock, int pageID)
@@ -287,6 +288,7 @@ public final class BPlusDisk<V> {
 
 		void setGreaterOrEqual(int goe) {
 			writeInt(Engine.PAGE_SIZE - key_size, goe);
+			buf.setPageDirty(this.getPageId().getId());
 		}
 
 		// =====================================================================
@@ -320,6 +322,7 @@ public final class BPlusDisk<V> {
 			writeInt(i + key_size, value);
 			++numOfKeys;
 			writeShort(NUM_KEYS_OFFSET, numOfKeys);
+			buf.setPageDirty(this.getPageId().getId());
 		}
 
 		int _lastKey() {
@@ -345,6 +348,7 @@ public final class BPlusDisk<V> {
 			}
 			numOfKeys -= removals;
 			writeShort(NUM_KEYS_OFFSET, numOfKeys);
+			buf.setPageDirty(this.getPageId().getId());
 		}
 	}
 
@@ -449,6 +453,7 @@ public final class BPlusDisk<V> {
 			}
 			Record<Integer, Integer> _lastPair = _lastPair();
 			writeShort(NUM_KEYS_OFFSET, --numOfKeys); // discard _lastPair
+			buf.setPageDirty(this.getPageId().getId());
 			setGreaterOrEqual(_lastPair.getValue());
 			return new Record<Integer, Node>(_lastPair.getKey(), sibling);
 		}
@@ -554,6 +559,7 @@ public final class BPlusDisk<V> {
 				sibling._put(rec.getKey(), rec.getValue());
 			}
 			writeShort(NUM_KEYS_OFFSET, numOfKeys);
+			buf.setPageDirty(this.getPageId().getId());
 			return new Record<Integer, Node>(sibling._firstPair().getKey(),
 				sibling);
 		}

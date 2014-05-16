@@ -89,6 +89,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		void pageWrite() {
 			pageWriteFreeList(freeList);
 			pageWriteNumOfPages(numOfPages);
+			// FIXME :::: buff.setDirty ?????
 		}
 
 		@Override
@@ -250,7 +251,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				Page<Integer> s = buf.allocFrame(next_page, file);
 				s.writeInt(OFFSET_PREVIOUS_PAGE, 0);
 				buf.setPageDirty(s.getPageId().getId());
-				buf.flushPage(next_page, file);
+				buf.flushPage(next_page, file); // FIXME FLUSH ??
 			}
 		}
 	}

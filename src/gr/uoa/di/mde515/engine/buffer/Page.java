@@ -6,6 +6,8 @@ import java.nio.ByteBuffer;
 
 public class Page<T> {
 
+	// private static final BufferManager<Integer> buff = BufferManager
+	// .getInstance();
 	// FIXME immutable
 	private final PageId<T> pageid;
 	private final ByteBuffer dat;
@@ -42,8 +44,11 @@ public class Page<T> {
 		return dat.getShort(pos);
 	}
 
+	// TODO !!!! consider adding buff.setPageDity(this) to the write calls
 	public void writeShort(int pos, short value) {
 		dat.putShort(pos, value);
+		// buff.setPageDirty(this); // buff is BufferManager<Integer> - I need
+		// BufferManager<T>
 	}
 
 	public void writeByte(int pos, byte value) {
