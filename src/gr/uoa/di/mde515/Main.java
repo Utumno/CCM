@@ -109,4 +109,26 @@ public class Main {
 			return null;
 		}
 	}
+
+	private static final class Lookuper<T> implements Callable<T> {
+
+		private final Engine<Integer, Integer, Integer> eng;
+		private final Integer key;
+
+		Lookuper(Engine<Integer, Integer, Integer> eng, Integer key) {
+			this.eng = eng;
+			this.key = key;
+		}
+
+		@Override
+		public T call() throws Exception {
+			Transaction tr = eng.beginTransaction();
+			try {
+				Record<Integer, Integer> rkv = eng.lookup(tr, key, DBLock.E);
+			} finally {
+				eng.endTransaction(tr);
+			}
+			return null;
+		}
+	}
 }
