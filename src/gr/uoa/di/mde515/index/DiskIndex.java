@@ -3,7 +3,6 @@ package gr.uoa.di.mde515.index;
 import gr.uoa.di.mde515.engine.Transaction;
 import gr.uoa.di.mde515.files.IndexDiskFile;
 import gr.uoa.di.mde515.locks.DBLock;
-import gr.uoa.di.mde515.locks.LockManager;
 import gr.uoa.di.mde515.trees.BPlusDisk;
 
 import java.io.IOException;
@@ -14,7 +13,6 @@ import java.util.Map;
 public class DiskIndex<K extends Comparable<K>, T> extends Index<K, T> {
 
 	private final BPlusDisk<K, T> bplus;
-	private final LockManager lm = LockManager.getInstance();
 
 	public DiskIndex(IndexDiskFile file, short key_size, short value_size)
 			throws IOException, InterruptedException {
@@ -43,7 +41,7 @@ public class DiskIndex<K extends Comparable<K>, T> extends Index<K, T> {
 			throws IOException, InterruptedException {
 		PageId<T> indexPage = bplus.getRootPageId();
 		while (indexPage != null) {
-			lm.requestLock(new LockManager.Request(indexPage, tr, el));
+			tr.lock((int) indexPage.getId(), el);
 			indexPage = bplus.getNextPageId((PageId<Integer>) indexPage, key,
 				sm, tr, el);
 		}
