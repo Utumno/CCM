@@ -95,9 +95,9 @@ enum CCMImpl implements CCM {
 	}
 
 	@Override
-	public <K extends Comparable<K>, V> Record<K, V> insert(
+	public <K extends Comparable<K>, V, T> Record<K, V> insert(
 			final Transaction tr, final Record<K, V> record,
-			final DataFile<K, V> dataFile, final Index<K, ?> index)
+			final DataFile<K, V> dataFile, final Index<K, T> index)
 			throws TransactionRequiredException, ExecutionException {
 		_operate_(new DBRecordOperation<K, V>(tr, record) {
 
@@ -110,9 +110,8 @@ enum CCMImpl implements CCM {
 				if (lookupLocked != null)
 					throw new KeyExistsException("" + record.getKey());
 				dataFile.lockHeader(tr, DBLock.E);
-				PageId pageID = dataFile.insert(tr, record);
-				index.insert(tr,
-					new Record<>(record.getKey(), (Integer) pageID.getId()));
+				PageId<T> pageID = dataFile.insert(tr, record);
+				index.insert(tr, new Record<>(record.getKey(), pageID.getId()));
 				// if insertion to file is successful we must now insert into
 				// the index and unlock
 				return record;

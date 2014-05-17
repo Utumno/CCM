@@ -32,8 +32,11 @@ import java.util.concurrent.ExecutionException;
  * @param <V>
  *            the type of the records value - that is all the attributes except
  *            the key. No restrictions here.
+ * @param <T>
+ *            the type of the page IDs - the current implementation expects
+ *            Integers (there are casts that will blow if not) FIXME - generify
  */
-public abstract class Engine<K extends Comparable<K>, V> {
+public abstract class Engine<K extends Comparable<K>, V, T> {
 
 	public static final class TransactionFailedException extends Exception {
 
@@ -84,14 +87,14 @@ public abstract class Engine<K extends Comparable<K>, V> {
 	// File bulk_delete(File fileOfKeys);
 	public abstract void print();
 
-	public abstract void insertIndex(Transaction tr, Record<K, Integer> rec)
+	public abstract void insertIndex(Transaction tr, Record<K, T> rec)
 			throws IOException, InterruptedException;
 
 	public abstract void print(Transaction tr, DBLock e) throws IOException,
 			InterruptedException;
 }
 
-final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V> {
+final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 
 	private static final short RECORD_SIZE = 8;
 	private static final short KEY_SIZE = 4;
@@ -112,9 +115,9 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V> {
 	}
 
 	@Override
-	public void insertIndex(Transaction tr, Record<K, Integer> rec)
+	public void insertIndex(Transaction tr, Record<K, T> rec)
 			throws IOException, InterruptedException {
-		index.insert(tr, rec);
+		index.insert(tr, (Record<K, PageId<T>>) rec);
 	}
 
 	@Override

@@ -60,7 +60,7 @@ public class Index<K extends Comparable<K>, T> {
 		throw new UnsupportedOperationException("Not implemented"); // TODO
 	}
 
-	public void insert(Transaction tr, Record<K, Integer> rec)
+	public void insert(Transaction tr, Record<K, T> rec)
 			throws IOException, InterruptedException {
 		throw new UnsupportedOperationException("Not implemented"); // TODO
 	}

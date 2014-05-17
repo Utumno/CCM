@@ -61,9 +61,9 @@ public class DiskIndex<K extends Comparable<K>, T> extends Index<K, T> {
 	}
 
 	@Override
-	public void insert(Transaction tr, Record<K, Integer> rec)
+	public void insert(Transaction tr, Record<K, T> rec)
 			throws IOException, InterruptedException {
-		bplus.insert(tr, (Record<Integer, Integer>) rec);
+		bplus.insert(tr, (Record<Integer, T>) rec);
 	}
 
 	@Override

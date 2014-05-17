@@ -112,8 +112,8 @@ public final class BPlusDisk<V> {
 		flushRootAndNodes();
 	}
 
-	public <R extends Record<Integer, Integer>> void insert(Transaction tr,
-			R rec) throws IOException, InterruptedException {
+	public <R extends Record<Integer, V>> void insert(Transaction tr, R rec)
+			throws IOException, InterruptedException {
 		final Integer id = (Integer) root.getPageId().getId();
 		if (tr.lock(id, DBLock.E)) {
 			buf.allocFrame(id, file);
@@ -306,12 +306,12 @@ public final class BPlusDisk<V> {
 			return "@" + getPageId().getId();
 		}
 
-		int greaterOrEqual() {
-			return readInt(Engine.PAGE_SIZE - key_size);
+		V greaterOrEqual() {
+			return (V) (Integer) readInt(Engine.PAGE_SIZE - key_size);
 		}
 
-		void setGreaterOrEqual(int goe) {
-			writeInt(Engine.PAGE_SIZE - key_size, goe);
+		void setGreaterOrEqual(V v) {
+			writeInt(Engine.PAGE_SIZE - key_size, (int) v);
 			buf.setPageDirty((Integer) this.getPageId().getId());
 		}
 
@@ -319,7 +319,7 @@ public final class BPlusDisk<V> {
 		// Methods that go to a Page subclass for Sorted Data files TODO
 		// =====================================================================
 		// final int MEDIAN_KEY_INDEX = (numOfKeys) / 2;
-		void _put(Record<Integer, Integer> rec) {
+		void _put(Record<Integer, V> rec) {
 			_put(rec.getKey(), rec.getValue());
 		}
 
@@ -327,23 +327,23 @@ public final class BPlusDisk<V> {
 		 * Inserts key and value and increases numOfKeys. If key exists replaces
 		 * its value with {@code value} and does not increase key count.
 		 */
-		void _put(int key, int value) {
+		void _put(int key, V v) {
 			int i, j;
 			for (i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
 				int tmpKey = readInt(i);
-				int tmpValue = readInt(i + key_size);
+				V tmpValue = (V) (Integer) readInt(i + key_size);
 				if (key < tmpKey) {
 					writeInt(i, key);
-					writeInt(i + key_size, value);
+					writeInt(i + key_size, (int) v);
 					key = tmpKey;
-					value = tmpValue;
+					v = tmpValue;
 				} else if (key == tmpKey) {
-					writeInt(i + key_size, value);
+					writeInt(i + key_size, (int) v);
 					return; // replace the value and do NOT ++numOfKeys
 				}
 			}
 			writeInt(i, key);
-			writeInt(i + key_size, value);
+			writeInt(i + key_size, (int) v);
 			++numOfKeys;
 			writeShort(NUM_KEYS_OFFSET, numOfKeys);
 			buf.setPageDirty((Integer) this.getPageId().getId());
@@ -369,9 +369,10 @@ public final class BPlusDisk<V> {
 			return readInt(offset);
 		}
 
-		Record<Integer, Integer> _lastPair() {
+		Record<Integer, V> _lastPair() {
 			int offset = HEADER_SIZE + (numOfKeys - 1) * record_size;
-			return new Record<>(readInt(offset), readInt(offset + key_size));
+			return (Record<Integer, V>) new Record<>(readInt(offset),
+				readInt(offset + key_size));
 		}
 
 		Record<Integer, Integer> _firstPair() {
@@ -382,7 +383,7 @@ public final class BPlusDisk<V> {
 		void _copyTailAndRemoveIt(Node sibling, final int fromIndex) {
 			short removals = 0;
 			for (int j = fromIndex, i = HEADER_SIZE + j * record_size; j < numOfKeys; i += record_size, ++j) {
-				sibling._put(readInt(i), readInt(i + key_size));
+				sibling._put(readInt(i), (V) (Integer) readInt(i + key_size));
 				++removals;
 			}
 			numOfKeys -= removals;
@@ -409,7 +410,7 @@ public final class BPlusDisk<V> {
 		Node _lookup(Transaction tr, DBLock lock, final Integer k)
 				throws IOException, InterruptedException {
 			if (k.compareTo(_lastKey()) >= 0)
-				return newNodeFromDiskOrBuffer(tr, lock, greaterOrEqual());
+				return newNodeFromDiskOrBuffer(tr, lock, (int) greaterOrEqual());
 			// tailMap contains at least children.lastKey()
 			for (short i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
 				int readInt = readInt(i);
@@ -447,10 +448,10 @@ public final class BPlusDisk<V> {
 		@Override
 		InternalNode parent(Transaction tr, DBLock lock, InternalNode root1)
 				throws IOException, InterruptedException {
-			final int id = (int) getPageId().getId();
-			if (id == root1.greaterOrEqual()) return root1;
+			final V id = getPageId().getId();
+			if (id.equals(root1.greaterOrEqual())) return root1;
 			for (short i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
-				if (id == root1.readInt(i)) return root1;
+				if (id == (V) (Integer) root1.readInt(i)) return root1;
 			}
 			return parent(tr, lock,
 				(InternalNode) root1._lookup(tr, lock, this)); // the CCE
@@ -482,16 +483,15 @@ public final class BPlusDisk<V> {
 			// numOfKeys = (short) ((numOfKeys - 1) / 2 + 1); // draw 2 pictures
 			// - for max_keys == odd and max_keys == even
 			if (keyToInsert < _lastKey()) {
-				_put((Record<Integer, Integer>) new Record<>(keyToInsert,
-					justSplit.getPageId().getId()));
+				_put(new Record<>(keyToInsert, justSplit.getPageId().getId()));
 				// insert it and move last key to the sibling
 				sibling._put(_lastPair());
 				--numOfKeys;
 			} else {
-				sibling._put((Record<Integer, Integer>) new Record<>(
-					keyToInsert, justSplit.getPageId().getId()));
+				sibling._put(new Record<>(keyToInsert, justSplit.getPageId()
+					.getId()));
 			}
-			Record<Integer, Integer> _lastPair = _lastPair();
+			Record<Integer, V> _lastPair = _lastPair();
 			writeShort(NUM_KEYS_OFFSET, --numOfKeys); // discard _lastPair
 			buf.setPageDirty((Integer) this.getPageId().getId());
 			setGreaterOrEqual(_lastPair.getValue());
@@ -503,16 +503,16 @@ public final class BPlusDisk<V> {
 			final Node newNode = insert.getValue();
 			Integer _keyOfAnchor = _keyWithValue(justSplit);
 			if (_keyOfAnchor != null) {
-				_put(_keyOfAnchor, (int) newNode.getPageId().getId());
+				_put(_keyOfAnchor, newNode.getPageId().getId());
 			} else {
 				// _keyOfAnchor == null - anchor used to be for keys greater or
 				// equal to lastKey
-				setGreaterOrEqual((int) newNode.getPageId().getId());
+				setGreaterOrEqual(newNode.getPageId().getId());
 			}
 			if (overflow()) {// split
 				return split(tr, new Record<>(insert.getKey(), justSplit));
 			}
-			_put(insert.getKey(), (int) justSplit.getPageId().getId());
+			_put(insert.getKey(), justSplit.getPageId().getId());
 			return null;
 		}
 
@@ -528,7 +528,8 @@ public final class BPlusDisk<V> {
 				System.out.print(key + ";" + val + ",");
 			}
 			System.out.print(greaterOrEqual() + "\t");
-			values.add(newNodeFromDiskOrBuffer(tr, lock, greaterOrEqual()));
+			values
+				.add(newNodeFromDiskOrBuffer(tr, lock, (int) greaterOrEqual()));
 			return values;
 		}
 	}
@@ -537,7 +538,7 @@ public final class BPlusDisk<V> {
 	final class LeafNode extends Node {
 
 		Record<Integer, Node> insertInLeaf(Transaction tr,
-				Record<Integer, Integer> rec) throws InterruptedException {
+				Record<Integer, V> rec) throws InterruptedException {
 			if (overflow()) return split(tr, rec);
 			_put(rec.getKey(), rec.getValue());
 			return null;
@@ -571,13 +572,12 @@ public final class BPlusDisk<V> {
 			return this;
 		}
 
-		Record<Integer, Node>
-				split(Transaction tr, Record<Integer, Integer> rec)
-						throws InterruptedException {
+		Record<Integer, Node> split(Transaction tr, Record<Integer, V> rec)
+				throws InterruptedException {
 			System.out.println("SPLIT LEAFNODE");
 			LeafNode sibling = new LeafNode(tr);
 			sibling.setGreaterOrEqual(greaterOrEqual());
-			setGreaterOrEqual((int) sibling.getPageId().getId());
+			setGreaterOrEqual(sibling.getPageId().getId());
 			// FIXME ALGORITHM
 			// move median and up to sibling
 			_copyTailAndRemoveIt(sibling, numOfKeys / 2); // ...
@@ -619,9 +619,8 @@ public final class BPlusDisk<V> {
 			System.out.println("SPLIT ROOT");
 			InternalNode newRoot = new InternalNode(tr);
 			// FIXME ALGORITHM
-			newRoot._put(insert.getKey(), (int) justSplit.getPageId().getId());
-			newRoot.setGreaterOrEqual((int) insert.getValue().getPageId()
-				.getId());
+			newRoot._put(insert.getKey(), justSplit.getPageId().getId());
+			newRoot.setGreaterOrEqual(insert.getValue().getPageId().getId());
 			root = newRoot;
 			return;
 		}
@@ -641,9 +640,9 @@ public final class BPlusDisk<V> {
 	 * IllegalArgumentException. Must be called AFTER I lock the path to the
 	 * leaf for writing.
 	 */
-	private <R extends Record<Integer, Integer>> void _insertInLeaf(
-			Transaction tr, R rec, final LeafNode leafNode)
-			throws IllegalArgumentException, InterruptedException, IOException {
+	private <R extends Record<Integer, V>> void _insertInLeaf(Transaction tr,
+			R rec, final LeafNode leafNode) throws IllegalArgumentException,
+			InterruptedException, IOException {
 		if (leafNode._get(rec.getKey()) != null)
 			throw new IllegalArgumentException("Key " + rec.getKey()
 				+ " exists");

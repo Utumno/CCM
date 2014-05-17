@@ -26,8 +26,8 @@ public interface CCM {
 
 	void endTransaction(Transaction tr);
 
-	<K extends Comparable<K>, V> Record<K, V> insert(Transaction tr,
-			Record<K, V> record, DataFile<K, V> file, final Index<K, ?> index)
+	<K extends Comparable<K>, V, T> Record<K, V> insert(Transaction tr,
+			Record<K, V> record, DataFile<K, V> file, final Index<K, T> index)
 			throws TransactionRequiredException, KeyExistsException,
 			ExecutionException;
 

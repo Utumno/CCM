@@ -31,7 +31,7 @@ public class Main {
 
 	public static <T> void main(String[] args) throws InterruptedException,
 			IOException {
-		final Engine<Integer, Integer> eng = Engine.newInstance();
+		final Engine<Integer, Integer, Integer> eng = Engine.newInstance();
 		try {
 			// treePrint(eng);
 			for (int i = 0; i < 100; ++i) {
@@ -87,10 +87,11 @@ public class Main {
 
 	private static final class Inserter<T> implements Callable<T> {
 
-		private final Engine<Integer, Integer> eng;
+		private final Engine<Integer, Integer, Integer> eng;
 		private final Record<Integer, Integer> rec;
 
-		Inserter(Engine<Integer, Integer> eng, Record<Integer, Integer> rec) {
+		Inserter(Engine<Integer, Integer, Integer> eng,
+				Record<Integer, Integer> rec) {
 			this.eng = eng;
 			this.rec = rec;
 		}
