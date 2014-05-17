@@ -28,6 +28,19 @@ public class LockManager {
 			this.tr = tr;
 			this.lock = lock;
 		}
+
+		@Override
+		public String toString() {
+			StringBuilder builder = new StringBuilder();
+			builder.append("Request [pageId=");
+			builder.append(pageId);
+			builder.append(", tr=");
+			builder.append(tr);
+			builder.append(", lock=");
+			builder.append(lock);
+			builder.append("]");
+			return builder.toString();
+		}
 	}
 
 	private static final ConcurrentMap<PageId<?>, LockStructure> locks = new ConcurrentHashMap<>();
@@ -88,6 +101,8 @@ public class LockManager {
 			final DBLock lock = req.lock;
 			final Transaction trans = req.tr;
 			final Request grant = granted.get(trans);
+			System.out.println("Trhead " + Thread.currentThread() + " Req :"
+				+ req);
 			if (grant != null && grant.pageId.equals(req.pageId)
 				&& grant.lock == lock) return; // maybe reduntant checks ?
 			switch (lock) {
@@ -99,6 +114,7 @@ public class LockManager {
 				break;
 			}
 			granted.put(trans, req);
+			System.out.println(granted);
 		}
 
 		synchronized void add(Request request) {
@@ -106,8 +122,7 @@ public class LockManager {
 		}
 
 		synchronized boolean unlock(Transaction tr) {
-			for (Entry<Transaction, Request> transRequest : granted
-				.entrySet()) {
+			for (Entry<Transaction, Request> transRequest : granted.entrySet()) {
 				if (tr.equals(transRequest.getKey())) {
 					switch (transRequest.getValue().lock) {
 					case E:
@@ -119,7 +134,6 @@ public class LockManager {
 					}
 					granted.remove(tr);
 				}
-
 			}
 			for (Entry<Transaction, DBLock> transLock : requests.entrySet()) {
 				if (tr.equals(transLock.getKey())) requests.remove(tr);

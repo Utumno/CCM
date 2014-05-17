@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -33,9 +34,12 @@ public class Main {
 		final Engine<Integer, Integer> eng = Engine.newInstance();
 		try {
 			// treePrint(eng);
-			for (int i = 0; i < 2; ++i) {
-				exec.submit(new Inserter<T>(eng, new Record<>(i, i)));
+			for (int i = 0; i < 100; ++i) {
+				exec.submit(new Inserter<T>(eng, new Record<>(i, i))).get();
 			}
+		} catch (ExecutionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		} finally {
 			exec.shutdown();
 			boolean terminated = exec.awaitTermination(13, TimeUnit.SECONDS);
