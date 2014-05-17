@@ -101,8 +101,6 @@ public class LockManager {
 			final DBLock lock = req.lock;
 			final Transaction trans = req.tr;
 			final Request grant = granted.get(trans);
-			// System.out.println("Trhead " + Thread.currentThread() + " Req :"
-			// + req);
 			if (grant != null && grant.pageId.equals(req.pageId)
 				&& grant.lock == lock) return; // maybe redundant checks ?
 			switch (lock) {
@@ -114,7 +112,6 @@ public class LockManager {
 				break;
 			}
 			granted.put(trans, req);
-			// System.out.println(granted);
 		}
 
 		synchronized void add(Request request) {

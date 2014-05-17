@@ -31,7 +31,6 @@ public class DiskFile {
 	 * @throws IOException
 	 */
 	public void readPage(int pageID, ByteBuffer buffer) throws IOException {
-		// System.out.println("---Start readPage of DiskManager---");
 		file.seek(pageID * PAGE_SIZE);
 		file.read(buffer.array(), 0, PAGE_SIZE);
 	}

@@ -31,4 +31,13 @@ public class PageId<T> {
 		} else if (!id.equals(other.id)) return false;
 		return true;
 	}
+
+	@Override
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("PageId [id=");
+		builder.append(id);
+		builder.append("]");
+		return builder.toString();
+	}
 }

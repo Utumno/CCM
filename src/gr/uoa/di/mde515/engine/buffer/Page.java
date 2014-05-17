@@ -58,4 +58,15 @@ public class Page<T> {
 	public void writeInt(int pos, int value) {
 		dat.putInt(pos, value);
 	}
+
+	@Override
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("Page [pageid=");
+		builder.append(pageid);
+		builder.append(", dat=");
+		builder.append(dat);
+		builder.append("]");
+		return builder.toString();
+	}
 }

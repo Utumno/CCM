@@ -23,6 +23,7 @@ public class Transaction {
 		DBLock.class);
 	private final EnumMap<DBLock, List<PageId<Integer>>> lockedIndexPages = new EnumMap<>(
 		DBLock.class);
+	private final long transId;
 	// TODO Random unique trans identifier added to thread name
 	// http://www.javapractices.com/topic/TopicAction.do?Id=56
 	// http://bugs.java.com/view_bug.do?bug_id=6611830
@@ -32,7 +33,7 @@ public class Transaction {
 	}
 
 	Transaction() {
-		long transId = transactionId.incrementAndGet();
+		transId = transactionId.incrementAndGet();
 		threadId = Thread.currentThread().getId();
 		threadName = "Thread (" + threadId + ") for transaction " + transId;
 		Thread.currentThread().setName(threadName);
@@ -135,5 +136,14 @@ public class Transaction {
 
 	public String getThreadId() {
 		return threadName;
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("Transaction [id=");
+		builder.append(transId);
+		builder.append("]");
+		return builder.toString();
 	}
 }
