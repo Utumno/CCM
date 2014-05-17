@@ -27,7 +27,8 @@ import java.util.concurrent.ExecutionException;
  *
  * @param <K>
  *            the key type of the records in the one and only one file. Must
- *            extend {@link Comparable}
+ *            extend {@link Comparable} - the current implementation expects
+ *            Integers (there are casts that will blow if not) FIXME - generify
  * @param <V>
  *            the type of the records value - that is all the attributes except
  *            the key. No restrictions here.

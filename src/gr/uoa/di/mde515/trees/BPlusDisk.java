@@ -18,7 +18,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -159,6 +158,8 @@ public final class BPlusDisk<V> {
 			m.put(key, (V) node._get(key));
 			return null; // locked the path to the key
 		}
+		@SuppressWarnings("unchecked")
+		// node is not leaf here
 		InternalNode in = (InternalNode) node;
 		final Node nextNode = in._lookup(tr, lock, key);
 		return nextNode.getPageId();
@@ -205,10 +206,14 @@ public final class BPlusDisk<V> {
 	@SuppressWarnings("synthetic-access")
 	public abstract class Node extends Page<V> {
 
-		short numOfKeys; // NEVER ZERO
-		static final short HEADER_SIZE = 3; // 2 for numOfKeys, 1 for isLeaf
+		// MUTABLE SATE
+		short numOfKeys; // NEVER ZERO EXCEPT ON CONSTRUCTION
+		// CONSTANTS
 		private static final short LEAF_OFFSET = 0;
+		// PROTECTED
+		protected static final short HEADER_SIZE = 3; // 1 isLeaf, 2 numOfKeys
 		protected static final short NUM_KEYS_OFFSET = 1;
+		// FINALS
 		private final boolean isLeaf;
 		private final short max_keys = (short) ((Engine.PAGE_SIZE - HEADER_SIZE - key_size) / record_size);
 
@@ -289,7 +294,7 @@ public final class BPlusDisk<V> {
 			return numOfKeys;
 		}
 
-		boolean isLeaf() { // TODO UNUSED
+		boolean isLeaf() {
 			return isLeaf;
 		}
 
@@ -538,15 +543,6 @@ public final class BPlusDisk<V> {
 			return null;
 		}
 
-		@Deprecated
-		public Map<Integer, Integer> records() {
-			Map<Integer, Integer> m = new TreeMap<>();
-			for (short i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
-				m.put(readInt(i), readInt(i + key_size));
-			}
-			return m;
-		}
-
 		/**
 		 * Used in {@link #split(Record)} and in creating the tree for the first
 		 * time (see {@link BPlusDisk#BPlusDisk(IndexDiskFile, short, short)}).
@@ -619,20 +615,21 @@ public final class BPlusDisk<V> {
 			Record<Integer, Node> insert) throws InterruptedException,
 			IOException {
 		if (root.getPageId().equals(justSplit.getPageId())) { // root must split
-			// (leaf or not) // TODO use PageId<T> equals
+			// (leaf or not) // TODO use PageId<T> equals in Node.equals
 			System.out.println("SPLIT ROOT");
 			InternalNode newRoot = new InternalNode(tr);
 			// FIXME ALGORITHM
 			newRoot._put(insert.getKey(), (int) justSplit.getPageId().getId());
 			newRoot.setGreaterOrEqual((int) insert.getValue().getPageId()
 				.getId());
-			root = newRoot; // FIXME write to file "root.txt"
+			root = newRoot;
 			return;
 		}
 		// justSplit is not tree root so has a parent
+		@SuppressWarnings("unchecked")
+		// moreover root is not leaf so I cast it to InternalNode safely
 		InternalNode parent = justSplit.parent(tr, DBLock.E,
 			(InternalNode) root);
-		// moreover root is not leaf so I cast it to InternalNode safely
 		Record<Integer, Node> newInternalNode = parent.insertInternal(tr,
 			justSplit, insert);
 		if (newInternalNode != null)
