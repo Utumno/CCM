@@ -190,6 +190,7 @@ public final class BPlusDisk<K extends Comparable<K>, V> {
 			InterruptedException {
 		List<Node> items = new ArrayList<>();
 		items.add(root);
+		// NOTICE I NEVER LOCK THE ROOOOOOTTTTTTTT FIXME
 		while (!items.isEmpty()) {
 			List<Node> children = new ArrayList<>();
 			for (Node node : items) {
@@ -577,10 +578,12 @@ public final class BPlusDisk<K extends Comparable<K>, V> {
 
 		Record<K, Node> split(Transaction tr, Record<K, V> rec)
 				throws InterruptedException {
-			System.out.println("SPLIT LEAFNODE");
+			System.out.print("SPLIT LEAFNODE - sibling: ");
 			LeafNode sibling = new LeafNode(tr);
 			sibling.setGreaterOrEqual(greaterOrEqual());
-			setGreaterOrEqual(sibling.getPageId().getId());
+			final V id = sibling.getPageId().getId();
+			System.out.println(id);
+			setGreaterOrEqual(id);
 			// FIXME ALGORITHM
 			// move median and up to sibling
 			_copyTailAndRemoveIt(sibling, numOfKeys / 2); // ...
@@ -594,6 +597,7 @@ public final class BPlusDisk<K extends Comparable<K>, V> {
 			}
 			writeShort(NUM_KEYS_OFFSET, numOfKeys);
 			buf.setPageDirty((Integer) this.getPageId().getId());
+			print(tr, DBLock.S);
 			return new Record<K, Node>(sibling._firstPair().getKey(),
 				sibling);
 		}
@@ -625,6 +629,7 @@ public final class BPlusDisk<K extends Comparable<K>, V> {
 			newRoot._put(insert.getKey(), justSplit.getPageId().getId());
 			newRoot.setGreaterOrEqual(insert.getValue().getPageId().getId());
 			root = newRoot;
+			print(tr, DBLock.E);
 			return;
 		}
 		// justSplit is not tree root so has a parent
