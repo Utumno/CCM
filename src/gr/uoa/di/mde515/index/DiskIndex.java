@@ -13,7 +13,7 @@ import java.util.Map;
 
 public class DiskIndex<K extends Comparable<K>, T> extends Index<K, T> {
 
-	private final BPlusDisk<T> bplus;
+	private final BPlusDisk<K, T> bplus;
 	private final LockManager lm = LockManager.getInstance();
 
 	public DiskIndex(IndexDiskFile file, short key_size, short value_size)
@@ -44,8 +44,8 @@ public class DiskIndex<K extends Comparable<K>, T> extends Index<K, T> {
 		PageId<T> indexPage = bplus.getRootPageId();
 		while (indexPage != null) {
 			lm.requestLock(new LockManager.Request(indexPage, tr, el));
-			indexPage = bplus.getNextPageId((PageId<Integer>) indexPage,
-				(Integer) key, (Map<Integer, T>) sm, tr, el);
+			indexPage = bplus.getNextPageId((PageId<Integer>) indexPage, key,
+				sm, tr, el);
 		}
 	}
 
@@ -61,9 +61,9 @@ public class DiskIndex<K extends Comparable<K>, T> extends Index<K, T> {
 	}
 
 	@Override
-	public void insert(Transaction tr, Record<K, T> rec)
-			throws IOException, InterruptedException {
-		bplus.insert(tr, (Record<Integer, T>) rec);
+	public void insert(Transaction tr, Record<K, T> rec) throws IOException,
+			InterruptedException {
+		bplus.insert(tr, rec);
 	}
 
 	@Override
