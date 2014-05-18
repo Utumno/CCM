@@ -52,21 +52,17 @@ public class Transaction {
 		}
 	}
 
-	public <K extends Comparable<K>, V> void
-			flush(final DataFile<K, V> dataFile) throws IOException {
+	public <K extends Comparable<K>, V> void flush(
+			final DataFile<K, V> dataFile, final Index<K, ?> index)
+			throws IOException {
 		for (List<PageId<Integer>> list : lockedDataPages.values())
 			dataFile.flush(list);
-	}
-
-	public <K extends Comparable<K>> void flushIndex(final Index<K, ?> index)
-			throws IOException {
 		for (List<PageId<Integer>> list : lockedIndexPages.values())
 			index.flush(list);
 	}
 
 	public <K extends Comparable<K>, V> void abort(
-			final DataFile<K, V> dataFile, final Index<K, ?> index)
-			throws IOException {
+			final DataFile<K, V> dataFile, final Index<K, ?> index) {
 		for (List<PageId<Integer>> list : lockedDataPages.values())
 			dataFile.abort(list);
 		for (List<PageId<Integer>> list : lockedDataPages.values())

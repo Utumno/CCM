@@ -47,6 +47,19 @@ public final class BufferManager<T> {
 		LRU;
 	}
 
+	/**
+	 * The BufferManager follows the singleton pattern. So one BufferManager is
+	 * created.
+	 */
+	public static BufferManager<Integer> getInstance() {
+		return instance;
+	}
+
+	public void setPageDirty(T pageID) {
+		synchronized (POOL_LOCK) {
+			getFrame(pageIdToFrameNumber.get(pageID)).setDirty(true);
+		}
+	}
 	// =========================================================================
 	// API
 	// =========================================================================
@@ -79,20 +92,6 @@ public final class BufferManager<T> {
 			final Integer frameNumber = getFrameNum(pageID);
 			System.out.println("Unpinned page - count: "
 				+ decreasePinCount(frameNumber, pageID));
-		}
-	}
-
-	/**
-	 * The BufferManager follows the singleton pattern. So one BufferManager is
-	 * created.
-	 */
-	public static BufferManager<Integer> getInstance() {
-		return instance;
-	}
-
-	public void setPageDirty(T pageID) {
-		synchronized (POOL_LOCK) {
-			getFrame(pageIdToFrameNumber.get(pageID)).setDirty(true);
 		}
 	}
 
@@ -213,7 +212,7 @@ public final class BufferManager<T> {
 	}
 
 	// =========================================================================
-	// Private helpers - all nust be called holding the POOL_LOCK TODO
+	// Private helpers - all nust be called holding the POOL_LOCK
 	// =========================================================================
 	/**
 	 * MUST BE USED FROM SYNCHONIZED BLOCK. Move to {@link ReplacementAlgorithm}
@@ -239,9 +238,7 @@ public final class BufferManager<T> {
 	}
 
 	private Frame getFrame(int i) {
-		synchronized (POOL_LOCK) {
-			return pool.get(i);
-		}
+		return pool.get(i);
 	}
 
 	/**
@@ -254,11 +251,10 @@ public final class BufferManager<T> {
 	 */
 	private int decreasePinCount(int frameNumber, T pageID) {
 		int pinCount = -1;
-		synchronized (POOL_LOCK) { // added this here to be double sure
-			if ((!pinPerm.contains(getFrame(frameNumber)))
-				&& (pinCount = getFrame(frameNumber).decreasePincount()) == 0)
-				_free(pageID, frameNumber);
-		}
-		return getFrame(frameNumber).getPinCount().intValue();
+		final Frame frame = getFrame(frameNumber);
+		if ((!pinPerm.contains(frame))
+			&& (pinCount = frame.decreasePincount()) == 0)
+			_free(pageID, frameNumber);
+		return frame.getPinCount().intValue();
 	}
 }
