@@ -126,11 +126,6 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		_insertInLeaf(tr, rec, leafNode);
 	}
 
-	/** Return a page id for the root node */
-	public PageId<T> getRootPageId() {
-		return root.getPageId();
-	}
-
 	public void flushRootAndNodes() throws IOException {
 		Root.rootToFile((int) root.getPageId().getId());
 		Root.nodesToFile(nodeId.get());
@@ -157,6 +152,16 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		}
 	}
 
+	public void lockPath(Transaction tr, K key, DBLock el, Map<K, T> sm)
+			throws IOException, InterruptedException {
+		PageId<T> indexPage = getRootPageId();
+		while (indexPage != null) {
+			indexPage = getNextPageIdToLock((PageId<Integer>) indexPage, key,
+				sm, tr, el);
+		}
+	}
+
+	// helpers for locking
 	/**
 	 * Returns the next page id of the index we need to lock in our search for
 	 * the given key. When the grantedPage is a leaf node this function returns
@@ -167,10 +172,10 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 	 * @throws InterruptedException
 	 * @throws IOException
 	 */
-	public PageId<T> getNextPageId(PageId<Integer> grantedPage, K key,
+	private PageId<T> getNextPageIdToLock(PageId<Integer> toLock, K key,
 			Map<K, T> m, Transaction tr, DBLock lock) throws IOException,
 			InterruptedException {
-		Integer pageId = grantedPage.getId();
+		Integer pageId = toLock.getId();
 		BPlusDisk<K, T>.Node node = root.newNodeFromDiskOrBuffer(tr, lock,
 			pageId);
 		if (node.isLeaf()) {
@@ -184,6 +189,9 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		return nextNode.getPageId();
 	}
 
+	/** Return a page id for the root node */
+	private synchronized PageId<T> getRootPageId() {
+		return root.getPageId();
 	}
 
 	// =========================================================================

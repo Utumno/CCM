@@ -33,18 +33,8 @@ public class DiskIndex<K extends Comparable<K>, T> extends Index<K, T> {
 	public T lookupLocked(Transaction tr, K key, DBLock el) throws IOException,
 			InterruptedException {
 		Map<K, T> sm = new HashMap<>();
-		lockPath(tr, key, el, sm);
+		bplus.lockPath(tr, key, el, sm);
 		return sm.get(key);
-	}
-
-	private void lockPath(Transaction tr, K key, DBLock el, Map<K, T> sm)
-			throws IOException, InterruptedException {
-		PageId<T> indexPage = bplus.getRootPageId();
-		while (indexPage != null) {
-			tr.lock((int) indexPage.getId(), el);
-			indexPage = bplus.getNextPageId((PageId<Integer>) indexPage, key,
-				sm, tr, el);
-		}
 	}
 
 	@Override
