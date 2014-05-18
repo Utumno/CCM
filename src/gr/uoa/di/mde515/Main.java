@@ -34,9 +34,7 @@ public class Main {
 		final Engine<Integer, Integer, Integer> eng = Engine.newInstance();
 		try {
 			// treePrint(eng);
-			for (int i = 0; i < 100; ++i) {
-				exec.submit(new Inserter<T>(eng, new Record<>(i, i))).get();
-			}
+			exec.submit(new Inserter<T>(eng, new Record<>(0, 0))).get();
 		} catch (ExecutionException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -100,7 +98,8 @@ public class Main {
 		public T call() throws Exception {
 			Transaction tr = eng.beginTransaction();
 			try {
-				eng.insert(tr, rec);
+				for (int i = 0; i < 8; ++i)
+					eng.insert(tr, new Record<>(i, i));
 				System.out.println("Transaction " + tr);
 				eng.commit(tr);
 				eng.print(tr, DBLock.E);
