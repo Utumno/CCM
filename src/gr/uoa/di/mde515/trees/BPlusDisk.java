@@ -114,14 +114,14 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 
 	public <R extends Record<K, T>> void insert(Transaction tr, R rec)
 			throws IOException, InterruptedException {
-		root = root.newNodeFromDiskOrBuffer(tr, DBLock.E, (int) root
+		root = root.newNodeFromDiskOrBuffer(tr, DBLock.E, (Integer) root
 			.getPageId().getId());
 		final LeafNode leafNode = root.findLeaf(tr, DBLock.E, rec.getKey());
 		_insertInLeaf(tr, rec, leafNode);
 	}
 
 	public void flushRootAndNodes() throws IOException {
-		Root.rootToFile((int) root.getPageId().getId());
+		Root.rootToFile((Integer) root.getPageId().getId());
 		Root.nodesToFile(nodeId.get());
 	}
 
@@ -299,7 +299,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		}
 
 		void setGreaterOrEqual(T v) {
-			writeInt(Engine.PAGE_SIZE - key_size, (int) v);
+			writeInt(Engine.PAGE_SIZE - key_size, (Integer) v);
 			buf.setPageDirty((Integer) this.getPageId().getId());
 		}
 
@@ -321,17 +321,17 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				K tmpKey = (K) (Integer) readInt(i);
 				T tmpValue = (T) (Integer) readInt(i + key_size);
 				if (k.compareTo(tmpKey) < 0) {
-					writeInt(i, (int) k);
-					writeInt(i + key_size, (int) v);
+					writeInt(i, (Integer) k);
+					writeInt(i + key_size, (Integer) v);
 					k = tmpKey;
 					v = tmpValue;
 				} else if (k.compareTo(tmpKey) == 0) {
-					writeInt(i + key_size, (int) v);
+					writeInt(i + key_size, (Integer) v);
 					return; // replace the value and do NOT ++numOfKeys
 				}
 			}
-			writeInt(i, (int) k);
-			writeInt(i + key_size, (int) v);
+			writeInt(i, (Integer) k);
+			writeInt(i + key_size, (Integer) v);
 			++numOfKeys;
 			writeShort(NUM_KEYS_OFFSET, numOfKeys);
 			buf.setPageDirty((Integer) this.getPageId().getId());
@@ -400,7 +400,8 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		Node _lookup(Transaction tr, DBLock lock, final K key)
 				throws IOException, InterruptedException {
 			if (key.compareTo(_lastKey()) >= 0)
-				return newNodeFromDiskOrBuffer(tr, lock, (int) greaterOrEqual());
+				return newNodeFromDiskOrBuffer(tr, lock,
+					(Integer) greaterOrEqual());
 			// tailMap contains at least children.lastKey()
 			for (short i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
 				K readInt = (K) (Integer) readInt(i);
@@ -423,7 +424,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		}
 
 		private K _keyWithValue(Node anchor) {
-			final int id = (int) anchor.getPageId().getId();
+			final int id = (Integer) anchor.getPageId().getId();
 			for (short i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
 				int readInt = readInt(i + key_size);
 				if (id == readInt) {
@@ -519,7 +520,8 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			}
 			System.out.print(greaterOrEqual() + "\t");
 			values
-				.add(newNodeFromDiskOrBuffer(tr, lock, (int) greaterOrEqual()));
+.add(newNodeFromDiskOrBuffer(tr, lock,
+				(Integer) greaterOrEqual()));
 			return values;
 		}
 	}

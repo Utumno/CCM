@@ -167,7 +167,7 @@ public final class BufferManager<T> {
 				+ pageID);
 			pageIdToFrameNumber.put(pageID, numFrame);
 			final ByteBuffer buffer = getFrame(numFrame).getBuffer();
-			file.readPage((int) pageID, buffer);// FIXME cast
+			file.readPage((Integer) pageID, buffer);// FIXME cast
 			return new Page<>(pageID, buffer);
 		}
 	}
@@ -219,7 +219,7 @@ public final class BufferManager<T> {
 			System.out.println("pinPerm " + pinPerm); // FIXME NUL ????!!!!
 			// pinPage(pageID);
 			final ByteBuffer buffer = getFrame(numFrame).getBuffer();
-			disk.readPage((int) pageID, buffer);// FIXME cast
+			disk.readPage((Integer) pageID, buffer);// FIXME cast
 			return new Page<>(pageID, buffer);
 		}
 	}
