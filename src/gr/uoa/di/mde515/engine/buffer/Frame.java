@@ -1,12 +1,14 @@
 package gr.uoa.di.mde515.engine.buffer;
 
+import gr.uoa.di.mde515.engine.Engine;
+
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /** A wrapper around a ByteBuffer representing a frame in the main memory */
 final class Frame {
 
-	private static final int PAGE_SIZE = 48;
+	private static final int PAGE_SIZE = Engine.PAGE_SIZE;
 	private final int framenumber;
 	private final AtomicInteger pincount = new AtomicInteger();
 	private volatile boolean dirty;

@@ -111,8 +111,6 @@ enum CCMImpl implements CCM {
 				dataFile.lockHeader(tr, DBLock.E);
 				PageId<T> pageID = dataFile.insert(tr, record);
 				index.insert(tr, new Record<>(record.getKey(), pageID.getId()));
-				// if insertion to file is successful we must now insert into
-				// the index and unlock
 				return record;
 			}
 		});

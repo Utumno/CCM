@@ -14,7 +14,7 @@ import java.util.Set;
 
 public final class BufferManager<T> {
 
-	private static final int NUM_BUFFERS = 1000;
+	private static final int NUM_BUFFERS = 100;
 	/** the pool of frames - unmodifiable list */
 	private final List<Frame> pool;
 	/**
@@ -55,14 +55,15 @@ public final class BufferManager<T> {
 		return instance;
 	}
 
+	// =========================================================================
+	// API
+	// =========================================================================
 	public void setPageDirty(T pageID) {
 		synchronized (POOL_LOCK) {
 			getFrame(pageIdToFrameNumber.get(pageID)).setDirty(true);
 		}
 	}
-	// =========================================================================
-	// API
-	// =========================================================================
+
 	/**
 	 * Increases the pin count of the frame that corresponds to the
 	 * {@code pageID} given. Clients are responsible for unpinning their pages
@@ -143,11 +144,11 @@ public final class BufferManager<T> {
 	 * FIXME FIXME FIXME - let Lock manager know
 	 *
 	 * @param pageID
-	 * @param disk
+	 * @param file
 	 * @throws IOException
 	 * @throws InterruptedException
 	 */
-	public Page<T> allocFrame(T pageID, DiskFile disk) throws IOException,
+	public Page<T> allocFrame(T pageID, DiskFile file) throws IOException,
 			InterruptedException {
 		synchronized (POOL_LOCK) {
 			final Integer frameNum = getFrameNum(pageID);
@@ -166,7 +167,7 @@ public final class BufferManager<T> {
 				+ pageID);
 			pageIdToFrameNumber.put(pageID, numFrame);
 			final ByteBuffer buffer = getFrame(numFrame).getBuffer();
-			disk.readPage((int) pageID, buffer);// FIXME cast
+			file.readPage((int) pageID, buffer);// FIXME cast
 			return new Page<>(pageID, buffer);
 		}
 	}
@@ -224,7 +225,7 @@ public final class BufferManager<T> {
 	}
 
 	// =========================================================================
-	// Private helpers - all nust be called holding the POOL_LOCK
+	// Private helpers - all must be called holding the POOL_LOCK
 	// =========================================================================
 	/**
 	 * MUST BE USED FROM SYNCHONIZED BLOCK. Move to {@link ReplacementAlgorithm}

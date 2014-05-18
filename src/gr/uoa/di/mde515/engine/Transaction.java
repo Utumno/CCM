@@ -41,6 +41,7 @@ public class Transaction {
 		lockedDataPages.put(DBLock.S, new ArrayList<PageId<Integer>>());
 		lockedIndexPages.put(DBLock.E, new ArrayList<PageId<Integer>>());
 		lockedIndexPages.put(DBLock.S, new ArrayList<PageId<Integer>>());
+		System.out.println(this + " INITIALIZED");
 	}
 
 	public void validateThread() {
