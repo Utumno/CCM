@@ -31,7 +31,6 @@ public class GraphMain {
 		graph.addEdge(L, G);
 		graph.addEdge(K, L);
 		graph.addEdge(L, K);
-
 		graph.addEdge(D, M);
 		graph.addEdge(M, D);
 		System.out.println(graph.toString());
@@ -50,10 +49,6 @@ public class GraphMain {
 		while (iter.hasNext()) {
 			System.out.println(iter.next() + " ");
 		}
-
 		g.breakCycle(graph);
-
-
-
 	}
 }

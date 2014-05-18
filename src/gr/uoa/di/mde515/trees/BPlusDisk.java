@@ -519,8 +519,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				System.out.print(key + ";" + val + ",");
 			}
 			System.out.print(greaterOrEqual() + "\t");
-			values
-.add(newNodeFromDiskOrBuffer(tr, lock,
+			values.add(newNodeFromDiskOrBuffer(tr, lock,
 				(Integer) greaterOrEqual()));
 			return values;
 		}

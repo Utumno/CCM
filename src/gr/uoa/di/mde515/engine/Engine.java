@@ -72,8 +72,8 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 	public abstract void abort(Transaction tr) throws IOException;
 
 	public abstract <T> void delete(Transaction tr, K key, DBLock el,
-			PageId<T> pageID)
-			throws KeyExistsException, IOException, InterruptedException;
+			PageId<T> pageID) throws KeyExistsException, IOException,
+			InterruptedException;
 
 	public abstract Record<K, V> lookup(Transaction tr, K key, DBLock el)
 			throws KeyExistsException, IOException, InterruptedException; // TODO

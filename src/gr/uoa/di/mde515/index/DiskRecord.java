@@ -1,6 +1,5 @@
 package gr.uoa.di.mde515.index;
 
-
 public abstract class DiskRecord<K extends Comparable<K>, V> extends
 		Record<K, V> {
 

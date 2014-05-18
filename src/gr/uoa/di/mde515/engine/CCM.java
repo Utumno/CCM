@@ -34,8 +34,7 @@ public interface CCM {
 
 	<K extends Comparable<K>, V, T> void delete(Transaction tr, K key,
 			DBLock el, PageId<T> pageID, DataFile<K, V> file)
-			throws IOException,
-			InterruptedException; // FIXME
+			throws IOException, InterruptedException; // FIXME
 
 	<K extends Comparable<K>, V, T> Record<K, V> lookup(Transaction tr, K key,
 			DBLock el, DataFile<K, V> dataFile, Index<K, T> index)
