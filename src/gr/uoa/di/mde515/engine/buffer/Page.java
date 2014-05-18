@@ -8,7 +8,7 @@ public class Page<T> {
 
 	// private static final BufferManager<Integer> buff = BufferManager
 	// .getInstance();
-	// FIXME immutable
+	// FIXME immutable ?
 	private final PageId<T> pageid;
 	private final ByteBuffer dat;
 

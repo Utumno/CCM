@@ -207,7 +207,7 @@ public final class BPlusDisk<K extends Comparable<K>, V> {
 	@SuppressWarnings("synthetic-access")
 	public abstract class Node extends Page<V> {
 
-		// MUTABLE SATE
+		// MUTABLE STATE
 		short numOfKeys; // NEVER ZERO EXCEPT ON CONSTRUCTION
 		// CONSTANTS
 		private static final short LEAF_OFFSET = 0;
@@ -624,7 +624,7 @@ public final class BPlusDisk<K extends Comparable<K>, V> {
 			// FIXME ALGORITHM
 			newRoot._put(insert.getKey(), justSplit.getPageId().getId());
 			newRoot.setGreaterOrEqual(insert.getValue().getPageId().getId());
-			root = newRoot;
+			setRoot(newRoot);
 			return;
 		}
 		// justSplit is not tree root so has a parent
@@ -636,6 +636,10 @@ public final class BPlusDisk<K extends Comparable<K>, V> {
 			justSplit, insert);
 		if (newInternalNode != null)
 			insertInternal(tr, parent, newInternalNode);
+	}
+
+	private synchronized void setRoot(BPlusDisk<K, V>.InternalNode newRoot) {
+		root = newRoot;
 	}
 
 	/**

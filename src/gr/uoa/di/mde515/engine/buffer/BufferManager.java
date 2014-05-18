@@ -5,6 +5,7 @@ import gr.uoa.di.mde515.index.PageId;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -14,27 +15,34 @@ import java.util.Set;
 public final class BufferManager<T> {
 
 	private static final int NUM_BUFFERS = 1000;
-	/** the pool of frames */
-	private final List<Frame> pool = new ArrayList<>(); // TODO unmodifiable
-	// the structure that maintains information about pageIDs and their
-	// corresponding frame numbers
+	/** the pool of frames - unmodifiable list */
+	private final List<Frame> pool;
+	/**
+	 * the structure that maintains information about pageIDs and their
+	 * corresponding frame numbers TODO bin - make pool to a map
+	 */
 	private final Map<T, Integer> pageIdToFrameNumber = new HashMap<>();
-	// contains the available frames that can be used
+	/** contains the remaining available frames */
 	private final List<Integer> freeList = new ArrayList<>();
 	/** Contains the frames that need to remain pinned in memory */
 	private final Set<T> pinPerm = new HashSet<>();
 	private static final BufferManager<Integer> instance = new BufferManager<>(
 		NUM_BUFFERS);
+	/** All actions on the state fields must be performed using this lock */
 	private static final Object POOL_LOCK = new Object();
 
 	private BufferManager(int numBufs) {
+		List<Frame> pool1 = new ArrayList<>();
 		for (int i = 0; i < numBufs; i++) {
-			pool.add(new Frame(i));
+			pool1.add(new Frame(i));
 			freeList.add(i);
 		}
+		// no additions ore deletions on the list of frames
+		pool = Collections.unmodifiableList(pool1);
 	}
 
 	@SuppressWarnings("unused")
+	// TODO
 	private static enum ReplacementAlgorithm {
 		LRU;
 	}
@@ -47,7 +55,7 @@ public final class BufferManager<T> {
 	 * {@code pageID} given.
 	 *
 	 * @param pageID
-	 *            the id of the page to pin - an integer probably
+	 *            the id of the page to pin - MUST be an INT TODO
 	 */
 	public void pinPage(T pageID) {
 		increasePinCount(pageIdToFrameNumber.get(pageID));
@@ -55,15 +63,16 @@ public final class BufferManager<T> {
 
 	/**
 	 * Decreases the pin count of the frame that corresponds to the
-	 * {@code pageID} given.
+	 * {@code pageID} given. When the pin count reaches zero the page is added
+	 * back to the free list.
 	 *
 	 * @param pageID
-	 *            the id of the page to unpin - an integer probably
+	 *            the id of the page to unpin - MUST be an INT TODO
 	 */
 	public void unpinPage(T pageID) {
 		synchronized (POOL_LOCK) {
 			final Integer frameNumber = pageIdToFrameNumber.get(pageID);
-			System.out.println("Unpin page: "
+			System.out.println("Unpinned page - count: "
 				+ decreasePinCount(frameNumber, pageID));
 		}
 	}
@@ -123,7 +132,7 @@ public final class BufferManager<T> {
 	public void flushPage(int pageID, DiskFile disk) throws IOException {
 		synchronized (POOL_LOCK) {
 			int frameNumber = pageIdToFrameNumber.get(pageID);
-			final Frame frame = pool.get(frameNumber);
+			final Frame frame = getFrame(frameNumber);
 			if (frame.isDirty())
 				disk.writePage(pageID, frame.getBufferFromFrame());
 			frame.setDirty(false);
@@ -188,8 +197,8 @@ public final class BufferManager<T> {
 		}
 	}
 
-	public Page<T> allocPinPage(T pageID, DiskFile disk)
-			throws IOException, InterruptedException {
+	public Page<T> allocPinPage(T pageID, DiskFile disk) throws IOException,
+			InterruptedException {
 		synchronized (POOL_LOCK) {
 			/* if the page already in the buffer return the buffer */
 			final Integer frameNum = pageIdToFrameNumber.get(pageID);
@@ -216,7 +225,9 @@ public final class BufferManager<T> {
 	}
 
 	private Frame getFrame(int i) {
-		return pool.get(i);
+		synchronized (POOL_LOCK) {
+			return pool.get(i);
+		}
 	}
 
 	/**
@@ -225,7 +236,9 @@ public final class BufferManager<T> {
 	 * @param frameNumber
 	 */
 	private void increasePinCount(int frameNumber) {
-		pool.get(frameNumber).increasePincount();
+		getFrame(frameNumber).increasePincount(); // Frame.increasePincount is
+		// an operations on an AtomicInteger - TODO do I need to synch on
+		// POOL_LOCK ?
 	}
 
 	/**
