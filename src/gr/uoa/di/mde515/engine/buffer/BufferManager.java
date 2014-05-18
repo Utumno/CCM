@@ -73,7 +73,11 @@ public final class BufferManager<T> {
 	 */
 	public void pinPage(T pageID) {
 		synchronized (POOL_LOCK) {
-			getFrame(pageIdToFrameNumber.get(pageID)).increasePincount();
+			final Integer i = pageIdToFrameNumber.get(pageID);
+			final Frame frame = getFrame(i);
+			frame.increasePincount();
+			System.out.println("Frame num " + i + " pin count "
+				+ frame.getPinCount());
 			// Frame.increasePincount is an operation on an AtomicInteger - TODO
 			// do I really need to synch on POOL_LOCK ?
 		}
@@ -90,7 +94,7 @@ public final class BufferManager<T> {
 	public void unpinPage(T pageID) {
 		synchronized (POOL_LOCK) {
 			final Integer frameNumber = getFrameNum(pageID);
-			System.out.println("Unpinned page - count: "
+			System.out.println("Unpinned frame " + frameNumber + " - count: "
 				+ decreasePinCount(frameNumber, pageID));
 		}
 	}
@@ -149,6 +153,8 @@ public final class BufferManager<T> {
 			final Integer frameNum = getFrameNum(pageID);
 			if (frameNum != null) { // if the page already in the buffer return
 				// a page wrapping the buffer
+				System.out.println("re-alloc FRAME NUM " + frameNum
+					+ " for page " + pageID);
 				return new Page<>(pageID, getFrame(frameNum).getBuffer());
 			}
 			while (freeList.isEmpty()) {
@@ -156,6 +162,7 @@ public final class BufferManager<T> {
 				POOL_LOCK.wait();
 			}
 			int numFrame = freeList.remove(0);
+			System.out.println("alloc FRAME NUM " + numFrame);
 			pageIdToFrameNumber.put(pageID, numFrame);
 			final ByteBuffer buffer = getFrame(numFrame).getBuffer();
 			disk.readPage((int) pageID, buffer);// FIXME cast
@@ -178,6 +185,8 @@ public final class BufferManager<T> {
 				POOL_LOCK.wait();
 			}
 			int numFrame = freeList.remove(0);
+			System.out.println("alloc new page FRAME NUM " + numFrame
+				+ " for page " + pageID);
 			pageIdToFrameNumber.put(pageID, numFrame);
 			return new Page<>(pageID, getFrame(numFrame).getBuffer());
 		}
@@ -200,10 +209,12 @@ public final class BufferManager<T> {
 				System.out.println("No available buffer");
 				POOL_LOCK.wait();
 			}
-			int numFrame = freeList.remove(0);
+			Integer numFrame = freeList.remove(0);
+			System.out
+				.println("alloc perm " + numFrame + " for page " + pageID);
 			pageIdToFrameNumber.put(pageID, numFrame);
 			pinPerm.add(frameNum);
-			System.out.println("pinPerm " + pinPerm);
+			System.out.println("pinPerm " + pinPerm); // FIXME NUL ????!!!!
 			// pinPage(pageID);
 			final ByteBuffer buffer = getFrame(numFrame).getBuffer();
 			disk.readPage((int) pageID, buffer);// FIXME cast
