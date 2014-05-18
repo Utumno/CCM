@@ -1,9 +1,9 @@
 package gr.uoa.di.mde515.engine.buffer;
 
 import gr.uoa.di.mde515.files.DiskFile;
-import gr.uoa.di.mde515.index.PageId;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -25,7 +25,7 @@ public final class BufferManager<T> {
 	/** contains the remaining available frames */
 	private final List<Integer> freeList = new ArrayList<>();
 	/** Contains the frames that need to remain pinned in memory */
-	private final Set<T> pinPerm = new HashSet<>();
+	private final Set<Integer> pinPerm = new HashSet<>();
 	private static final BufferManager<Integer> instance = new BufferManager<>(
 		NUM_BUFFERS);
 	/** All actions on the state fields must be performed using this lock */
@@ -58,7 +58,10 @@ public final class BufferManager<T> {
 	 *            the id of the page to pin - MUST be an INT TODO
 	 */
 	public void pinPage(T pageID) {
-		increasePinCount(pageIdToFrameNumber.get(pageID));
+		getFrame(pageIdToFrameNumber.get(pageID)).increasePincount(); // Frame.increasePincount
+																		// is
+		// an operations on an AtomicInteger - TODO do I need to synch on
+		// POOL_LOCK ?
 	}
 
 	/**
@@ -71,7 +74,7 @@ public final class BufferManager<T> {
 	 */
 	public void unpinPage(T pageID) {
 		synchronized (POOL_LOCK) {
-			final Integer frameNumber = pageIdToFrameNumber.get(pageID);
+			final Integer frameNumber = getFrameNum(pageID);
 			System.out.println("Unpinned page - count: "
 				+ decreasePinCount(frameNumber, pageID));
 		}
@@ -97,7 +100,7 @@ public final class BufferManager<T> {
 	 */
 	public void killPage(T pageID) {
 		synchronized (POOL_LOCK) {
-			final Integer frameNum = pageIdToFrameNumber.get(pageID);
+			final Integer frameNum = getFrameNum(pageID);
 			final Frame frame = getFrame(frameNum);
 			if (frame.isDirty()) {
 				frame.resetPinCount();
@@ -107,6 +110,109 @@ public final class BufferManager<T> {
 		}
 	}
 
+	/**
+	 * It flushes the content of the frame associated with the given pageID to
+	 * the disk at correct block.
+	 *
+	 * @param pageID
+	 * @param disk
+	 * @throws IOException
+	 */
+	public void flushPage(int pageID, DiskFile disk) throws IOException {
+		synchronized (POOL_LOCK) {
+			int frameNumber = pageIdToFrameNumber.get(pageID);
+			final Frame frame = getFrame(frameNumber);
+			if (frame.isDirty()) disk.writePage(pageID, frame.getBuffer());
+			frame.setDirty(false);
+		}
+	}
+
+	/**
+	 * Returns a Page corresponding to an existing block of {@code file}, backed
+	 * up by a frame in the main memory. It first checks if there is a Frame
+	 * already allocated and if not it waits for an empty Frame from the free
+	 * list and then updates the map of pageIDs and frameNumbers along with
+	 * returning the specified Page. FIXME thread safe
+	 *
+	 * FIXME FIXME FIXME - let Lock manager know
+	 *
+	 * @param pageID
+	 * @param disk
+	 * @throws IOException
+	 * @throws InterruptedException
+	 */
+	public Page<T> allocFrame(T pageID, DiskFile disk) throws IOException,
+			InterruptedException {
+		synchronized (POOL_LOCK) {
+			final Integer frameNum = getFrameNum(pageID);
+			if (frameNum != null) { // if the page already in the buffer return
+				// a page wrapping the buffer
+				return new Page<>(pageID, getFrame(frameNum).getBuffer());
+			}
+			while (freeList.isEmpty()) {
+				System.out.println("No available buffer");
+				POOL_LOCK.wait();
+			}
+			int numFrame = freeList.remove(0);
+			pageIdToFrameNumber.put(pageID, numFrame);
+			final ByteBuffer buffer = getFrame(numFrame).getBuffer();
+			disk.readPage((int) pageID, buffer);// FIXME cast
+			return new Page<>(pageID, buffer);
+		}
+	}
+
+	/**
+	 * Returns a Page backed up by a frame in the main memory that does not
+	 * correspond to block on the disk. May block waiting for a Frame to become
+	 * available. FIXME FIXME FIXME - let Lock manager know
+	 *
+	 * @param pageID
+	 * @throws InterruptedException
+	 */
+	public Page<T> allocFrameForNewPage(T pageID)
+			throws InterruptedException {
+		synchronized (POOL_LOCK) {
+			while (freeList.isEmpty()) {
+				System.out.println("No available buffer");
+				POOL_LOCK.wait();
+			}
+			int numFrame = freeList.remove(0);
+			pageIdToFrameNumber.put(pageID, numFrame);
+			return new Page<>(pageID, getFrame(numFrame).getBuffer());
+		}
+	}
+
+	public Page<T> allocPermanentPage(T pageID, DiskFile disk)
+			throws IOException, InterruptedException {
+		synchronized (POOL_LOCK) {
+			final Integer frameNum = getFrameNum(pageID);
+			if (frameNum != null) {
+				final Frame frame = getFrame(frameNum);
+				if (!pinPerm.contains(frameNum)) {
+					// make it permanent
+					frame.resetPinCount();
+					frame.increasePincount(); // make pinCount 1
+				}
+				return new Page<>(pageID, frame.getBuffer());
+			}
+			while (freeList.isEmpty()) {
+				System.out.println("No available buffer");
+				POOL_LOCK.wait();
+			}
+			int numFrame = freeList.remove(0);
+			pageIdToFrameNumber.put(pageID, numFrame);
+			pinPerm.add(frameNum);
+			System.out.println("pinPerm " + pinPerm);
+			// pinPage(pageID);
+			final ByteBuffer buffer = getFrame(numFrame).getBuffer();
+			disk.readPage((int) pageID, buffer);// FIXME cast
+			return new Page<>(pageID, buffer);
+		}
+	}
+
+	// =========================================================================
+	// Private helpers - all nust be called holding the POOL_LOCK TODO
+	// =========================================================================
 	/**
 	 * MUST BE USED FROM SYNCHONIZED BLOCK. Move to {@link ReplacementAlgorithm}
 	 *
@@ -122,123 +228,18 @@ public final class BufferManager<T> {
 	}
 
 	/**
-	 * It flushes the content of the frame associated with the given pageID to
-	 * the disk at correct block.
-	 *
 	 * @param pageID
-	 * @param disk
-	 * @throws IOException
+	 * @return the Frame for this pid or null if none
 	 */
-	public void flushPage(int pageID, DiskFile disk) throws IOException {
-		synchronized (POOL_LOCK) {
-			int frameNumber = pageIdToFrameNumber.get(pageID);
-			final Frame frame = getFrame(frameNumber);
-			if (frame.isDirty())
-				disk.writePage(pageID, frame.getBufferFromFrame());
-			frame.setDirty(false);
-		}
-	}
-
-	/**
-	 * Returns a Page corresponding to an existing block of {@code file}, backed
-	 * up by a frame in the main memory. It first finds an empty buffer from the
-	 * free list and then updates the map of pageIDs and frameNumbers along with
-	 * returning the specified Page. FIXME thread safe
-	 *
-	 * FIXME FIXME FIXME - let Lock manager know
-	 *
-	 * @param pageID
-	 * @param disk
-	 * @throws IOException
-	 * @throws InterruptedException
-	 */
-	public Page<Integer> allocFrame(Integer pageID, DiskFile disk)
-			throws IOException, InterruptedException {
-		synchronized (POOL_LOCK) {
-			// if the page already in the buffer return the buffer
-			final Integer frameNum = pageIdToFrameNumber.get(pageID);
-			if (frameNum != null) {
-				return new Page<>(new PageId<>(pageID), getFrame(frameNum)
-					.getBufferFromFrame());
-			}
-			while (freeList.isEmpty()) {
-				System.out.println("No available buffer");
-				POOL_LOCK.wait();
-			}
-			int numFrame = freeList.remove(0);
-			pageIdToFrameNumber.put((T) pageID, numFrame);
-			disk.readPage(pageID, getFrame(numFrame).getBufferFromFrame());
-			return new Page<>(new PageId<>(pageID), getFrame(numFrame)
-				.getBufferFromFrame());
-		}
-	}
-
-	/**
-	 * Returns a Page backed up by a frame in the main memory. It first finds an
-	 * empty buffer from the free list and then updates the map of pageIDs and
-	 * frameNumbers along with returning the specified Page. FIXME thread safe
-	 *
-	 * FIXME FIXME FIXME - let Lock manager know
-	 *
-	 * @param pageID
-	 * @throws InterruptedException
-	 */
-	public Page<Integer> allocFrameForNewPage(Integer pageID)
-			throws InterruptedException {
-		synchronized (POOL_LOCK) {
-			while (freeList.isEmpty()) {
-				System.out.println("No available buffer");
-				POOL_LOCK.wait();
-			}
-			int numFrame = freeList.remove(0);
-			pageIdToFrameNumber.put((T) pageID, numFrame);
-			return new Page<>(new PageId<>(pageID), getFrame(numFrame)
-				.getBufferFromFrame());
-		}
-	}
-
-	public Page<T> allocPinPage(T pageID, DiskFile disk) throws IOException,
-			InterruptedException {
-		synchronized (POOL_LOCK) {
-			/* if the page already in the buffer return the buffer */
-			final Integer frameNum = pageIdToFrameNumber.get(pageID);
-			if (frameNum != null) {
-				return new Page<>(new PageId<>(pageID), getFrame(frameNum)
-					.getBufferFromFrame());
-			}
-			while (freeList.isEmpty()) {
-				System.out.println("No available buffer");
-				POOL_LOCK.wait();
-			}
-			int numFrame = freeList.remove(0);
-			pageIdToFrameNumber.put(pageID, numFrame);
-			pinPerm.add(pageID);
-			pinPage(pageID);
-			System.out.println("Is it empty? " + pinPerm.isEmpty());
-			System.out.println("Does it contains the element? "
-				+ pinPerm.contains(pageID));
-			// FIXME cast below
-			disk.readPage((int) pageID, getFrame(numFrame).getBufferFromFrame());
-			return new Page<>(new PageId<>(pageID), getFrame(numFrame)
-				.getBufferFromFrame());
-		}
+	private Integer getFrameNum(T pageID) {
+		final Integer frameNum = pageIdToFrameNumber.get(pageID);
+		return frameNum;
 	}
 
 	private Frame getFrame(int i) {
 		synchronized (POOL_LOCK) {
 			return pool.get(i);
 		}
-	}
-
-	/**
-	 * Increases the relative pinCount variable of the Frame class.
-	 *
-	 * @param frameNumber
-	 */
-	private void increasePinCount(int frameNumber) {
-		getFrame(frameNumber).increasePincount(); // Frame.increasePincount is
-		// an operations on an AtomicInteger - TODO do I need to synch on
-		// POOL_LOCK ?
 	}
 
 	/**
@@ -252,10 +253,10 @@ public final class BufferManager<T> {
 	private int decreasePinCount(int frameNumber, T pageID) {
 		int pinCount = -1;
 		synchronized (POOL_LOCK) { // added this here to be double sure
-			if ((!pinPerm.contains(pageID))
-				&& (pinCount = pool.get(frameNumber).decreasePincount()) == 0)
+			if ((!pinPerm.contains(getFrame(frameNumber)))
+				&& (pinCount = getFrame(frameNumber).decreasePincount()) == 0)
 				_free(pageID, frameNumber);
 		}
-		return pinCount;
+		return getFrame(frameNumber).getPinCount().intValue();
 	}
 }

@@ -22,7 +22,7 @@ final class Frame {
 		return framenumber;
 	}
 
-	public ByteBuffer getBufferFromFrame() {
+	public ByteBuffer getBuffer() {
 		// System.out.println("Start getBufferFromFrame");
 		// System.out.println("The framenumber is " + getFrameNumber());
 		// System.out.println("The (getBufferFromFrame)ByteBuffer is "

@@ -12,13 +12,13 @@ public class Page<T> {
 	private final PageId<T> pageid;
 	private final ByteBuffer dat;
 
-	public Page(PageId<T> pageid, ByteBuffer dat) {
-		this.pageid = pageid;
+	public Page(T pageid, ByteBuffer dat) {
+		this.pageid = new PageId<>(pageid);
 		this.dat = dat;
 	}
 
 	public Page(Page<T> allocFrame) {
-		this(allocFrame.pageid, allocFrame.dat);
+		this(allocFrame.pageid.getId(), allocFrame.dat);
 	}
 
 	public ByteBuffer getData() {

@@ -65,14 +65,14 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				InterruptedException {
 			if (file.read() != -1) {
 				System.out.println("File already exists"); // FIXME read header
-				header_page = buff.allocPinPage(0, file);
+				header_page = buff.allocPermanentPage(0, file);
 				freeList = header_page.readInt(OFFSET_FREE_LIST);
 				fullList = header_page.readInt(OFFSET_FULL_LIST);
 				RECORD_SIZE = header_page.readShort(OFFSET_RECORD_SIZE);
 				numOfPages = header_page.readInt(OFFSET_NUM_OF_PAGES);
 			} else { // FILE EMPTY - CREATE THE HEADER
 				System.out.println("Creating the file");
-				header_page = buff.allocFrameForNewPage(0);
+				header_page = buff.allocPermanentPage(0, file);
 				header_page.writeInt(OFFSET_FREE_LIST, UNDEFINED);
 				header_page.writeInt(OFFSET_FULL_LIST, UNDEFINED);
 				header_page.writeInt(OFFSET_LAST_FREE_HEADER, UNDEFINED);
