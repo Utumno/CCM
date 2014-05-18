@@ -7,14 +7,12 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public final class BufferManager<T> {
 
-	private static final int NUM_BUFFERS = 1000;
+	private static final int NUM_BUFFERS = 96;
 	/** the pool of frames - unmodifiable list */
 	private final List<Frame> pool;
 	/**
@@ -25,7 +23,7 @@ public final class BufferManager<T> {
 	/** contains the remaining available frames */
 	private final List<Integer> freeList = new ArrayList<>();
 	/** Contains the frames that need to remain pinned in memory */
-	private final Set<Integer> pinPerm = new HashSet<>();
+	private final List<Integer> pinPerm = new ArrayList<>();
 	private static final BufferManager<Integer> instance = new BufferManager<>(
 		NUM_BUFFERS);
 	/** All actions on the state fields must be performed using this lock */
@@ -237,6 +235,7 @@ public final class BufferManager<T> {
 			freeList.add(frameNum);
 			POOL_LOCK.notifyAll();
 		} else freeList.add(frameNum);
+		System.out.println("Free " + freeList);
 	}
 
 	/**

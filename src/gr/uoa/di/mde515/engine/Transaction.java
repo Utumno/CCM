@@ -57,6 +57,7 @@ public class Transaction {
 	public <K extends Comparable<K>, V> void commit(
 			final DataFile<K, V> dataFile, final Index<K, ?> index)
 			throws IOException {
+		state = state.transition(State.COMMITING);
 		for (List<PageId<Integer>> list : lockedDataPages.values())
 			dataFile.flush(list);
 		for (List<PageId<Integer>> list : lockedIndexPages.values())
@@ -65,6 +66,7 @@ public class Transaction {
 
 	public <K extends Comparable<K>, V> void abort(
 			final DataFile<K, V> dataFile, final Index<K, ?> index) {
+		state = state.transition(State.COMMITING);
 		for (List<PageId<Integer>> list : lockedDataPages.values())
 			dataFile.abort(list);
 		for (List<PageId<Integer>> list : lockedDataPages.values())
@@ -83,6 +85,7 @@ public class Transaction {
 	 *         transaction, false otherwise
 	 */
 	public boolean lock(int pageID, DBLock lock) {
+		state = state.transition(State.ACTIVE);
 		final PageId<Integer> pid = new PageId<>(pageID);
 		for (Entry<DBLock, List<PageId<Integer>>> entries : lockedDataPages
 			.entrySet()) {
@@ -108,6 +111,9 @@ public class Transaction {
 	}
 
 	public void end() {
+		// state = state.transition(State.ENDING); // FIXME
+		// java.util.concurrent.ExecutionException:
+		// java.lang.IllegalStateException: ACTIVE to ENDING
 		for (Entry<DBLock, List<PageId<Integer>>> entries : lockedDataPages
 			.entrySet()) {
 			for (PageId<Integer> pid : entries.getValue()) {
