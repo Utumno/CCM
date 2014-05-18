@@ -114,14 +114,8 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 
 	public <R extends Record<K, T>> void insert(Transaction tr, R rec)
 			throws IOException, InterruptedException {
-		final Integer id = (Integer) root.getPageId().getId();
-		if (tr.lock(id, DBLock.E)) {
-			buf.allocFrame(id, file);
-			// FIXME - race in pin ??? - add boolean pin param in allocFrame
-			buf.pinPage(id);
-		} else {
-			buf.allocFrame(id, file);
-		}
+		root = root.newNodeFromDiskOrBuffer(tr, DBLock.E, (int) root
+			.getPageId().getId());
 		final LeafNode leafNode = root.findLeaf(tr, DBLock.E, rec.getKey());
 		_insertInLeaf(tr, rec, leafNode);
 	}
