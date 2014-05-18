@@ -23,7 +23,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	private static final int PAGE_SIZE = Engine.PAGE_SIZE;
 	// it the size of entry in the fileheader
 	private static final int KEY_SIZE = 4;
-	private static final int PAGE_HEADER_LENGTH = 20;
+	private static final int PAGE_HEADER_LENGTH = 20; // TODO move to header
 	private static final int UNDEFINED = -1;
 	// PAGE HEADER OFFSETS
 	private static final int OFFSET_CURRENT_PAGE = 0;
@@ -83,6 +83,8 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				buff.flushPage(0, file); // TODO - watch out: wild flush
 			}
 			MAXIMUM_NUMBER_OF_SLOTS = (short) ((PAGE_SIZE - PAGE_HEADER_LENGTH) / RECORD_SIZE);
+			if (MAXIMUM_NUMBER_OF_SLOTS < 1)
+				throw new AssertionError("TODO error checking");
 		}
 
 		void pageWrite() {
@@ -152,7 +154,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 			throws IOException, InterruptedException {
 		int pageID = getFreeListPageId();
 		Page<Integer> p;
-		if (tr.lock(pageID, DBLock.E)) {
+		if (tr.lock(pageID, DBLock.E)) { // locks for the first time
 			p = buf.allocFrame(pageID, file);
 			// FIXME - race in pin ??? - add boolean pin param in allocFrame
 			buf.pinPage(pageID);

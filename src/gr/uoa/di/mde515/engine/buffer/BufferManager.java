@@ -52,16 +52,18 @@ public final class BufferManager<T> {
 	// =========================================================================
 	/**
 	 * Increases the pin count of the frame that corresponds to the
-	 * {@code pageID} given.
+	 * {@code pageID} given. Clients are responsible for unpinning their pages
+	 * FIXME - what happens on abort commit transaction
 	 *
 	 * @param pageID
 	 *            the id of the page to pin - MUST be an INT TODO
 	 */
 	public void pinPage(T pageID) {
-		getFrame(pageIdToFrameNumber.get(pageID)).increasePincount(); // Frame.increasePincount
-																		// is
-		// an operations on an AtomicInteger - TODO do I need to synch on
-		// POOL_LOCK ?
+		synchronized (POOL_LOCK) {
+			getFrame(pageIdToFrameNumber.get(pageID)).increasePincount();
+			// Frame.increasePincount is an operation on an AtomicInteger - TODO
+			// do I really need to synch on POOL_LOCK ?
+		}
 	}
 
 	/**
@@ -105,6 +107,7 @@ public final class BufferManager<T> {
 			if (frame.isDirty()) {
 				frame.resetPinCount();
 				frame.setDirty(false);
+				// pinPerm.remove(frameNum); // FIXME
 				_free(pageID, frameNum);
 			} else decreasePinCount(frameNum, pageID);
 		}
@@ -169,8 +172,7 @@ public final class BufferManager<T> {
 	 * @param pageID
 	 * @throws InterruptedException
 	 */
-	public Page<T> allocFrameForNewPage(T pageID)
-			throws InterruptedException {
+	public Page<T> allocFrameForNewPage(T pageID) throws InterruptedException {
 		synchronized (POOL_LOCK) {
 			while (freeList.isEmpty()) {
 				System.out.println("No available buffer");
