@@ -90,6 +90,7 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 	public abstract void insertIndex(Transaction tr, Record<K, T> rec)
 			throws IOException, InterruptedException;
 
+	/** ONLY FOR DEBUG _ WILL LOCK THE WHOLE TREE */
 	public abstract void print(Transaction tr, DBLock e) throws IOException,
 			InterruptedException;
 }

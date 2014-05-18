@@ -101,8 +101,8 @@ public class Main {
 			try {
 				// for (int i = 0; i < 5; ++i)
 				eng.insert(tr, rec);
-				eng.commit(tr);
 				eng.print(tr, DBLock.E);
+				eng.commit(tr);
 			} finally {
 				eng.endTransaction(tr);
 			}
