@@ -24,6 +24,7 @@ public class Transaction {
 	private final EnumMap<DBLock, List<PageId<Integer>>> lockedIndexPages = new EnumMap<>(
 		DBLock.class);
 	private final long transId;
+	private volatile State state;
 	// TODO Random unique trans identifier added to thread name
 	// http://www.javapractices.com/topic/TopicAction.do?Id=56
 	// http://bugs.java.com/view_bug.do?bug_id=6611830
@@ -41,6 +42,7 @@ public class Transaction {
 		lockedDataPages.put(DBLock.S, new ArrayList<PageId<Integer>>());
 		lockedIndexPages.put(DBLock.E, new ArrayList<PageId<Integer>>());
 		lockedIndexPages.put(DBLock.S, new ArrayList<PageId<Integer>>());
+		state = State.ACTIVE;
 	}
 
 	public void validateThread() {
@@ -52,7 +54,7 @@ public class Transaction {
 		}
 	}
 
-	public <K extends Comparable<K>, V> void flush(
+	public <K extends Comparable<K>, V> void commit(
 			final DataFile<K, V> dataFile, final Index<K, ?> index)
 			throws IOException {
 		for (List<PageId<Integer>> list : lockedDataPages.values())
@@ -67,16 +69,6 @@ public class Transaction {
 			dataFile.abort(list);
 		for (List<PageId<Integer>> list : lockedDataPages.values())
 			index.abort(list);
-	}
-
-	public void addLockedDataPage(PageId<Integer> pageId, DBLock lock) {
-		// if (!(pageId.getId() instanceof Integer)) return; // FIXME horrible
-		// hack - actually the pageId may wrap a node at this stage
-		final Integer id = pageId.getId();
-		// System.out.println("ADDED " + id);
-		if (id >= 0) lockedDataPages.get(lock).add(pageId); // FIXME hack2
-		// I should have one map for each file and pass it as param to add
-		else lockedIndexPages.get(lock).add(pageId);
 	}
 
 	/**
@@ -115,7 +107,7 @@ public class Transaction {
 		return false;
 	}
 
-	public void unlock() {
+	public void end() {
 		for (Entry<DBLock, List<PageId<Integer>>> entries : lockedDataPages
 			.entrySet()) {
 			for (PageId<Integer> pid : entries.getValue()) {
@@ -130,10 +122,6 @@ public class Transaction {
 		}
 	}
 
-	public String getThreadId() {
-		return threadName;
-	}
-
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
@@ -141,5 +129,37 @@ public class Transaction {
 		builder.append(transId);
 		builder.append("]");
 		return builder.toString();
+	}
+
+	// =========================================================================
+	// Helpers
+	// =========================================================================
+	private void addLockedDataPage(PageId<Integer> pageId, DBLock lock) {
+		// if (!(pageId.getId() instanceof Integer)) return; // FIXME horrible
+		// hack - actually the pageId may wrap a node at this stage
+		final Integer id = pageId.getId();
+		// System.out.println("ADDED " + id);
+		if (id >= 0) lockedDataPages.get(lock).add(pageId); // FIXME hack2
+		// I should have one map for each file and pass it as param to add
+		else lockedIndexPages.get(lock).add(pageId);
+	}
+
+	private enum State {
+		ACTIVE, COMMITING, ENDING, UNLOCKING;
+
+		State transition(State next) {
+			switch (this) {
+			case ACTIVE:
+				if (next == ENDING)
+					throw new IllegalStateException(this + " to " + next);
+				return next;
+			case COMMITING:
+				if (next == ACTIVE || next == this)
+					throw new IllegalStateException(this + " to " + next);
+				return ENDING;
+			default:
+				throw new IllegalStateException(this + " to " + next);
+			}
+		}
 	}
 }

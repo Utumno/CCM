@@ -87,6 +87,9 @@ enum CCMImpl implements CCM {
 	@Override
 	public void shutdown() throws InterruptedException {}
 
+	// =========================================================================
+	// Active transaction
+	// =========================================================================
 	@Override
 	public Transaction beginTransaction() {
 		final Transaction tr = new Transaction();
@@ -120,9 +123,21 @@ enum CCMImpl implements CCM {
 	}
 
 	@Override
+	public <K extends Comparable<K>, V, T> Record<K, V> lookup(Transaction tr,
+			K key, DBLock el, final DataFile<K, V> dataFile, Index<K, T> index)
+			throws KeyExistsException, IOException, InterruptedException {
+		T id = index.lookupLocked(tr, key, el);
+		if (id == null) return null;
+		return new Record<K, V>(key, dataFile.get(tr, new PageId<>(id), key));
+	}
+
+	// =========================================================================
+	// Committing
+	// =========================================================================
+	@Override
 	public <K extends Comparable<K>, V> void commit(Transaction tr,
 			DataFile<K, V> dataFile, Index<K, ?> index) throws IOException {
-		tr.flush(dataFile, index);
+		tr.commit(dataFile, index);
 	}
 
 	@Override
@@ -131,25 +146,22 @@ enum CCMImpl implements CCM {
 		tr.abort(dataFile, index);
 	}
 
+	// =========================================================================
+	// Ended
+	// =========================================================================
 	@Override
 	public void endTransaction(Transaction tr) {
-		tr.unlock();
+		tr.end();
 		transactions.remove(tr);
 	}
 
+	// =========================================================================
+	// Not implemented
+	// =========================================================================
 	@Override
 	public <K extends Comparable<K>, V> Record<K, V> delete(Transaction tr,
 			K key, DataFile<K, V> file) {
 		throw new UnsupportedOperationException("Not supported yet."); // TODO
-	}
-
-	@Override
-	public <K extends Comparable<K>, V, T> Record<K, V> lookup(Transaction tr,
-			K key, DBLock el, final DataFile<K, V> dataFile, Index<K, T> index)
-			throws KeyExistsException, IOException, InterruptedException {
-		T id = index.lookupLocked(tr, key, el);
-		if (id == null) return null;
-		return new Record<K, V>(key, dataFile.get(tr, new PageId<>(id), key));
 	}
 
 	@Override
