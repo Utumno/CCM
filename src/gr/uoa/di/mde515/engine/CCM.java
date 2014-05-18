@@ -3,6 +3,7 @@ package gr.uoa.di.mde515.engine;
 import gr.uoa.di.mde515.files.DataFile;
 import gr.uoa.di.mde515.index.Index;
 import gr.uoa.di.mde515.index.KeyExistsException;
+import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.locks.DBLock;
 
@@ -31,8 +32,10 @@ public interface CCM {
 			throws TransactionRequiredException, KeyExistsException,
 			ExecutionException;
 
-	<K extends Comparable<K>, V> Record<K, V> delete(Transaction tr, K key,
-			DataFile<K, V> file);
+	<K extends Comparable<K>, V, T> void delete(Transaction tr, K key,
+			DBLock el, PageId<T> pageID, DataFile<K, V> file)
+			throws IOException,
+			InterruptedException; // FIXME
 
 	<K extends Comparable<K>, V, T> Record<K, V> lookup(Transaction tr, K key,
 			DBLock el, DataFile<K, V> dataFile, Index<K, T> index)

@@ -5,6 +5,7 @@ import gr.uoa.di.mde515.engine.Engine;
 import gr.uoa.di.mde515.engine.Engine.TransactionFailedException;
 import gr.uoa.di.mde515.engine.Transaction;
 import gr.uoa.di.mde515.index.KeyExistsException;
+import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.locks.DBLock;
 
@@ -125,6 +126,36 @@ public class Main {
 			Transaction tr = eng.beginTransaction();
 			try {
 				Record<Integer, Integer> rkv = eng.lookup(tr, key, DBLock.E);
+				System.out.println("The record is "
+					+ (rkv == null ? null
+							: ("key " + rkv.getKey() + "  value " + rkv
+								.getValue())));
+				// eng.print(tr, DBLock.S);
+			} finally {
+				eng.endTransaction(tr);
+			}
+			return null;
+		}
+	}
+
+	private static final class Deleter<T> implements Callable<T> {
+
+		private final Engine<Integer, Integer, Integer> eng;
+		private final Integer key;
+
+		Deleter(Engine<Integer, Integer, Integer> eng, Integer key) {
+			this.eng = eng;
+			this.key = key;
+		}
+
+		@Override
+		public T call() throws Exception {
+			Transaction tr = eng.beginTransaction();
+			try {
+				eng.delete(tr, key, DBLock.E, new PageId<Integer>(1));
+				System.out.println("DELETED");
+				eng.commit(tr);
+				// eng.print(tr, DBLock.S);
 			} finally {
 				eng.endTransaction(tr);
 			}

@@ -157,9 +157,11 @@ enum CCMImpl implements CCM {
 	// Not implemented
 	// =========================================================================
 	@Override
-	public <K extends Comparable<K>, V> Record<K, V> delete(Transaction tr,
-			K key, DataFile<K, V> file) {
-		throw new UnsupportedOperationException("Not supported yet."); // TODO
+	public <K extends Comparable<K>, V, T> void delete(Transaction tr, K key,
+			DBLock el, PageId<T> pageID, DataFile<K, V> file)
+			throws IOException,
+			InterruptedException {
+		file.delete(tr, pageID, key);
 	}
 
 	@Override
