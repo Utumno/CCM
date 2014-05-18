@@ -465,7 +465,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			if (numOfKeys != getMax_keys())
 				throw new RuntimeException("Splitting non leaf node - keys: "
 					+ numOfKeys);
-			System.out.println("SPLIT INTERNAL NODE");
+			System.out.println("------------------> SPLIT INTERNAL NODE");
 			// this key to insert must point to the just split node
 			final K keyToInsert = insert.getKey();
 			// splitting an internal node means we need to point to the
@@ -570,7 +570,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 
 		Record<K, Node> split(Transaction tr, Record<K, T> rec)
 				throws InterruptedException {
-			System.out.println("SPLIT LEAFNODE");
+			System.out.println("------------------> SPLIT LEAFNODE");
 			LeafNode sibling = new LeafNode(tr);
 			sibling.setGreaterOrEqual(greaterOrEqual());
 			setGreaterOrEqual(sibling.getPageId().getId());
@@ -610,7 +610,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			Record<K, Node> insert) throws InterruptedException, IOException {
 		if (root.getPageId().equals(justSplit.getPageId())) { // root must split
 			// (leaf or not) // TODO use PageId<T> equals in Node.equals
-			System.out.println("SPLIT ROOT");
+			System.out.println("------------------> SPLIT ROOT");
 			InternalNode newRoot = new InternalNode(tr);
 			// FIXME ALGORITHM
 			newRoot._put(insert.getKey(), justSplit.getPageId().getId());

@@ -76,7 +76,7 @@ public final class BufferManager<T> {
 			final Integer i = pageIdToFrameNumber.get(pageID);
 			final Frame frame = getFrame(i);
 			frame.increasePincount();
-			System.out.println("Frame num " + i + " pin count "
+			System.out.println("pinPage::Frame num " + i + " pin count "
 				+ frame.getPinCount());
 			// Frame.increasePincount is an operation on an AtomicInteger - TODO
 			// do I really need to synch on POOL_LOCK ?
@@ -162,7 +162,8 @@ public final class BufferManager<T> {
 				POOL_LOCK.wait();
 			}
 			int numFrame = freeList.remove(0);
-			System.out.println("alloc FRAME NUM " + numFrame);
+			System.out.println("alloc FRAME NUM " + numFrame + " for page "
+				+ pageID);
 			pageIdToFrameNumber.put(pageID, numFrame);
 			final ByteBuffer buffer = getFrame(numFrame).getBuffer();
 			disk.readPage((int) pageID, buffer);// FIXME cast
@@ -185,7 +186,7 @@ public final class BufferManager<T> {
 				POOL_LOCK.wait();
 			}
 			int numFrame = freeList.remove(0);
-			System.out.println("alloc new page FRAME NUM " + numFrame
+			System.out.println("ALLOC new page FRAME NUM " + numFrame
 				+ " for page " + pageID);
 			pageIdToFrameNumber.put(pageID, numFrame);
 			return new Page<>(pageID, getFrame(numFrame).getBuffer());
