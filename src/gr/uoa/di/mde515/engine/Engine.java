@@ -85,8 +85,10 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 	// File bulk_load(File fileOfRecords);
 	//
 	// File bulk_delete(File fileOfKeys);
+	/** ONLY FOR DEBUG */
 	public abstract void print();
 
+	/** ONLY FOR DEBUG */
 	public abstract void insertIndex(Transaction tr, Record<K, T> rec)
 			throws IOException, InterruptedException;
 
