@@ -33,29 +33,42 @@ public class Page<T> {
 	// Read/Write
 	// =========================================================================
 	public byte readByte(int pos) {
-		return dat.get(pos);
+		synchronized (dat) {
+			return dat.get(pos);
+		}
 	}
 
 	public int readInt(int pos) {
-		return dat.getInt(pos);
+		synchronized (dat) {
+			return dat.getInt(pos);
+		}
 	}
 
 	public short readShort(int pos) {
-		return dat.getShort(pos);
+		synchronized (dat) {
+			return dat.getShort(pos);
+		}
 	}
 
 	// TODO !!!! consider adding buff.setPageDity(this) to the write calls
 	public void writeShort(int pos, short value) {
-		dat.putShort(pos, value);
-		// buff.setPageDirty(this); // buff is BufferManager<Integer> - I need
-		// BufferManager<T>
+		synchronized (dat) {
+			dat.putShort(pos, value);
+			// buff.setPageDirty(this); // buff is BufferManager<Integer> - I
+			// need
+			// BufferManager<T>
+		}
 	}
 
 	public void writeByte(int pos, byte value) {
-		dat.put(pos, value);
+		synchronized (dat) {
+			dat.put(pos, value);
+		}
 	}
 
 	public void writeInt(int pos, int value) {
-		dat.putInt(pos, value);
+		synchronized (dat) {
+			dat.putInt(pos, value);
+		}
 	}
 }
