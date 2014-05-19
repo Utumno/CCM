@@ -40,6 +40,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		.getInstance();
 	private final IndexDiskFile file;
 	// fields
+	// TODO private lock + thread safety
 	private Node root;
 	private AtomicInteger nodeId = new AtomicInteger(0);
 	// sizes of the key and value to be used in the tree
@@ -278,7 +279,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				throws IOException, InterruptedException;
 
 		boolean overflow() {
-			return numOfKeys == max_keys; // FIXME ............ Test
+			return numOfKeys == max_keys; // TODO ............ Test
 		}
 
 		int items() {
@@ -357,6 +358,10 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			return (K) (Integer) readInt(offset);
 		}
 
+		K _firstKey() {
+			return (K) (Integer) readInt(HEADER_SIZE);
+		}
+
 		Record<K, T> _lastPair() {
 			int offset = HEADER_SIZE + (numOfKeys - 1) * record_size;
 			return (Record<K, T>) new Record<>(readInt(offset), readInt(offset
@@ -423,6 +428,10 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			return _lookup(tr, lock, internalNode._lastKey());
 		}
 
+		/**
+		 * Returns the key for this node or null if this node is the
+		 * "greater or equal" child or not a child
+		 */
 		private K _keyWithValue(Node anchor) {
 			final int id = (Integer) anchor.getPageId().getId();
 			for (short i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
@@ -431,10 +440,8 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 					return (K) (Integer) readInt(i);
 				}
 			}
-			// if (greaterOrEqual.equals(anchor))
-			// throw new RuntimeException("Node " + anchor
-			// + " is not child of " + this); // TODO get back
-			return null; // No key for this node
+			/* if (greaterOrEqual().equals(id)) */return null; // No key for
+			// this node TODO make _child method
 		}
 
 		@Override
@@ -558,11 +565,29 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				(InternalNode) root1._lookup(tr, lock, _firstPair().getKey()));
 		}
 
+		// =========================================================================
+		// Overrides
+		// =========================================================================
 		@Override
 		LeafNode findLeaf(Transaction tr, DBLock lock, K k) {
 			return this;
 		}
 
+		@Override
+		Collection<Node> print(Transaction tr, DBLock lock) {
+			System.out.print(getPageId().getId() + ":"/* + numOfKeys */+ ":");
+			for (short i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
+				int key = readInt(i);
+				int val = readInt(i + key_size);
+				System.out.print(key + ";" + val + ",");
+			}
+			System.out.print(greaterOrEqual() + "\t");
+			return null;
+		}
+
+		// =====================================================================
+		// Class Methods
+		// =====================================================================
 		Record<K, Node> split(Transaction tr, Record<K, T> rec)
 				throws InterruptedException {
 			System.out.println("------------------> SPLIT LEAFNODE");
@@ -584,18 +609,6 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			buf.setPageDirty((Integer) this.getPageId().getId());
 			return new Record<K, Node>(sibling._firstPair().getKey(), sibling);
 		}
-
-		@Override
-		Collection<Node> print(Transaction tr, DBLock lock) {
-			System.out.print(getPageId().getId() + ":"/* + numOfKeys */+ ":");
-			for (short i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
-				int key = readInt(i);
-				int val = readInt(i + key_size);
-				System.out.print(key + ";" + val + ",");
-			}
-			System.out.print(greaterOrEqual() + "\t");
-			return null;
-		}
 	}
 
 	// =========================================================================
@@ -607,7 +620,6 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			// (leaf or not) // TODO use PageId<T> equals in Node.equals
 			System.out.println("------------------> SPLIT ROOT");
 			InternalNode newRoot = new InternalNode(tr);
-			// FIXME ALGORITHM
 			newRoot._put(insert.getKey(), justSplit.getPageId().getId());
 			newRoot.setGreaterOrEqual(insert.getValue().getPageId().getId());
 			setRoot(newRoot);
