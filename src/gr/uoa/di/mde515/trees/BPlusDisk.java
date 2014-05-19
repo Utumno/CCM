@@ -281,6 +281,12 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			return numOfKeys == max_keys; // TODO ............ Test
 		}
 
+		/** Returns true if removing from this node WILL result in underflow */
+		boolean willUnderflow() {
+			if (root.getPageId().equals(getPageId())) return numOfKeys == 1; // FIXME!!!!
+			return numOfKeys < max_keys / 2; // TODO ............ Test
+		}
+
 		int items() {
 			return numOfKeys;
 		}
