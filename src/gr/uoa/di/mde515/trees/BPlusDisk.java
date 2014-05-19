@@ -171,8 +171,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			Map<K, T> m, Transaction tr, DBLock lock) throws IOException,
 			InterruptedException {
 		Integer pageId = toLock.getId();
-		BPlusDisk<K, T>.Node node = root.newNodeFromDiskOrBuffer(tr, lock,
-			pageId);
+		Node node = root.newNodeFromDiskOrBuffer(tr, lock, pageId);
 		if (node.isLeaf()) {
 			m.put(key, (T) node._get(key));
 			return null; // locked the path to the key
@@ -519,15 +518,14 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		Record<K, Node> split(Transaction tr, Record<K, Node> insert)
 				throws InterruptedException {
 			if (numOfKeys != getMax_keys())
-				throw new RuntimeException("Splitting non leaf node - keys: "
+				throw new RuntimeException("Splitting internal node - keys: "
 					+ numOfKeys);
 			System.out.println("------------------> SPLIT INTERNAL NODE");
 			// this key to insert must point to the just split node
 			final K keyToInsert = insert.getKey();
 			// splitting an internal node means we need to point to the
-			// node that was just split - the new node was already inserted !
-			final BPlusDisk<K, T>.Node justSplit = insert.getValue();
-			// FIXME ALGORITHM
+			// node that was just split - the new node is already inserted !
+			final Node justSplit = insert.getValue();
 			final InternalNode sibling = new InternalNode(tr);
 			sibling.setGreaterOrEqual(greaterOrEqual()); // sure
 			_copyTailAndRemoveIt(sibling, (numOfKeys + 1) / 2); // do NOT copy
@@ -535,7 +533,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			// numOfKeys = (short) ((numOfKeys - 1) / 2 + 1); // draw 2 pictures
 			// - for max_keys == odd and max_keys == even
 			if (keyToInsert.compareTo(_lastKey()) < 0) {
-				_put(new Record<>(keyToInsert, justSplit.getPageId().getId()));
+				_put(keyToInsert, justSplit.getPageId().getId());
 				// insert it and move last key to the sibling
 				sibling._put(_lastPair());
 				--numOfKeys;
@@ -572,7 +570,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		Collection<Node> print(Transaction tr, DBLock lock) throws IOException,
 				InterruptedException {
 			System.out.print(getPageId().getId() + "::");
-			Collection<BPlusDisk<K, T>.Node> values = new ArrayList<>();
+			Collection<Node> values = new ArrayList<>();
 			for (short i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
 				int key = readInt(i);
 				int val = readInt(i + key_size);
@@ -644,6 +642,9 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		// =====================================================================
 		Record<K, Node> split(Transaction tr, Record<K, T> rec)
 				throws InterruptedException {
+			if (numOfKeys != getMax_keys())
+				throw new RuntimeException("Splitting leaf - keys: "
+					+ numOfKeys);
 			System.out.println("------------------> SPLIT LEAFNODE");
 			LeafNode sibling = new LeafNode(tr);
 			sibling.setGreaterOrEqual(greaterOrEqual());
@@ -686,11 +687,11 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			(InternalNode) root);
 		Record<K, Node> newInternalNode = parent.insertInternal(tr, justSplit,
 			insert);
-		if (newInternalNode != null)
+		if (newInternalNode != null) // RECURSION
 			insertInternal(tr, parent, newInternalNode);
 	}
 
-	private synchronized void setRoot(BPlusDisk<K, T>.InternalNode newRoot) {
+	private synchronized void setRoot(Node newRoot) {
 		root = newRoot;
 	}
 
