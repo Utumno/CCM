@@ -385,6 +385,42 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			writeShort(NUM_KEYS_OFFSET, numOfKeys);
 			buf.setPageDirty((Integer) this.getPageId().getId());
 		}
+
+		Node _rightSiblingSameParent(Transaction tr, DBLock lock,
+				InternalNode parent) throws IOException, InterruptedException {
+			if (parent == null)
+				throw new NullPointerException("Root siblings ?");
+			if (_firstKey().compareTo(parent._lastKey()) >= 0) // ...
+				return null; // it is the "greater or equal" child (rightmost)
+			final K lastKey = _lastKey();
+			for (short i = HEADER_SIZE, j = 0; // up to parent's penultimate key
+			j < parent.numOfKeys - 1; i += record_size, ++j) {
+				K parKey = (K) (Integer) parent.readInt(i);
+				if (lastKey.compareTo(parKey) < 0)
+					return newNodeFromDiskOrBuffer(tr, lock,
+						parent.readInt(i + record_size + key_size));
+			}
+			// this is the last key so return the "greater or equal"
+			return newNodeFromDiskOrBuffer(tr, lock,
+				(Integer) parent.greaterOrEqual());
+		}
+
+		Node _leftSiblingSameParent(Transaction tr, DBLock lock,
+				InternalNode parent) throws IOException, InterruptedException {
+			if (parent == null)
+				throw new NullPointerException("Root siblings ?");
+			final K _lastKey = _lastKey();
+			if (_lastKey.compareTo(parent._firstKey()) < 0) // ...
+				return null; // it is the leftmost child
+			for (short i = (short) (HEADER_SIZE + record_size), j = 0; j < numOfKeys - 1; i += record_size, ++j) {
+				K readInt = (K) (Integer) parent.readInt(i);
+				if (_lastKey.compareTo(readInt) < 0)
+					return newNodeFromDiskOrBuffer(tr, lock,
+						parent.readInt(i - value_size));
+			}
+			return newNodeFromDiskOrBuffer(tr, lock,
+				(Integer) parent.greaterOrEqual());
+		}
 	}
 
 	@SuppressWarnings("synthetic-access")
