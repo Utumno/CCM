@@ -470,6 +470,47 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			super(id);
 		}
 
+		// =========================================================================
+		// Overrides
+		// =========================================================================
+		@Override
+		InternalNode parent(Transaction tr, DBLock lock, InternalNode root1)
+				throws IOException, InterruptedException {
+			final T id = getPageId().getId();
+			if (id.equals(root1.greaterOrEqual())) return root1;
+			for (short i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
+				if (id == (T) (Integer) root1.readInt(i)) return root1;
+			}
+			return parent(tr, lock,
+				(InternalNode) root1._lookup(tr, lock, this)); // the CCE
+		}
+
+		@Override
+		LeafNode findLeaf(Transaction tr, DBLock lock, K k) throws IOException,
+				InterruptedException {
+			return _lookup(tr, lock, k).findLeaf(tr, lock, k);
+		}
+
+		@Override
+		Collection<Node> print(Transaction tr, DBLock lock) throws IOException,
+				InterruptedException {
+			System.out.print(getPageId().getId() + "::");
+			Collection<Node> values = new ArrayList<>();
+			for (short i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
+				int key = readInt(i);
+				int val = readInt(i + key_size);
+				values.add(newNodeFromDiskOrBuffer(tr, lock, val));
+				System.out.print(key + ";" + val + ",");
+			}
+			System.out.print(greaterOrEqual() + "\t");
+			values.add(newNodeFromDiskOrBuffer(tr, lock,
+				(Integer) greaterOrEqual()));
+			return values;
+		}
+
+		// =====================================================================
+		// Class Methods
+		// =====================================================================
 		Node _lookup(Transaction tr, DBLock lock, final K key)
 				throws IOException, InterruptedException {
 			if (key.compareTo(_lastKey()) >= 0)
@@ -510,24 +551,6 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			}
 			/* if (greaterOrEqual().equals(id)) */return null; // No key for
 			// this node TODO make _child method
-		}
-
-		@Override
-		InternalNode parent(Transaction tr, DBLock lock, InternalNode root1)
-				throws IOException, InterruptedException {
-			final T id = getPageId().getId();
-			if (id.equals(root1.greaterOrEqual())) return root1;
-			for (short i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
-				if (id == (T) (Integer) root1.readInt(i)) return root1;
-			}
-			return parent(tr, lock,
-				(InternalNode) root1._lookup(tr, lock, this)); // the CCE
-		}
-
-		@Override
-		LeafNode findLeaf(Transaction tr, DBLock lock, K k) throws IOException,
-				InterruptedException {
-			return _lookup(tr, lock, k).findLeaf(tr, lock, k);
 		}
 
 		Record<K, Node> split(Transaction tr, Record<K, Node> insert)
@@ -579,23 +602,6 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			}
 			_put(insert.getKey(), justSplit.getPageId().getId());
 			return null;
-		}
-
-		@Override
-		Collection<Node> print(Transaction tr, DBLock lock) throws IOException,
-				InterruptedException {
-			System.out.print(getPageId().getId() + "::");
-			Collection<Node> values = new ArrayList<>();
-			for (short i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
-				int key = readInt(i);
-				int val = readInt(i + key_size);
-				values.add(newNodeFromDiskOrBuffer(tr, lock, val));
-				System.out.print(key + ";" + val + ",");
-			}
-			System.out.print(greaterOrEqual() + "\t");
-			values.add(newNodeFromDiskOrBuffer(tr, lock,
-				(Integer) greaterOrEqual()));
-			return values;
 		}
 
 		public Record<K, Node> removeInternal(Transaction tr, Node merged,
@@ -706,6 +712,52 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 	@SuppressWarnings("synthetic-access")
 	final class LeafNode extends Node {
 
+		/**
+		 * Used in {@link #split(Record)} and in creating the tree for the first
+		 * time (see {@link BPlusDisk#BPlusDisk(IndexDiskFile, short, short)}).
+		 * In the latter case the transaction must be null.
+		 */
+		LeafNode(Transaction tr) throws InterruptedException {
+			super(tr, true);
+		}
+
+		LeafNode(int id) throws InterruptedException, IOException {
+			super(id);
+		}
+
+		// =========================================================================
+		// Overrides
+		// =========================================================================
+		@Override
+		InternalNode parent(Transaction tr, DBLock lock, InternalNode root1)
+				throws IOException, InterruptedException {
+			final Integer id = (Integer) getPageId().getId();
+			if (root1._keyWithValue(this) != null
+				|| id.equals(root1.greaterOrEqual())) return root1;
+			return parent(tr, lock, // the CCE will be thrown from this cast
+				(InternalNode) root1._lookup(tr, lock, _firstPair().getKey()));
+		}
+
+		@Override
+		LeafNode findLeaf(Transaction tr, DBLock lock, K k) {
+			return this;
+		}
+
+		@Override
+		Collection<Node> print(Transaction tr, DBLock lock) {
+			System.out.print(getPageId().getId() + ":"/* + numOfKeys */+ ":");
+			for (short i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
+				int key = readInt(i);
+				int val = readInt(i + key_size);
+				System.out.print(key + ";" + val + ",");
+			}
+			System.out.print(greaterOrEqual() + "\t");
+			return null;
+		}
+
+		// =====================================================================
+		// Class Methods
+		// =====================================================================
 		Record<K, Node> insertInLeaf(Transaction tr, Record<K, T> rec)
 				throws InterruptedException {
 			if (overflow()) return split(tr, rec);
@@ -729,54 +781,8 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			return null;
 		}
 
-		/**
-		 * Used in {@link #split(Record)} and in creating the tree for the first
-		 * time (see {@link BPlusDisk#BPlusDisk(IndexDiskFile, short, short)}).
-		 * In the latter case the transaction must be null.
-		 */
-		LeafNode(Transaction tr) throws InterruptedException {
-			super(tr, true);
-		}
-
-		LeafNode(int id) throws InterruptedException, IOException {
-			super(id);
-		}
-
-		@Override
-		InternalNode parent(Transaction tr, DBLock lock, InternalNode root1)
-				throws IOException, InterruptedException {
-			final Integer id = (Integer) getPageId().getId();
-			if (root1._keyWithValue(this) != null
-				|| id.equals(root1.greaterOrEqual())) return root1;
-			return parent(tr, lock, // the CCE will be thrown from this cast
-				(InternalNode) root1._lookup(tr, lock, _firstPair().getKey()));
-		}
-
-		// =========================================================================
-		// Overrides
-		// =========================================================================
-		@Override
-		LeafNode findLeaf(Transaction tr, DBLock lock, K k) {
-			return this;
-		}
-
-		@Override
-		Collection<Node> print(Transaction tr, DBLock lock) {
-			System.out.print(getPageId().getId() + ":"/* + numOfKeys */+ ":");
-			for (short i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
-				int key = readInt(i);
-				int val = readInt(i + key_size);
-				System.out.print(key + ";" + val + ",");
-			}
-			System.out.print(greaterOrEqual() + "\t");
-			return null;
-		}
-
-		// =====================================================================
-		// Class Methods
-		// =====================================================================
 		/** Must not be called on the root (if the root is leaf) */
-		Record<K, BPlusDisk<K, T>.Node> merge(Transaction tr) throws InterruptedException,
+		Record<K, Node> merge(Transaction tr) throws InterruptedException,
 				IOException {
 			if (root.getPageId().equals(getPageId()))
 				throw new RuntimeException("Called merge on root");
@@ -784,10 +790,8 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			@SuppressWarnings("unchecked")
 			// if this is not the root then the root must be internal node
 			InternalNode parent = parent(tr, DBLock.E, (InternalNode) root);
-			Node right_sibling = _rightSiblingSameParent(tr,
-				DBLock.E, parent); // We are in a leaf node
-			Node left_sibling = _leftSiblingSameParent(tr,
-				DBLock.E, parent);
+			Node right_sibling = _rightSiblingSameParent(tr, DBLock.E, parent);
+			Node left_sibling = _leftSiblingSameParent(tr, DBLock.E, parent);
 			final Node DAS = this;
 			if ((left_sibling == null || left_sibling.willUnderflow())
 				&& (right_sibling == null || right_sibling.willUnderflow())) {
