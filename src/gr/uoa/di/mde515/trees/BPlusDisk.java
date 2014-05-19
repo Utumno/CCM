@@ -939,9 +939,12 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		// SW: if root were leaf it would be the only node so delete in leaf
 		// would have not ever called fixInternal
 		final InternalNode das_root = (InternalNode) root;
-		if (root.getPageId().equals(merged.getPageId())) {
+		// *********** get our parent to see if it is root
+		K newKey = merge.getKey();
+		InternalNode parent = merged.parent(tr, DBLock.E, das_root);
+		// *********** if parent is root perform what's needed
+		if (root.getPageId().equals(parent)) {
 			System.out.println("------------------> FIX ROOT");
-			K newKey = merge.getKey();
 			if (newKey != null) {
 				// no merging took place but we need to update the keys
 				final Node reKeyed = merge.getValue();
@@ -978,17 +981,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			root._remove(key);
 			return;
 		}
-		K key = merge.getKey();
-		if (key != null) { // got a key back - we must point this key to the
-							// leaf
-			InternalNode parent = merged.parent(tr, DBLock.E, das_root);
-			parent._remove(key);
-			parent._put(key, merged.getPageId().getId());
-			return;
-		}
-		// key not null - oops - remove node I got from its parent
-		Node deleted = merge.getValue();
-		InternalNode parent = deleted.parent(tr, DBLock.E, das_root);
+		// *********** parent is not root
 		Record<K, Node> newInternalNode = parent.removeInternal(tr, merged,
 			merge);
 		if (newInternalNode != null) // RECURSION
