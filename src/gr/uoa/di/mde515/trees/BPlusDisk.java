@@ -312,6 +312,24 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			_put(record.getKey(), record.getValue());
 		}
 
+		/** Removes {@code key} if it exists */
+		void _remove(K key) {
+			int i = HEADER_SIZE, j = 0;
+			K tmpKey = (K) (Integer) readInt(i); // first key
+			for (; j < numOfKeys - 1; i += record_size, ++j) {
+				final int nextKey = readInt(i + record_size);
+				if (key.compareTo(tmpKey) == 0) {
+					writeInt(i, nextKey);
+					writeInt(i + key_size, readInt(i + record_size + key_size));
+					key = (K) (Integer) nextKey;
+				}
+				tmpKey = (K) (Integer) nextKey;
+			} // if key not found return false
+			--numOfKeys;
+			writeShort(NUM_KEYS_OFFSET, numOfKeys);
+			buf.setPageDirty((Integer) this.getPageId().getId());
+		}
+
 		/**
 		 * Inserts key and value and increases numOfKeys. If key exists replaces
 		 * its value with {@code value} and does not increase key count.
