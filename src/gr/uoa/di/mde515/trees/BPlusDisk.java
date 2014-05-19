@@ -121,6 +121,15 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		_insertInLeaf(tr, rec, leafNode);
 	}
 
+	public <R extends Record<K, T>> void delete(Transaction tr, K key)
+			throws IOException, InterruptedException {
+		root = root.newNodeFromDiskOrBuffer(tr, DBLock.E, (Integer) root
+			.getPageId().getId());
+		final LeafNode leafNode = root.findLeaf(tr, DBLock.E, key);
+		// FIXME lock the siblings too!!
+		_deleteInLeaf(tr, key, leafNode);
+	}
+
 	public void flushRootAndNodes() throws IOException {
 		Root.rootToFile((Integer) root.getPageId().getId());
 		Root.nodesToFile(nodeId.get());
@@ -588,6 +597,109 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				(Integer) greaterOrEqual()));
 			return values;
 		}
+
+		public Record<K, Node> removeInternal(Transaction tr, Node merged,
+				Record<K, Node> merge) throws IOException, InterruptedException {
+			K newKey = merge.getKey();
+			if (newKey != null) {
+				// no merging took place but we need to update the keys
+				final Node reKeyed = merge.getValue();
+				K rekeyedNodeKey = _keyWithValue(reKeyed);
+				if (rekeyedNodeKey == null) { // the rekeyed node was the grOrEq
+					// we need to point from the key given to the merged
+					// UNTESTED IN MY SCENARIO reKeyed is left or me when I have
+					// a right sibling (see LeafNode#merge)
+					K key3 = _keyWithValue(merged);
+					_remove(key3);
+					_put(newKey, merged.getPageId().getId());
+					return null;
+				}
+				_remove(rekeyedNodeKey);
+				_put(newKey, reKeyed.getPageId().getId());
+				return null;
+			}
+			// newKey == null - a node was actually deleted
+			final Node deleted = merge.getValue();
+			K key = _keyWithValue(deleted);
+			if (key == null) { // we must replace the greaterOrEqual with merged
+				// we deleted the right sibling of the leaf and it happened to
+				// be the greaterOrEqual of its parent
+				this.setGreaterOrEqual(merged.getPageId().getId());
+				// then we must remove the key that pointed to us (exists)
+				key = _keyWithValue(merged);
+			}
+			// WE ARE NO ROOT - we are only called from fix internal which
+			// checks this
+			if (willUnderflow()) {
+				_remove(key);
+				return merge(tr);
+			}
+			_remove(key);
+			return null;
+		}
+
+		private Record<K, Node> merge(Transaction tr) throws IOException,
+				InterruptedException {
+			if (root.getPageId().equals(getPageId()))
+				throw new RuntimeException("Called merge on root");
+			System.out.println("------------------> IN MERGE INTERNAL NODE");
+			@SuppressWarnings("unchecked")
+			// if this is not the root then the root must be internal node
+			InternalNode parent = parent(tr, DBLock.E, (InternalNode) root);
+			Node right_sibling = _rightSiblingSameParent(tr, DBLock.E, parent);
+			Node left_sibling = _leftSiblingSameParent(tr, DBLock.E, parent);
+			if ((left_sibling == null || left_sibling.willUnderflow())
+				&& (right_sibling == null || right_sibling.willUnderflow())) {
+				System.out.println("------------------> MERGING INTERNAL NODE");
+				// FIXME - I always merge to my left node (while I split adding
+				// more nodes on the right one when there is a choice) - does it
+				// matter ? I merge to the left so I do not have to update the
+				// "greater or equal" pointer (the pointer to the next leaf)
+				// if matters FIXME - UPDATE THE INDEX ON THE LEFT SIBLING
+				if (right_sibling != null) {
+					// delete it
+					right_sibling._copyTailAndRemoveIt(this, 0);
+					setGreaterOrEqual(right_sibling.greaterOrEqual());
+					return new Record<>(null, right_sibling);
+				}
+				// both null == we are root - impossible
+				// DELETE OURSELVES so we don't have to update "next" pointer of
+				// our left left sibling
+				// WE ARE RIGHTMOST (right_sibling == null)
+				this._copyTailAndRemoveIt(left_sibling, 0);
+				return new Record<>(null, this);
+			}
+			// AT LEAST ONE SIBLING WITH EXTRA NODES
+			// PREFER THE LEFT ONE so the right one has more records as in split
+			// FIXME - opposite to merge (see FIXMEs above)
+			if (left_sibling != null && !left_sibling.willUnderflow()) {
+				// just prevent the underflow - copy ONE node FIXME ALGORITHM
+				// DIFFERENCE WITH LEAF NODES - grOrEq changes !!!
+				Record<K, T> lastPair = left_sibling._lastPair();
+				T greaterOrEqual = left_sibling.greaterOrEqual();
+				left_sibling.setGreaterOrEqual(lastPair.getValue());
+				// left sibling - not gOrEq // Common parent !
+				K siblingKeyInParent = parent._keyWithValue(left_sibling);
+				K key = lastPair.getKey();
+				left_sibling._remove(key);
+				_put(siblingKeyInParent, greaterOrEqual);
+				// we need to change in the parent the key pointing to this node
+				// with the ex first key of the right sibling
+				return new Record<>(key, left_sibling);
+			}
+			// just prevent the underflow - copy ONE node FIXME ALGORITHM
+			Record<K, T> firstPair = right_sibling._firstPair();
+			T greaterOrEqual = this.greaterOrEqual();
+			this.setGreaterOrEqual(firstPair.getValue());
+			// WE ARE left sibling - not gOrEq // Common parent !
+			K thisKeyInParent = parent._keyWithValue(this);
+			K key = firstPair.getKey();
+			right_sibling._remove(key);
+			_put(thisKeyInParent, greaterOrEqual);
+			// we need to change in the parent the key pointing to this node
+			// with the ex first key of the right sibling
+			return new Record<>(key, this);
+		}
 	}
 
 	@SuppressWarnings("synthetic-access")
@@ -597,6 +709,22 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				throws InterruptedException {
 			if (overflow()) return split(tr, rec);
 			_put(rec.getKey(), rec.getValue());
+			return null;
+		}
+
+		Record<K, Node> deleteInLeaf(Transaction tr, K rec)
+				throws InterruptedException, IOException { // TODO why IO
+			// we are in leaf - if the leaf is root then it is the only node
+			if (root.getPageId().equals(this.getPageId())) {
+				_remove(rec);
+				return null;
+			}
+			// WE ARE NO ROOT, there are internal nodes
+			if (willUnderflow()) {
+				_remove(rec);
+				return merge(tr);
+			}
+			_remove(rec);
 			return null;
 		}
 
@@ -646,6 +774,66 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		// =====================================================================
 		// Class Methods
 		// =====================================================================
+		/** Must not be called on the root (if the root is leaf) */
+		Record<K, BPlusDisk<K, T>.Node> merge(Transaction tr) throws InterruptedException,
+				IOException {
+			if (root.getPageId().equals(getPageId()))
+				throw new RuntimeException("Called merge on root");
+			System.out.println("------------------> IN MERGE LEAFNODE");
+			@SuppressWarnings("unchecked")
+			// if this is not the root then the root must be internal node
+			InternalNode parent = parent(tr, DBLock.E, (InternalNode) root);
+			Node right_sibling = _rightSiblingSameParent(tr,
+				DBLock.E, parent); // We are in a leaf node
+			Node left_sibling = _leftSiblingSameParent(tr,
+				DBLock.E, parent);
+			if ((left_sibling == null || left_sibling.willUnderflow())
+				&& (right_sibling == null || right_sibling.willUnderflow())) {
+				System.out.println("------------------> MERGING LEAFNODES");
+				// FIXME - I always merge to my left node (while I split adding
+				// more nodes on the right one when there is a choice) - does it
+				// matter ? I merge to the left so I do not have to update the
+				// "greater or equal" pointer (the pointer to the next leaf)
+				// if matters FIXME - UPDATE THE INDEX ON THE LEFT SIBLING
+				if (right_sibling != null) {
+					// delete it
+					right_sibling._copyTailAndRemoveIt(this, 0); // TODO leaves
+					// the page in the index file with 0 numOfKeys - compact the
+					// index file
+					setGreaterOrEqual(right_sibling.greaterOrEqual());
+					return new Record<>(null, right_sibling);
+				}
+				// both null == we are root - impossible
+				// DELETE OURSELVES so we don't have to update "next" pointer of
+				// our left left sibling
+				// WE ARE RIGHTMOST (right_sibling == null)
+				this._copyTailAndRemoveIt(left_sibling, 0);
+				return new Record<>(null, this);
+			}
+			// AT LEAST ONE SIBLING WITH EXTRA NODES
+			// PREFER THE LEFT ONE so the right one has more records as in split
+			// FIXME - opposite to merge (see FIXMEs above)
+			if (left_sibling != null && !left_sibling.willUnderflow()) {
+				// just prevent the underflow - copy ONE node FIXME ALGORITHM
+				Record<K, T> lastPair = left_sibling._lastPair();
+				K key = lastPair.getKey();
+				left_sibling._remove(key);
+				_put(lastPair);
+				// we need to change in the parent the key pointing to this node
+				// with the NEW first key of the right sibling
+				return new Record<>(key, left_sibling);
+			}
+			// just prevent the underflow - copy ONE node FIXME ALGORITHM
+			Record<K, T> firstPair = right_sibling._firstPair();
+			K key = firstPair.getKey();
+			right_sibling._remove(key);
+			_put(firstPair);
+			// we need to change in the parent the key pointing to this node
+			// with the NEW first key of the right sibling
+			K keyNew = right_sibling._firstKey();
+			return new Record<>(keyNew, this);
+		}
+
 		Record<K, Node> split(Transaction tr, Record<K, T> rec)
 				throws InterruptedException {
 			if (numOfKeys != getMax_keys())
@@ -716,5 +904,84 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		if (insert != null) { // got a key back, so leafNode split
 			insertInternal(tr, leafNode, insert); // all parents are locked
 		}
+	}
+
+	/**
+	 * Removes the key from the leaf - if it does not exist throws
+	 * IllegalArgumentException. Must be called AFTER I lock the path to the
+	 * leaf for writing.
+	 */
+	private void _deleteInLeaf(Transaction tr, K key, final LeafNode leafNode)
+			throws IllegalArgumentException, InterruptedException, IOException {
+		if (leafNode._get(key) == null)
+			throw new IllegalArgumentException("Key " + key + " does not exist");
+		Record<K, LeafNode> merge = leafNode.deleteInLeaf(tr, key);
+		if (merge != null) { // leafNode split
+			fixInternal(tr, leafNode, merge); // all parents are NOT locked
+			// (SEE FIXME in merge())
+		}
+	}
+
+	private void
+			fixInternal(Transaction tr, Node merged, Record<K, Node> merge)
+					throws IOException, InterruptedException {
+		if (root.getPageId().equals(merged.getPageId())) {
+			System.out.println("------------------> FIX ROOT");
+			K newKey = merge.getKey();
+			if (newKey != null) {
+				// no merging took place but we need to update the keys
+				final Node reKeyed = merge.getValue();
+				K rekeyedNodeKey = ((InternalNode) root)._keyWithValue(reKeyed);
+				if (rekeyedNodeKey == null) { // the rekeyed node was the grOrEq
+					// we need to point from the key given to the merged
+					K key3 = ((InternalNode) root)._keyWithValue(merged);
+					root._remove(key3);
+					root._put(newKey, merged.getPageId().getId());
+					return;
+				}
+				root._remove(rekeyedNodeKey);
+				root._put(newKey, reKeyed.getPageId().getId());
+				return;
+			}
+			// newKey == null - a node was actually deleted
+			final Node deleted = merge.getValue();
+			K key = ((InternalNode) root)._keyWithValue(deleted);
+			if (key == null) { // we must replace the greaterOrEqual with merged
+				// we deleted the right sibling of the leaf and it happened to
+				// be the greaterOrEqual of its parent
+				root.setGreaterOrEqual(merged.getPageId().getId());
+				// then we must remove the key that pointed to us (exists)
+				key = ((InternalNode) root)._keyWithValue(merged);
+			}
+			// WE ARE NO ROOT - we are only called from fix internal which
+			// checks this
+			if (root.numOfKeys == 1) {
+				System.out.println("------------------> DELETE ROOT");
+				root._remove(key); // to mark it --numOfKeys
+				setRoot(merged);
+				return;
+			}
+			root._remove(key);
+			return;
+		}
+		K key = merge.getKey();
+		if (key != null) { // got a key back - we must point this key to the
+							// leaf
+			@SuppressWarnings("unchecked")
+			// merged is not tree root so has a parent
+			// moreover root is not leaf so I cast it to InternalNode safely
+			InternalNode parent = merged.parent(tr, DBLock.E,
+				(InternalNode) root);
+			parent._remove(key);
+			parent._put(key, merged.getPageId().getId());
+			return;
+		}
+		// key not null - oops - remove node I got from its parent
+		Node deleted = merge.getValue();
+		InternalNode parent = deleted.parent(tr, DBLock.E, (InternalNode) root);
+		Record<K, Node> newInternalNode = parent.removeInternal(tr, merged,
+			merge);
+		if (newInternalNode != null) // RECURSION
+			fixInternal(tr, parent, newInternalNode);
 	}
 }
