@@ -90,12 +90,12 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			int rootFromFile = Root.rootFromFile();
 			Page<Integer> allocFrame = buf.allocFrame(rootFromFile, file);
 			boolean leaf = allocFrame.readByte(Node.LEAF_OFFSET) == 1;
-			root = (leaf) ? new LeafNode(rootFromFile) : new InternalNode(
-				rootFromFile);
+			setRoot((leaf) ? new LeafNode(rootFromFile) : new InternalNode(
+				rootFromFile));
 			// FIXME permanent alloc (and something else I forgot ...)
 		} else { // FILE EMPTY - CREATE THE ROOT
 			System.out.println(file + ": Creating...");
-			root = new LeafNode(null); // null transaction !
+			setRoot(new LeafNode(null)); // null transaction !
 			buf.flushPage(-1, file); // TODO wild flush
 		}
 	}
@@ -115,8 +115,8 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 
 	public <R extends Record<K, T>> void insert(Transaction tr, R rec)
 			throws IOException, InterruptedException {
-		root = root.newNodeFromDiskOrBuffer(tr, DBLock.E, (Integer) root
-			.getPageId().getId());
+		setRoot(root.newNodeFromDiskOrBuffer(tr, DBLock.E, (Integer) root
+			.getPageId().getId()));
 		final LeafNode leafNode = root.findLeaf(tr, DBLock.E, rec.getKey());
 		_insertInLeaf(tr, rec, leafNode);
 	}
