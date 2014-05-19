@@ -226,7 +226,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 			buf.setPageDirty((Integer) p.getId());
 			buf.flushPage((Integer) p.getId(), file); // FIXME
 		}
-		for (int k = 0; k < 48; k = k + 4) {
+		for (int k = 0; k < PAGE_SIZE; k = k + 4) {
 			System.out.println("The contents are " + deleteFromPage.readInt(k));
 		}
 		System.out.println(" ");
@@ -239,7 +239,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 			deleteFromPage.writeInt(OFFSET_NEXT_PAGE,
 				nextPage.readInt(OFFSET_CURRENT_PAGE));
 			deleteFromPage.writeInt(OFFSET_PREVIOUS_PAGE, 0);
-			for (int k = 0; k < 48; k = k + 4) {
+			for (int k = 0; k < PAGE_SIZE; k = k + 4) {
 				System.out.println("The contents are " + nextPage.readInt(k));
 			}
 			buf.setPageDirty(nextPage.getPageId().getId());
@@ -329,6 +329,9 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	private static void createPageInMemory(int pageID)
 			throws InterruptedException {
 		Page<?> p = buf.allocFrameForNewPage(pageID);
+		for (int i = 0; i < PAGE_SIZE; i = i + 4) {
+			p.writeInt(i, 0);
+		}
 		p.writeInt(OFFSET_CURRENT_PAGE, pageID);
 		p.writeInt(OFFSET_NEXT_FREE_SLOT, PAGE_HEADER_LENGTH);
 		p.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS, 0);
