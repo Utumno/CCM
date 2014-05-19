@@ -648,6 +648,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			InternalNode parent = parent(tr, DBLock.E, (InternalNode) root);
 			Node right_sibling = _rightSiblingSameParent(tr, DBLock.E, parent);
 			Node left_sibling = _leftSiblingSameParent(tr, DBLock.E, parent);
+			final Node DAS = this;
 			if ((left_sibling == null || left_sibling.willUnderflow())
 				&& (right_sibling == null || right_sibling.willUnderflow())) {
 				System.out.println("------------------> MERGING INTERNAL NODE");
@@ -658,7 +659,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				// if matters FIXME - UPDATE THE INDEX ON THE LEFT SIBLING
 				if (right_sibling != null) {
 					// delete it
-					right_sibling._copyTailAndRemoveIt(this, 0);
+					right_sibling._copyTailAndRemoveIt(DAS, 0);
 					setGreaterOrEqual(right_sibling.greaterOrEqual());
 					return new Record<>(null, right_sibling);
 				}
@@ -666,8 +667,8 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				// DELETE OURSELVES so we don't have to update "next" pointer of
 				// our left left sibling
 				// WE ARE RIGHTMOST (right_sibling == null)
-				this._copyTailAndRemoveIt(left_sibling, 0);
-				return new Record<>(null, this);
+				DAS._copyTailAndRemoveIt(left_sibling, 0);
+				return new Record<>(null, DAS);
 			}
 			// AT LEAST ONE SIBLING WITH EXTRA NODES
 			// PREFER THE LEFT ONE so the right one has more records as in split
@@ -689,16 +690,16 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			}
 			// just prevent the underflow - copy ONE node FIXME ALGORITHM
 			Record<K, T> firstPair = right_sibling._firstPair();
-			T greaterOrEqual = this.greaterOrEqual();
-			this.setGreaterOrEqual(firstPair.getValue());
+			T greaterOrEqual = DAS.greaterOrEqual();
+			DAS.setGreaterOrEqual(firstPair.getValue());
 			// WE ARE left sibling - not gOrEq // Common parent !
-			K thisKeyInParent = parent._keyWithValue(this);
+			K thisKeyInParent = parent._keyWithValue(DAS);
 			K key = firstPair.getKey();
 			right_sibling._remove(key);
 			_put(thisKeyInParent, greaterOrEqual);
 			// we need to change in the parent the key pointing to this node
 			// with the ex first key of the right sibling
-			return new Record<>(key, this);
+			return new Record<>(key, DAS);
 		}
 	}
 
@@ -787,6 +788,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				DBLock.E, parent); // We are in a leaf node
 			Node left_sibling = _leftSiblingSameParent(tr,
 				DBLock.E, parent);
+			final Node DAS = this;
 			if ((left_sibling == null || left_sibling.willUnderflow())
 				&& (right_sibling == null || right_sibling.willUnderflow())) {
 				System.out.println("------------------> MERGING LEAFNODES");
@@ -797,7 +799,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				// if matters FIXME - UPDATE THE INDEX ON THE LEFT SIBLING
 				if (right_sibling != null) {
 					// delete it
-					right_sibling._copyTailAndRemoveIt(this, 0); // TODO leaves
+					right_sibling._copyTailAndRemoveIt(DAS, 0); // TODO leaves
 					// the page in the index file with 0 numOfKeys - compact the
 					// index file
 					setGreaterOrEqual(right_sibling.greaterOrEqual());
@@ -807,8 +809,8 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				// DELETE OURSELVES so we don't have to update "next" pointer of
 				// our left left sibling
 				// WE ARE RIGHTMOST (right_sibling == null)
-				this._copyTailAndRemoveIt(left_sibling, 0);
-				return new Record<>(null, this);
+				DAS._copyTailAndRemoveIt(left_sibling, 0);
+				return new Record<>(null, DAS);
 			}
 			// AT LEAST ONE SIBLING WITH EXTRA NODES
 			// PREFER THE LEFT ONE so the right one has more records as in split
@@ -831,7 +833,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			// we need to change in the parent the key pointing to this node
 			// with the NEW first key of the right sibling
 			K keyNew = right_sibling._firstKey();
-			return new Record<>(keyNew, this);
+			return new Record<>(keyNew, DAS);
 		}
 
 		Record<K, Node> split(Transaction tr, Record<K, T> rec)
@@ -915,7 +917,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			throws IllegalArgumentException, InterruptedException, IOException {
 		if (leafNode._get(key) == null)
 			throw new IllegalArgumentException("Key " + key + " does not exist");
-		Record<K, LeafNode> merge = leafNode.deleteInLeaf(tr, key);
+		Record<K, Node> merge = leafNode.deleteInLeaf(tr, key);
 		if (merge != null) { // leafNode split
 			fixInternal(tr, leafNode, merge); // all parents are NOT locked
 			// (SEE FIXME in merge())
