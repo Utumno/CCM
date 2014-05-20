@@ -14,7 +14,7 @@ import java.util.Set;
 
 public final class BufferManager<T> {
 
-	private static final int NUM_BUFFERS = 100;
+	private static final int NUM_BUFFERS = 200;
 	/** the pool of frames - unmodifiable list */
 	private final List<Frame> pool;
 	/**
@@ -108,7 +108,7 @@ public final class BufferManager<T> {
 		synchronized (POOL_LOCK) {
 			final Integer frameNum = getFrameNum(pageID);
 			final Frame frame = getFrame(frameNum);
-			if (frame.isDirty()) {
+			if (frame.isDirty() && !pinPerm.contains(pageID)) {
 				frame.resetPinCount();
 				frame.setDirty(false);
 				// pinPerm.remove(frameNum); // FIXME
@@ -167,7 +167,7 @@ public final class BufferManager<T> {
 				+ pageID);
 			pageIdToFrameNumber.put(pageID, numFrame);
 			final ByteBuffer buffer = getFrame(numFrame).getBuffer();
-			file.readPage((int) pageID, buffer);// FIXME cast
+			file.readPage((Integer) pageID, buffer);// FIXME cast
 			return new Page<>(pageID, buffer);
 		}
 	}
@@ -215,11 +215,11 @@ public final class BufferManager<T> {
 			System.out
 				.println("alloc perm " + numFrame + " for page " + pageID);
 			pageIdToFrameNumber.put(pageID, numFrame);
-			pinPerm.add(frameNum);
-			System.out.println("pinPerm " + pinPerm); // FIXME NUL ????!!!!
+			pinPerm.add(numFrame);
+			System.out.println("pinPerm " + pinPerm);
 			// pinPage(pageID);
 			final ByteBuffer buffer = getFrame(numFrame).getBuffer();
-			disk.readPage((int) pageID, buffer);// FIXME cast
+			disk.readPage((Integer) pageID, buffer);// FIXME cast
 			return new Page<>(pageID, buffer);
 		}
 	}
