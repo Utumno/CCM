@@ -73,9 +73,9 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 
 	public abstract void abort(Transaction tr) throws IOException;
 
-	public abstract <T> void delete(Transaction tr, K key, DBLock el,
-			PageId<T> pageID) throws KeyExistsException, IOException,
-			InterruptedException;
+	public abstract void delete(Transaction tr, K key, DBLock el)
+			throws KeyExistsException, IOException, InterruptedException,
+			TransactionRequiredException, ExecutionException;
 
 	public abstract Record<K, V> lookup(Transaction tr, K key, DBLock el)
 			throws KeyExistsException, IOException, InterruptedException; // TODO
@@ -91,6 +91,7 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 	// =========================================================================
 	// Debug
 	// =========================================================================
+
 	/** ONLY FOR DEBUG */
 	public abstract void deleteIndex(Transaction tr, K rec) throws IOException,
 			InterruptedException;
@@ -176,9 +177,10 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 	}
 
 	@Override
-	public <T> void delete(Transaction tr, K key, DBLock el, PageId<T> pageID)
-			throws IOException, InterruptedException {
-		ccm.delete(tr, key, el, pageID, dataFile); // FIXME
+	public void delete(Transaction tr, K key, DBLock el)
+			throws IOException, InterruptedException,
+			TransactionRequiredException, ExecutionException {
+		ccm.delete(tr, key, el, dataFile, index);
 	}
 
 	// =========================================================================

@@ -2,7 +2,6 @@ package gr.uoa.di.mde515;
 
 import gr.uoa.di.mde515.engine.Engine;
 import gr.uoa.di.mde515.engine.Transaction;
-import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.locks.DBLock;
 
 import java.util.concurrent.Callable;
@@ -21,7 +20,7 @@ final class Deleter<T> implements Callable<T> {
 	public T call() throws Exception {
 		Transaction tr = eng.beginTransaction();
 		try {
-			eng.delete(tr, key, DBLock.E, new PageId<Integer>(2));
+			eng.delete(tr, key, DBLock.E);
 			System.out.println("DELETED");
 			eng.commit(tr);
 		} finally {

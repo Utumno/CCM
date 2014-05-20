@@ -2,6 +2,7 @@ package gr.uoa.di.mde515.engine;
 
 import gr.uoa.di.mde515.files.DataFile;
 import gr.uoa.di.mde515.index.Index;
+import gr.uoa.di.mde515.index.KeyDoesntExistException;
 import gr.uoa.di.mde515.index.KeyExistsException;
 import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
@@ -50,6 +51,19 @@ enum CCMImpl implements CCM {
 		private final Record<K, V> rec;
 
 		DBRecordOperation(Transaction trans, Record<K, V> rec) {
+			super(trans);
+			if (rec == null) throw new NullPointerException();
+			this.rec = rec;
+		}
+	}
+
+	private static abstract class DBKeyOperation<K extends Comparable<K>, V>
+			extends DBoperation<Object> {
+
+		@SuppressWarnings("unused")
+		private final K rec;
+
+		DBKeyOperation(Transaction trans, K rec) {
 			super(trans);
 			if (rec == null) throw new NullPointerException();
 			this.rec = rec;
@@ -129,6 +143,26 @@ enum CCMImpl implements CCM {
 		return new Record<>(key, dataFile.get(tr, new PageId<>(id), key));
 	}
 
+	@Override
+	public <K extends Comparable<K>, V, T> void delete(final Transaction tr,
+			final K key, DBLock el, final DataFile<K, V> file,
+			final Index<K, T> index) throws IOException, InterruptedException,
+			TransactionRequiredException, ExecutionException {
+		_operate_(new DBKeyOperation<K, V>(tr, key) {
+
+			@Override
+			public Record<K, V> call() throws KeyExistsException, IOException,
+					InterruptedException, KeyDoesntExistException {
+				T lookupLocked = index.lookupLocked(tr, key, DBLock.E);
+				if (lookupLocked == null)
+					throw new KeyDoesntExistException("" + key);
+				file.lockHeader(tr, DBLock.E);
+				file.delete(tr, new PageId<>(lookupLocked), key);
+				return null;
+			}
+		});
+	}
+
 	// =========================================================================
 	// Committing
 	// =========================================================================
@@ -156,14 +190,6 @@ enum CCMImpl implements CCM {
 	// =========================================================================
 	// Not implemented
 	// =========================================================================
-	@Override
-	public <K extends Comparable<K>, V, T> void delete(Transaction tr, K key,
-			DBLock el, PageId<T> pageID, DataFile<K, V> file)
-			throws IOException, InterruptedException {
-		file.lockHeader(tr, DBLock.E);
-		file.delete(tr, pageID, key);
-	}
-
 	@Override
 	public <K extends Comparable<K>, V> Record<K, V> update(Transaction tr,
 			K key, DataFile<K, V> file) {
