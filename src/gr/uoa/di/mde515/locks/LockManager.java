@@ -110,6 +110,7 @@ public class LockManager {
 		}
 
 		synchronized boolean unlock(Transaction tr) {
+			System.out.println(tr + " unlocking.");
 			for (Entry<Transaction, Request> transRequest : granted.entrySet()) {
 				if (tr.equals(transRequest.getKey())) {
 					switch (transRequest.getValue().lock) {
@@ -121,10 +122,14 @@ public class LockManager {
 						break;
 					}
 					granted.remove(tr);
+					break;
 				}
 			}
 			for (Entry<Transaction, DBLock> transLock : requests.entrySet()) {
-				if (tr.equals(transLock.getKey())) requests.remove(tr);
+				if (tr.equals(transLock.getKey())) {
+					requests.remove(tr);
+					break;
+				}
 			}
 			return requests.isEmpty();
 		}
