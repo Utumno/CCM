@@ -161,8 +161,13 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		} else {
 			p = buf.allocFrame(pageID, file);
 		}
-		writeIntoFrame(p, (Integer) record.getKey(),
-			(Integer) record.getValue());
+		try {
+			writeIntoFrame(p, (Integer) record.getKey(),
+				(Integer) record.getValue());
+		} catch (IndexOutOfBoundsException e) {
+			System.out.println("PRINT " + pageID);
+			throw e;
+		}
 		checkReachLimitOfPage(p);
 		return new PageId(pageID);
 	}

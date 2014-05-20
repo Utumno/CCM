@@ -182,7 +182,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		Integer pageId = toLock.getId();
 		Node node = root.newNodeFromDiskOrBuffer(tr, lock, pageId);
 		if (node.isLeaf()) {
-			m.put(key, (T) node._get(key));
+			m.put(key, node._get(key));
 			return null; // locked the path to the key
 		}
 		@SuppressWarnings("unchecked")
@@ -374,12 +374,12 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		 * Returns the value with key {@code key} or {@code null} if no such key
 		 * exists.
 		 */
-		Integer _get(K k) {
+		T _get(K k) {
 			int i, j;
 			for (i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
 				K tmpKey = (K) (Integer) readInt(i);
 				if (k.compareTo(tmpKey) == 0) {
-					return readInt(i + key_size);
+					return (T) (Integer) readInt(i + key_size);
 				}
 			}
 			return null;

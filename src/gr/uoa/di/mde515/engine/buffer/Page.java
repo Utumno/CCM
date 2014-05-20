@@ -56,7 +56,12 @@ public class Page<T> {
 	}
 
 	public void writeInt(int pos, int value) {
-		dat.putInt(pos, value);
+		try {
+			dat.putInt(pos, value);
+		} catch (IndexOutOfBoundsException e) {
+			System.out.println("BOUND " + pos + " val " + value);
+			throw e;
+		}
 	}
 
 	@Override
