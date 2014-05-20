@@ -80,9 +80,6 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 	public abstract Record<K, V> lookup(Transaction tr, K key, DBLock el)
 			throws KeyExistsException, IOException, InterruptedException; // TODO
 	// boolean lookup
-
-	// boolean waitTransaction(long t);
-	// Record<K,V> delete(T key);
 	//
 	// Record<K,V> update(T key);
 	//

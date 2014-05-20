@@ -107,7 +107,7 @@ enum CCMImpl implements CCM {
 			@Override
 			public Record<K, V> call() throws KeyExistsException, IOException,
 					InterruptedException {
-				Object lookupLocked = index.lookupLocked(tr, record.getKey(),
+				T lookupLocked = index.lookupLocked(tr, record.getKey(),
 					DBLock.E);
 				if (lookupLocked != null)
 					throw new KeyExistsException("" + record.getKey());
@@ -126,7 +126,7 @@ enum CCMImpl implements CCM {
 			throws KeyExistsException, IOException, InterruptedException {
 		T id = index.lookupLocked(tr, key, el);
 		if (id == null) return null;
-		return new Record<K, V>(key, dataFile.get(tr, new PageId<>(id), key));
+		return new Record<>(key, dataFile.get(tr, new PageId<>(id), key));
 	}
 
 	// =========================================================================
