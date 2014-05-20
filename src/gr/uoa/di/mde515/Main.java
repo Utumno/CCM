@@ -35,8 +35,8 @@ public class Main {
 		final Engine<Integer, Integer, Integer> eng = Engine.newInstance();
 		try {
 			// treePrint(eng);
-			for (int i = 0; i < 100; ++i)
-				exec.submit(new Inserter<T>(eng, new Record<>(i, i))).get();
+			// for (int i = 0; i < 100; ++i)
+			exec.submit(new InserterDeleter<T>(eng, new Record<>(0, 0))).get();
 		} catch (ExecutionException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -102,8 +102,37 @@ public class Main {
 			try {
 				// for (int i = 0; i < 5; ++i)
 				eng.insert(tr, rec);
-				eng.commit(tr);
 				// eng.print(tr, DBLock.E);
+				eng.commit(tr);
+			} finally {
+				eng.endTransaction(tr);
+			}
+			return null;
+		}
+	}
+
+	private static final class InserterDeleter<T> implements Callable<T> {
+
+		private final Engine<Integer, Integer, Integer> eng;
+		private final Record<Integer, Integer> rec;
+
+		InserterDeleter(Engine<Integer, Integer, Integer> eng,
+				Record<Integer, Integer> rec) {
+			this.eng = eng;
+			this.rec = rec;
+		}
+
+		@Override
+		public T call() throws Exception {
+			Transaction tr = eng.beginTransaction();
+			try {
+				for (int i = 0; i < 5; ++i)
+					eng.insert(tr, new Record<>(i, i));
+				eng.print(tr, DBLock.E);
+				for (int i = 0; i < 5; ++i)
+					eng.deleteIndex(tr, i);
+				eng.print(tr, DBLock.E);
+				eng.commit(tr);
 			} finally {
 				eng.endTransaction(tr);
 			}

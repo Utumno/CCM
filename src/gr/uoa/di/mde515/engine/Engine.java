@@ -89,6 +89,13 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 	// File bulk_load(File fileOfRecords);
 	//
 	// File bulk_delete(File fileOfKeys);
+	// =========================================================================
+	// Debug
+	// =========================================================================
+	/** ONLY FOR DEBUG */
+	public abstract void deleteIndex(Transaction tr, K rec) throws IOException,
+			InterruptedException;
+
 	/** ONLY FOR DEBUG */
 	public abstract void print();
 
@@ -119,12 +126,6 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 		} catch (IOException | InterruptedException e) {
 			throw new RuntimeException("Can't open db file", e);
 		}
-	}
-
-	@Override
-	public void insertIndex(Transaction tr, Record<K, T> rec)
-			throws IOException, InterruptedException {
-		index.insert(tr, (Record<K, PageId<T>>) rec);
 	}
 
 	@Override
@@ -165,17 +166,6 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 	}
 
 	@Override
-	public void print() {
-		index.print();
-	}
-
-	@Override
-	public void print(Transaction tr, DBLock e) throws IOException,
-			InterruptedException {
-		index.print(tr, e);
-	}
-
-	@Override
 	public Record<K, V> lookup(Transaction tr, K key, DBLock el)
 			throws KeyExistsException, IOException, InterruptedException {
 		return ccm.lookup(tr, key, el, dataFile, index);
@@ -185,5 +175,31 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 	public <T> void delete(Transaction tr, K key, DBLock el, PageId<T> pageID)
 			throws IOException, InterruptedException {
 		ccm.delete(tr, key, el, pageID, dataFile); // FIXME
+	}
+
+	// =========================================================================
+	// Debug
+	// =========================================================================
+	@Override
+	public void print(Transaction tr, DBLock e) throws IOException,
+			InterruptedException {
+		index.print(tr, e);
+	}
+
+	@Override
+	public void print() {
+		index.print();
+	}
+
+	@Override
+	public void insertIndex(Transaction tr, Record<K, T> rec)
+			throws IOException, InterruptedException {
+		index.insert(tr, (Record<K, PageId<T>>) rec);
+	}
+
+	@Override
+	public void deleteIndex(Transaction tr, K key) throws IOException,
+			InterruptedException {
+		index.delete(tr, key);
 	}
 }

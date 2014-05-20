@@ -58,4 +58,10 @@ public class DiskIndex<K extends Comparable<K>, T> extends Index<K, T> {
 	public void abort(List<PageId<Integer>> list) {
 		bplus.abort(list);
 	}
+
+	@Override
+	public void delete(Transaction tr, K key) throws IOException,
+			InterruptedException {
+		bplus.delete(tr, key);
+	}
 }
