@@ -55,7 +55,7 @@ public class DiskIndex<K extends Comparable<K>, T> extends Index<K, T> {
 	}
 
 	@Override
-	public void abort(List<PageId<Integer>> list) {
+	public void abort(List<PageId<Integer>> list) throws IOException {
 		bplus.abort(list);
 	}
 

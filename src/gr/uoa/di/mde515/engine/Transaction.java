@@ -68,7 +68,8 @@ public class Transaction {
 	}
 
 	public <K extends Comparable<K>, V> void abort(
-			final DataFile<K, V> dataFile, final Index<K, ?> index) {
+			final DataFile<K, V> dataFile, final Index<K, ?> index)
+			throws IOException {
 		System.out.println(this + " aborting " + lockedDataPages
 			+ lockedIndexPages);
 		state = state.transition(State.COMMITING);

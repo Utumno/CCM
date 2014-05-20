@@ -68,7 +68,7 @@ public class Index<K extends Comparable<K>, T> {
 		throw new UnsupportedOperationException("Not implemented"); // TODO
 	}
 
-	public void abort(List<PageId<Integer>> list) {
+	public void abort(List<PageId<Integer>> list) throws IOException {
 		throw new UnsupportedOperationException("Not implemented"); // TODO
 	}
 }

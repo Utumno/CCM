@@ -275,10 +275,10 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	}
 
 	@Override
-	public void abort(List<PageId<Integer>> pageIds) {
+	public void abort(List<PageId<Integer>> pageIds) throws IOException {
 		System.out.println("FINALLY REACHED");
 		for (PageId<Integer> pageID : pageIds) {
-			buf.killPage(pageID.getId());
+			buf.killPage(pageID.getId(), file);
 		}
 	}
 
