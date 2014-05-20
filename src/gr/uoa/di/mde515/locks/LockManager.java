@@ -3,7 +3,6 @@ package gr.uoa.di.mde515.locks;
 import gr.uoa.di.mde515.engine.Transaction;
 import gr.uoa.di.mde515.index.PageId;
 
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -19,9 +18,9 @@ public class LockManager {
 
 	public final static class Request {
 
-		PageId<?> pageId;
-		Transaction tr;
-		DBLock lock;
+		private final PageId<?> pageId;
+		private final Transaction tr;
+		private final DBLock lock;
 
 		public Request(PageId<?> pageId, Transaction tr, DBLock lock) {
 			this.pageId = pageId;
@@ -45,10 +44,6 @@ public class LockManager {
 
 	private static final ConcurrentMap<PageId<?>, LockStructure> locks = new ConcurrentHashMap<>();
 	private static final LockManager instance = new LockManager();
-
-	public Map<PageId<?>, LockStructure> getLocks() {
-		return locks;
-	}
 
 	public static LockManager getInstance() {
 		return instance;
@@ -88,14 +83,10 @@ public class LockManager {
 		private final ReadWriteLock rw = new ReentrantReadWriteLock(true);
 		private final Lock r = rw.readLock();
 		private final Lock w = rw.writeLock();
-		// private volatile boolean inUse = true; // in use == !trans.isEmpty()
-		// FIXME excessive synchronization
-		private final Map<Transaction, DBLock> requests = Collections
-			.synchronizedMap(new LinkedHashMap<Transaction, DBLock>());
-		private final Map<Transaction, Request> granted = Collections // FIXME
-			.synchronizedMap(new LinkedHashMap<Transaction, Request>());
+		private final Map<Transaction, DBLock> requests = new LinkedHashMap<>();
+		private final Map<Transaction, Request> granted = new LinkedHashMap<>();
 
-		LockStructure() {}
+		private LockStructure() {}
 
 		synchronized void lock(Request req) {
 			final DBLock lock = req.lock;

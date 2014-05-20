@@ -18,6 +18,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 public class Main {
@@ -33,9 +34,18 @@ public class Main {
 			IOException {
 		final Engine<Integer, Integer, Integer> eng = Engine.newInstance();
 		try {
-			// treePrint(eng);
-			// for (int i = 0; i < 100; ++i)
-			exec.submit(new InserterDeleter<T>(eng, new Record<>(0, 0))).get();
+			// ArrayList<Inserter<T>> arrayList = new ArrayList<>();
+			ArrayList<Lookuper<T>> arrayList = new ArrayList<>();
+			for (int i = 0; i < 100; ++i)
+				arrayList.add(new Lookuper<T>(eng, i));
+			// exec.submit(new InserterDeleter<T>(eng, new Record<>(0,
+			// 0))).get();
+			// arrayList.add(new Inserter<T>(eng, new Record<>(i, i)));
+			List<Future<T>> invokeAll = exec.invokeAll(arrayList, 1000000,
+				TimeUnit.MILLISECONDS);
+			for (Future<T> future : invokeAll) {
+				future.get();
+			}
 		} catch (ExecutionException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

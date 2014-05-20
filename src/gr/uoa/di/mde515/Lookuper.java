@@ -26,7 +26,7 @@ final class Lookuper<T> implements Callable<T> {
 				.println("The record is "
 					+ (rkv == null ? null
 							: ("key " + rkv.getKey() + "  value " + rkv
-								.getValue())));
+								.getValue())) + " -- " + tr);
 		} finally {
 			eng.endTransaction(tr);
 		}
