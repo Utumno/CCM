@@ -74,7 +74,7 @@ public class Transaction {
 		state = state.transition(State.COMMITING);
 		for (List<PageId<Integer>> list : lockedDataPages.values())
 			dataFile.abort(list);
-		for (List<PageId<Integer>> list : lockedDataPages.values())
+		for (List<PageId<Integer>> list : lockedIndexPages.values())
 			index.abort(list);
 	}
 
