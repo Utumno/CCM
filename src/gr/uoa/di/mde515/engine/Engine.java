@@ -69,6 +69,8 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 
 	public abstract void commit(Transaction tr) throws IOException;
 
+	public abstract void waitTransaction(long time) throws InterruptedException;
+
 	public abstract void abort(Transaction tr) throws IOException;
 
 	public abstract <T> void delete(Transaction tr, K key, DBLock el,
@@ -152,6 +154,11 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 	@Override
 	public void commit(Transaction tr) throws IOException {
 		ccm.commit(tr, dataFile, index);
+	}
+
+	@Override
+	public void waitTransaction(long time) throws InterruptedException {
+		Thread.sleep(time);
 	}
 
 	@Override
