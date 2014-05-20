@@ -159,8 +159,8 @@ enum CCMImpl implements CCM {
 	@Override
 	public <K extends Comparable<K>, V, T> void delete(Transaction tr, K key,
 			DBLock el, PageId<T> pageID, DataFile<K, V> file)
-			throws IOException,
-			InterruptedException {
+			throws IOException, InterruptedException {
+		file.lockHeader(tr, DBLock.E);
 		file.delete(tr, pageID, key);
 	}
 

@@ -171,41 +171,28 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	public <T> void delete(Transaction tr, PageId<T> p, K key)
 			throws IOException, InterruptedException {
 		int newFreeSlotposition = 0;
-		System.out.println("EXECUTED");
-		System.out.println("The page id is " + p.getId());
 		Page<Integer> deleteFromPage;
-		if (tr.lock((Integer) p.getId(), DBLock.E)) { // locks for the first
-														// time
+		if (tr.lock((Integer) p.getId(), DBLock.E)) {
 			deleteFromPage = buf.allocFrame((Integer) p.getId(), file);
-			// FIXME - race in pin ??? - add boolean pin param in allocFrame
 			buf.pinPage((Integer) p.getId());
 		} else {
 			deleteFromPage = buf.allocFrame((Integer) p.getId(), file);
 		}
-		System.out.println("Relevant to the allocframe is "
-			+ deleteFromPage.getPageId().getId());
-		System.out.println("The key is " + key);
 		for (int i = PAGE_HEADER_LENGTH, j = 0; j < head.MAXIMUM_NUMBER_OF_SLOTS; i += head.RECORD_SIZE, ++j) {
 			if (key.compareTo((K) (Integer) deleteFromPage.readInt(i)) == 0) {
 				newFreeSlotposition = i;
 			}
 			// else FIXME
 		}
-		System.out.println("The newFreePosition is " + newFreeSlotposition);
 		int used_slots = deleteFromPage.readInt(OFFSET_CURRENT_NUMBER_OF_SLOTS);
-		System.out.println("The used slots are " + used_slots);
 		int old_free_slot_position = deleteFromPage
 			.readInt(OFFSET_NEXT_FREE_SLOT);
-		System.out.println("The OLD FREE IS " + old_free_slot_position);
 		if (used_slots != head.MAXIMUM_NUMBER_OF_SLOTS) {
 			if (newFreeSlotposition > old_free_slot_position) {
-				System.out.println("BIGGER");
 				for (int i = 1; i < (head.MAXIMUM_NUMBER_OF_SLOTS - used_slots); i++) {
 					old_free_slot_position = deleteFromPage
 						.readInt(old_free_slot_position + KEY_SIZE);
 				}
-				System.out.println("The number of OLD FREE is "
-					+ old_free_slot_position);
 				// delete the key and value needs no update of the page header
 				deleteFromPage.writeInt(old_free_slot_position + KEY_SIZE,
 					newFreeSlotposition);
@@ -214,7 +201,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				deleteFromPage.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS,
 					used_slots - 1);
 				buf.setPageDirty((Integer) p.getId());
-				buf.flushPage((Integer) p.getId(), file); // FIXME
+
 			} else {
 				deleteFromPage.writeInt(newFreeSlotposition, UNDEFINED);
 				deleteFromPage.writeInt(newFreeSlotposition + KEY_SIZE,
@@ -225,7 +212,6 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				deleteFromPage.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS,
 					used_slots - 1);
 				buf.setPageDirty((Integer) p.getId());
-				buf.flushPage((Integer) p.getId(), file); // FIXME
 			}
 		} else {
 			deleteFromPage.writeInt(newFreeSlotposition, UNDEFINED);
@@ -235,17 +221,11 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 			deleteFromPage.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS,
 				used_slots - 1);
 			buf.setPageDirty((Integer) p.getId());
-			for (int k = 0; k < PAGE_SIZE; k = k + 4) {
-				System.out.println("The contents are "
-					+ deleteFromPage.readInt(k));
-			}
 			// update the file header
 			if (head.getFreeList() != UNDEFINED) {
 				// get next free page
-				System.out.println("UNNN");
 				Page<Integer> nextPage;
-				if (tr.lock(head.getFreeList(), DBLock.E)) { // locks for the
-																// first
+				if (tr.lock(head.getFreeList(), DBLock.E)) {
 					// time
 					nextPage = buf.allocFrame(head.getFreeList(), file);
 					// FIXME - race in pin ??? - add boolean pin param in
@@ -254,42 +234,25 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				} else {
 					nextPage = buf.allocFrame(head.getFreeList(), file);
 				}
-
 				nextPage.writeInt(OFFSET_PREVIOUS_PAGE,
 					deleteFromPage.readInt(OFFSET_CURRENT_PAGE));
 				deleteFromPage.writeInt(OFFSET_NEXT_PAGE,
 					nextPage.readInt(OFFSET_CURRENT_PAGE));
-				System.out.println("The next current page is "
-					+ nextPage.readInt(OFFSET_CURRENT_PAGE));
 				deleteFromPage.writeInt(OFFSET_PREVIOUS_PAGE, 0);
-				for (int k = 0; k < PAGE_SIZE; k = k + 4) {
-					System.out.println("The contents are "
-						+ nextPage.readInt(k));
-				}
 				buf.setPageDirty(nextPage.getPageId().getId());
-				buf.flushPage(nextPage.getPageId().getId(), file); // FIXME
-				buf.flushPage(deleteFromPage.getPageId().getId(), file); // FIXME
-				System.out.println("The current page is "
-					+ deleteFromPage.readInt(OFFSET_CURRENT_PAGE));
+				buf.setPageDirty(deleteFromPage.getPageId().getId());
 				head.setFreeList(deleteFromPage.readInt(OFFSET_CURRENT_PAGE));
-				head.pageWrite(); // FIXME
-				buf.flushPage(0, file); // FIXME
+				head.pageWrite();
+				buf.setPageDirty(0);
 			} else {
-				System.out.println("WTF");
-				System.out.println("The CURURURU is "
-					+ deleteFromPage.readInt(OFFSET_CURRENT_PAGE));
 				head.setFreeList(deleteFromPage.readInt(OFFSET_CURRENT_PAGE));
 				deleteFromPage.writeInt(OFFSET_NEXT_PAGE, 0);
 				deleteFromPage.writeInt(OFFSET_PREVIOUS_PAGE, 0);
-				buf.flushPage((Integer) p.getId(), file); // FIXME
-				System.out.println("The cuurent page is "
-					+ deleteFromPage.readInt(OFFSET_CURRENT_PAGE));
-				head.pageWrite(); // FIXME
-				buf.flushPage(0, file); // FIXME
+				buf.setPageDirty(deleteFromPage.getPageId().getId());
+				head.pageWrite();
+				buf.setPageDirty(0);
 			}
 		}
-		System.out.println(" ");
-		System.out.println(head.toString());
 	}
 
 	@Override
