@@ -21,7 +21,7 @@ final class Lookuper<T> implements Callable<T> {
 	public T call() throws Exception {
 		Transaction tr = eng.beginTransaction();
 		try {
-			Record<Integer, Integer> rkv = eng.lookup(tr, key, DBLock.E);
+			Record<Integer, Integer> rkv = eng.lookup(tr, key, DBLock.S);
 			System.out
 				.println("The record is "
 					+ (rkv == null ? null
