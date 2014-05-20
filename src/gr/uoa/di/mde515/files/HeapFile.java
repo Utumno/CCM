@@ -334,7 +334,6 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 
 	private void writeIntoFrame(Page<Integer> p, int key, int value) {
 		int freeSlot = p.readInt(OFFSET_NEXT_FREE_SLOT);
-		System.out.println("The freeSlot is " + freeSlot);
 		// consider the free slots
 		int nextFreeSlot = p.readInt(freeSlot);
 		if (nextFreeSlot == 0) {

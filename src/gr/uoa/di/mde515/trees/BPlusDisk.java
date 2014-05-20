@@ -293,7 +293,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		/** Returns true if removing from this node WILL result in underflow */
 		boolean willUnderflow() {
 			if (root.getPageId().equals(getPageId())) return numOfKeys == 1; // FIXME!!!!
-			return numOfKeys < max_keys / 2; // TODO ............ Test
+			return numOfKeys == max_keys / 2; // TODO ............ Test
 		}
 
 		int items() {
@@ -444,14 +444,14 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			final K _lastKey = _lastKey();
 			if (_lastKey.compareTo(parent._firstKey()) < 0) // ...
 				return null; // it is the leftmost child
-			for (short i = (short) (HEADER_SIZE + record_size), j = 0; j < numOfKeys - 1; i += record_size, ++j) {
+			for (short i = (short) (HEADER_SIZE + record_size), j = 0; j < parent.numOfKeys - 1; i += record_size, ++j) {
 				K readInt = (K) (Integer) parent.readInt(i);
 				if (_lastKey.compareTo(readInt) < 0)
 					return newNodeFromDiskOrBuffer(tr, lock,
 						parent.readInt(i - value_size));
 			}
-			return newNodeFromDiskOrBuffer(tr, lock,
-				(Integer) parent.greaterOrEqual());
+			return newNodeFromDiskOrBuffer(tr, lock, (Integer) parent
+				._lastPair().getValue());
 		}
 	}
 
@@ -478,8 +478,9 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				throws IOException, InterruptedException {
 			final T id = getPageId().getId();
 			if (id.equals(root1.greaterOrEqual())) return root1;
-			for (short i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
-				if (id == (T) (Integer) root1.readInt(i)) return root1;
+			for (short i = HEADER_SIZE, j = 0; j < root1.numOfKeys; i += record_size, ++j) {
+				if (id.equals(root1.readInt(i + key_size)))
+					return root1;
 			}
 			return parent(tr, lock,
 				(InternalNode) root1._lookup(tr, lock, this)); // the CCE
@@ -626,21 +627,44 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			}
 			// newKey == null - a node was actually deleted
 			final Node deleted = merge.getValue();
-			K key = _keyWithValue(deleted);
-			if (key == null) { // we must replace the greaterOrEqual with merged
-				// we deleted the right sibling of the leaf and it happened to
-				// be the greaterOrEqual of its parent
-				this.setGreaterOrEqual(merged.getPageId().getId());
-				// then we must remove the key that pointed to us (exists)
-				key = _keyWithValue(merged);
+			K keyDeleted = _keyWithValue(deleted); // will be finally deleted
+			final K keyMergedNode = _keyWithValue(merged);
+			if (keyDeleted == null) { // we must replace the greaterOrEqual with
+				// merged - BUT FIND merged first
+				// we deleted the right sibling of the leaf OR THE LEAF ITSELF
+				// IF IT WAS RIGHTMOST and it happened to be the greaterOrEqual
+				// of its parent (this) - sooo:
+				if (merged.getPageId().equals(deleted.getPageId())) {
+					Record<K, T> _lastPair = _lastPair();
+					this.setGreaterOrEqual(_lastPair.getValue());
+					keyDeleted = _lastPair.getKey();
+				} else {
+					this.setGreaterOrEqual(merged.getPageId().getId());
+					// then we must remove the key that pointed to us (exists)
+					keyDeleted = keyMergedNode;
+				}
+			} else {
+				if (merged.getPageId().equals(deleted.getPageId())) {
+					for (short i = (short) (HEADER_SIZE + record_size), j = 0; j < numOfKeys - 1; i += record_size, ++j) {
+						K readInt = (K) (Integer) readInt(i);
+						if (keyDeleted.compareTo(readInt) < 0) {
+							_put(keyDeleted, (T) (Integer) readInt(i
+								- value_size));
+						}
+						keyDeleted = (K) (Integer) readInt(i - record_size);
+					}
+				} else {
+					_put(keyDeleted, merged.getPageId().getId());
+					keyDeleted = keyMergedNode;
+				}
 			}
 			// WE ARE NO ROOT - we are only called from fix internal which
 			// checks this
 			if (willUnderflow()) {
-				_remove(key);
+				_remove(keyDeleted);
 				return merge(tr);
 			}
-			_remove(key);
+			_remove(keyDeleted);
 			return null;
 		}
 
@@ -654,6 +678,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			InternalNode parent = parent(tr, DBLock.E, (InternalNode) root);
 			Node right_sibling = _rightSiblingSameParent(tr, DBLock.E, parent);
 			Node left_sibling = _leftSiblingSameParent(tr, DBLock.E, parent);
+			// DIFFERENCE WITH LEAF NODES - grOrEq changes !!!
 			final Node DAS = this;
 			if ((left_sibling == null || left_sibling.willUnderflow())
 				&& (right_sibling == null || right_sibling.willUnderflow())) {
@@ -665,6 +690,9 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				// if matters FIXME - UPDATE THE INDEX ON THE LEFT SIBLING
 				if (right_sibling != null) {
 					// delete it
+					T greaterOrEqual = greaterOrEqual();
+					K thisKey = parent._keyWithValue(this);// this not rightmost
+					_put(thisKey, greaterOrEqual);
 					right_sibling._copyTailAndRemoveIt(DAS, 0);
 					setGreaterOrEqual(right_sibling.greaterOrEqual());
 					return new Record<>(null, right_sibling);
@@ -673,7 +701,11 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				// DELETE OURSELVES so we don't have to update "next" pointer of
 				// our left left sibling
 				// WE ARE RIGHTMOST (right_sibling == null)
-				DAS._copyTailAndRemoveIt(left_sibling, 0);
+				T thisGreater = left_sibling.greaterOrEqual();
+				K leftKey = parent._keyWithValue(left_sibling); // exists
+				left_sibling._put(leftKey, thisGreater);
+				this._copyTailAndRemoveIt(left_sibling, 0);
+				left_sibling.setGreaterOrEqual(this.greaterOrEqual());
 				return new Record<>(null, DAS);
 			}
 			// AT LEAST ONE SIBLING WITH EXTRA NODES
@@ -816,6 +848,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				// our left left sibling
 				// WE ARE RIGHTMOST (right_sibling == null)
 				DAS._copyTailAndRemoveIt(left_sibling, 0);
+				left_sibling.setGreaterOrEqual(DAS.greaterOrEqual());
 				return new Record<>(null, DAS);
 			}
 			// AT LEAST ONE SIBLING WITH EXTRA NODES - return a record with the
@@ -941,9 +974,10 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		final InternalNode das_root = (InternalNode) root;
 		// *********** get our parent to see if it is root
 		K newKey = merge.getKey();
+		// merged and deleted (if a deletion occurred) parent should be the same
 		InternalNode parent = merged.parent(tr, DBLock.E, das_root);
 		// *********** if parent is root perform what's needed
-		if (root.getPageId().equals(parent)) {
+		if (root.getPageId().equals(parent.getPageId())) { // TODO page.equals()
 			System.out.println("------------------> FIX ROOT");
 			if (newKey != null) {
 				// no merging took place but we need to update the keys
@@ -963,19 +997,41 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			// newKey == null - a node was actually deleted
 			final Node deleted = merge.getValue();
 			K key = (das_root)._keyWithValue(deleted);
-			if (key == null) { // we must replace the greaterOrEqual with merged
-				// we deleted the right sibling of the leaf and it happened to
-				// be the greaterOrEqual of its parent
-				root.setGreaterOrEqual(merged.getPageId().getId());
-				// then we must remove the key that pointed to us (exists)
-				key = (das_root)._keyWithValue(merged);
+			final K keyMergedNode = das_root._keyWithValue(merged);
+			if (key == null) {
+				if (merged.getPageId().equals(deleted.getPageId())) {
+					// keyMergedNode == key == null
+					Record<K, T> _lastPair = root._lastPair();
+					root.setGreaterOrEqual(_lastPair.getValue());
+					key = _lastPair.getKey();
+				} else {
+					root.setGreaterOrEqual(merged.getPageId().getId());
+					// then we must remove the key that pointed to us (exists)
+					key = keyMergedNode;
+				}
+			} else {
+				if (merged.getPageId().equals(deleted.getPageId())) {
+					for (short i = (short) (root.HEADER_SIZE + record_size), j = 0; j < root.numOfKeys - 1; i += record_size, ++j) {
+						K readInt = (K) (Integer) root.readInt(i);
+						if (key.compareTo(readInt) < 0) {
+							root._put(key,
+								(T) (Integer) root.readInt(i - value_size));
+						}
+					}
+				} else {
+					root._put(key, merged.getPageId().getId());
+					key = keyMergedNode;
+				}
+				// root.setGreaterOrEqual(merged.getPageId().getId());
+				// // then we must remove the key that pointed to us (exists)
+				// key = (das_root)._keyWithValue(merged);
 			}
-			// WE ARE NO ROOT - we are only called from fix internal which
-			// checks this
 			if (root.numOfKeys == 1) {
 				System.out.println("------------------> DELETE ROOT");
+				T _get = root._get(key);
 				root._remove(key); // to mark it --numOfKeys
-				setRoot(merged);
+				setRoot(root.newNodeFromDiskOrBuffer(tr, DBLock.E,
+					(Integer) _get));
 				return;
 			}
 			root._remove(key);

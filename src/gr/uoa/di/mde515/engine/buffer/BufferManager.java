@@ -154,8 +154,8 @@ public final class BufferManager<T> {
 			final Integer frameNum = getFrameNum(pageID);
 			if (frameNum != null) { // if the page already in the buffer return
 				// a page wrapping the buffer
-				System.out.println("re-alloc FRAME NUM " + frameNum
-					+ " for page " + pageID);
+				// System.out.println("re-alloc FRAME NUM " + frameNum
+				// + " for page " + pageID);
 				return new Page<>(pageID, getFrame(frameNum).getBuffer());
 			}
 			while (freeList.isEmpty()) {
