@@ -173,4 +173,22 @@ public class Transaction {
 			}
 		}
 	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + (int) (transId ^ (transId >>> 32));
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) return true;
+		if (obj == null) return false;
+		if (getClass() != obj.getClass()) return false;
+		Transaction other = (Transaction) obj;
+		if (transId != other.transId) return false;
+		return true;
+	}
 }
