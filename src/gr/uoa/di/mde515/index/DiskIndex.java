@@ -1,6 +1,7 @@
 package gr.uoa.di.mde515.index;
 
 import gr.uoa.di.mde515.engine.Transaction;
+import gr.uoa.di.mde515.engine.buffer.Serializer;
 import gr.uoa.di.mde515.files.IndexDiskFile;
 import gr.uoa.di.mde515.locks.DBLock;
 import gr.uoa.di.mde515.trees.BPlusDisk;
@@ -14,9 +15,10 @@ public class DiskIndex<K extends Comparable<K>, T> implements Index<K, T> {
 
 	private final BPlusDisk<K, T> bplus;
 
-	public DiskIndex(IndexDiskFile file, short key_size, short value_size)
+	public DiskIndex(IndexDiskFile file, short key_size, short value_size,
+			Serializer<K, T> ser)
 			throws IOException, InterruptedException {
-		bplus = new BPlusDisk(file, key_size, value_size);
+		bplus = new BPlusDisk<>(file, key_size, value_size, ser);
 	}
 
 	/**

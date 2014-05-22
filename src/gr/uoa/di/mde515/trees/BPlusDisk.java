@@ -4,6 +4,8 @@ import gr.uoa.di.mde515.engine.Engine;
 import gr.uoa.di.mde515.engine.Transaction;
 import gr.uoa.di.mde515.engine.buffer.BufferManager;
 import gr.uoa.di.mde515.engine.buffer.Page;
+import gr.uoa.di.mde515.engine.buffer.RecordsPage;
+import gr.uoa.di.mde515.engine.buffer.Serializer;
 import gr.uoa.di.mde515.files.IndexDiskFile;
 import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
@@ -27,7 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * 12345 -> 12 345
  *
- * FOR NOW stores Integers as keys. FIXME
+ * FOR NOW stores Integers as PAGE_IDs. FIXME - follow the casts to Integers
  *
  * @param <T>
  *            the type of the value of the records to be stored in the leaf
@@ -43,6 +45,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 	// TODO private lock + thread safety
 	private Node root;
 	private AtomicInteger nodeId = new AtomicInteger(0);
+	private final Serializer<K, T> ser;
 	// sizes of the key and value to be used in the tree
 	private final short key_size;
 	@SuppressWarnings("unused")
@@ -77,12 +80,12 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		}
 	}
 
-	public BPlusDisk(IndexDiskFile file, short key_size, short value_size)
-			throws IOException, InterruptedException {
+	public BPlusDisk(IndexDiskFile file, short key_size, short value_size,
+			Serializer<K, T> ser) throws IOException, InterruptedException {
 		this.key_size = key_size;
 		this.value_size = value_size;
 		this.record_size = (short) (key_size + value_size);
-		// this.diskRec = diskRec;
+		this.ser = ser;
 		this.file = file;
 		if (file.read() != -1) {
 			System.out.println(file + " already exists");
@@ -121,8 +124,8 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		_insertInLeaf(tr, rec, leafNode);
 	}
 
-	public <R extends Record<K, T>> void delete(Transaction tr, K key)
-			throws IOException, InterruptedException {
+	public void delete(Transaction tr, K key) throws IOException,
+			InterruptedException {
 		root = root.newNodeFromDiskOrBuffer(tr, DBLock.E, (Integer) root
 			.getPageId().getId());
 		final LeafNode leafNode = root.findLeaf(tr, DBLock.E, key);
@@ -201,7 +204,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 	// Nodes
 	// =========================================================================
 	@SuppressWarnings("synthetic-access")
-	public abstract class Node extends Page<T> {
+	public abstract class Node extends RecordsPage<K, T, T> {
 
 		// MUTABLE STATE
 		short numOfKeys; // NEVER ZERO EXCEPT ON CONSTRUCTION
@@ -225,14 +228,15 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		 * no locking is needed. So we do not request locks here.
 		 */
 		private Node(int id) throws IOException, InterruptedException {
-			super((Page<T>) buf.allocFrame(id, file));
+			super((Page<T>) buf.allocFrame(id, file), ser);
 			isLeaf = readByte(LEAF_OFFSET) == 1;
 			numOfKeys = readShort(NUM_KEYS_OFFSET);
 		}
 
 		/** Allocates a Node IN MEMORY */
 		private Node(Transaction tr, boolean leaf) throws InterruptedException {
-			super((Page<T>) buf.allocFrameForNewPage(nodeId.decrementAndGet()));
+			super((Page<T>) buf.allocFrameForNewPage(nodeId.decrementAndGet()),
+					ser);
 			if (tr != null) { // if null we are creating the first root !
 				final Integer id = (Integer) getPageId().getId();
 				if (tr.lock(id, DBLock.E)) { // should always return true //
@@ -310,7 +314,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		}
 
 		T greaterOrEqual() {
-			return (T) (Integer) readInt(Engine.PAGE_SIZE - key_size);
+			return readValue(Engine.PAGE_SIZE - key_size);
 		}
 
 		void setGreaterOrEqual(T v) {
@@ -329,15 +333,16 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		/** Removes {@code key} if it exists */
 		void _remove(K key) {
 			int i = HEADER_SIZE, j = 0;
-			K tmpKey = (K) (Integer) readInt(i); // first key
+			K tmpKey = readKey(i); // first key
 			for (; j < numOfKeys - 1; i += record_size, ++j) {
-				final int nextKey = readInt(i + record_size);
+				final K nextKey = readKey(i + record_size);
 				if (key.compareTo(tmpKey) == 0) {
-					writeInt(i, nextKey);
-					writeInt(i + key_size, readInt(i + record_size + key_size));
-					key = (K) (Integer) nextKey;
+					writeKey(i, nextKey);
+					writeValue(i + key_size, readValue(i + record_size
+						+ key_size));
+					key = nextKey;
 				}
-				tmpKey = (K) (Integer) nextKey;
+				tmpKey = nextKey;
 			} // if key not found return false
 			--numOfKeys;
 			writeShort(NUM_KEYS_OFFSET, numOfKeys);
@@ -351,11 +356,11 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		void _put(K k, T v) {
 			int i, j;
 			for (i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
-				K tmpKey = (K) (Integer) readInt(i);
-				T tmpValue = (T) (Integer) readInt(i + key_size);
+				K tmpKey = readKey(i);
+				T tmpValue = readValue(i + key_size);
 				if (k.compareTo(tmpKey) < 0) {
-					writeInt(i, (Integer) k);
-					writeInt(i + key_size, (Integer) v);
+					writeKey(i, k);
+					writeValue(i + key_size, v);
 					k = tmpKey;
 					v = tmpValue;
 				} else if (k.compareTo(tmpKey) == 0) {
@@ -377,9 +382,9 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		T _get(K k) {
 			int i, j;
 			for (i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
-				K tmpKey = (K) (Integer) readInt(i);
+				K tmpKey = readKey(i);
 				if (k.compareTo(tmpKey) == 0) {
-					return (T) (Integer) readInt(i + key_size);
+					return readValue(i + key_size);
 				}
 			}
 			return null;
@@ -387,30 +392,27 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 
 		K _lastKey() {
 			int offset = HEADER_SIZE + (numOfKeys - 1) * record_size;
-			return (K) (Integer) readInt(offset);
+			return readKey(offset);
 		}
 
 		K _firstKey() {
-			return (K) (Integer) readInt(HEADER_SIZE);
+			return readKey(HEADER_SIZE);
 		}
 
 		Record<K, T> _lastPair() {
 			int offset = HEADER_SIZE + (numOfKeys - 1) * record_size;
-			return (Record<K, T>) new Record<>(readInt(offset), readInt(offset
-				+ key_size));
+			return new Record<>(readKey(offset), readValue(offset + key_size));
 		}
 
 		Record<K, T> _firstPair() {
 			int offset = HEADER_SIZE;
-			return (Record<K, T>) new Record<>(readInt(offset), readInt(offset
-				+ key_size));
+			return new Record<>(readKey(offset), readValue(offset + key_size));
 		}
 
 		void _copyTailAndRemoveIt(Node sibling, final int fromIndex) {
 			short removals = 0;
 			for (int j = fromIndex, i = HEADER_SIZE + j * record_size; j < numOfKeys; i += record_size, ++j) {
-				sibling._put((K) (Integer) readInt(i), (T) (Integer) readInt(i
-					+ key_size));
+				sibling._put(readKey(i), readValue(i + key_size));
 				++removals;
 			}
 			numOfKeys -= removals;
@@ -427,13 +429,13 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			final K lastKey = _lastKey();
 			for (short i = HEADER_SIZE, j = 0; // up to parent's penultimate key
 			j < parent.numOfKeys - 1; i += record_size, ++j) {
-				K parKey = (K) (Integer) parent.readInt(i);
+				K parKey = parent.readKey(i);
 				if (lastKey.compareTo(parKey) < 0)
-					return newNodeFromDiskOrBuffer(tr, lock,
-						parent.readInt(i + record_size + key_size));
+					return newNodeFromDiskOrBuffer(tr, lock, // FIXME cast
+						(Integer) parent.readValue(i + record_size + key_size));
 			}
 			// this is the last key so return the "greater or equal"
-			return newNodeFromDiskOrBuffer(tr, lock,
+			return newNodeFromDiskOrBuffer(tr, lock, // FIXME cast
 				(Integer) parent.greaterOrEqual());
 		}
 
@@ -445,10 +447,10 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			if (_lastKey.compareTo(parent._firstKey()) < 0) // ...
 				return null; // it is the leftmost child
 			for (short i = (short) (HEADER_SIZE + record_size), j = 0; j < parent.numOfKeys - 1; i += record_size, ++j) {
-				K readInt = (K) (Integer) parent.readInt(i);
-				if (_lastKey.compareTo(readInt) < 0)
-					return newNodeFromDiskOrBuffer(tr, lock,
-						parent.readInt(i - value_size));
+				K readKey = parent.readKey(i);
+				if (_lastKey.compareTo(readKey) < 0)
+					return newNodeFromDiskOrBuffer(tr, lock, // FIXME cast
+						(Integer) parent.readValue(i - value_size));
 			}
 			return newNodeFromDiskOrBuffer(tr, lock, (Integer) parent
 				._lastPair().getValue());
@@ -479,8 +481,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			final T id = getPageId().getId();
 			if (id.equals(root1.greaterOrEqual())) return root1;
 			for (short i = HEADER_SIZE, j = 0; j < root1.numOfKeys; i += record_size, ++j) {
-				if (id.equals(root1.readInt(i + key_size)))
-					return root1;
+				if (id.equals(root1.readValue(i + key_size))) return root1;
 			}
 			return parent(tr, lock,
 				(InternalNode) root1._lookup(tr, lock, this)); // the CCE
@@ -498,14 +499,14 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			System.out.print(getPageId().getId() + "::");
 			Collection<Node> values = new ArrayList<>();
 			for (short i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
-				int key = readInt(i);
-				int val = readInt(i + key_size);
-				values.add(newNodeFromDiskOrBuffer(tr, lock, val));
+				K key = readKey(i);
+				T val = readValue(i + key_size); // FIXME cast
+				values.add(newNodeFromDiskOrBuffer(tr, lock, (Integer) val));
 				System.out.print(key + ";" + val + ",");
 			}
 			System.out.print(greaterOrEqual() + "\t");
 			values.add(newNodeFromDiskOrBuffer(tr, lock,
-				(Integer) greaterOrEqual()));
+				(Integer) greaterOrEqual())); // FIXME cast
 			return values;
 		}
 
@@ -519,10 +520,10 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 					(Integer) greaterOrEqual());
 			// tailMap contains at least children.lastKey()
 			for (short i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
-				K readInt = (K) (Integer) readInt(i);
-				if (key.compareTo(readInt) < 0)
-					return newNodeFromDiskOrBuffer(tr, lock, readInt(i
-						+ key_size));
+				K readKey = readKey(i);
+				if (key.compareTo(readKey) < 0)
+					return newNodeFromDiskOrBuffer(tr, lock, // FIXME cast
+						(Integer) readValue(i + key_size));
 			}
 			throw new RuntimeException("key " + key + " not found"); // TODO
 																		// keep?
@@ -543,11 +544,11 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		 * "greater or equal" child or not a child
 		 */
 		private K _keyWithValue(Node anchor) {
-			final int id = (Integer) anchor.getPageId().getId();
+			final T id = anchor.getPageId().getId();
 			for (short i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
-				int readInt = readInt(i + key_size);
-				if (id == readInt) {
-					return (K) (Integer) readInt(i);
+				T readVal = readValue(i + key_size);
+				if (id.equals(readVal)) {
+					return readKey(i);
 				}
 			}
 			/* if (greaterOrEqual().equals(id)) */return null; // No key for
@@ -646,12 +647,11 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			} else {
 				if (merged.getPageId().equals(deleted.getPageId())) {
 					for (short i = (short) (HEADER_SIZE + record_size), j = 0; j < numOfKeys - 1; i += record_size, ++j) {
-						K readInt = (K) (Integer) readInt(i);
-						if (keyDeleted.compareTo(readInt) < 0) {
-							_put(keyDeleted, (T) (Integer) readInt(i
-								- value_size));
+						K readKey = readKey(i);
+						if (keyDeleted.compareTo(readKey) < 0) {
+							_put(keyDeleted, readValue(i - value_size));
 						}
-						keyDeleted = (K) (Integer) readInt(i - record_size);
+						keyDeleted = readKey(i - record_size);
 					}
 				} else {
 					_put(keyDeleted, merged.getPageId().getId());
@@ -779,8 +779,8 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		Collection<Node> print(Transaction tr, DBLock lock) {
 			System.out.print(getPageId().getId() + ":"/* + numOfKeys */+ ":");
 			for (short i = HEADER_SIZE, j = 0; j < numOfKeys; i += record_size, ++j) {
-				int key = readInt(i);
-				int val = readInt(i + key_size);
+				K key = readKey(i);
+				T val = readValue(i + key_size);
 				System.out.print(key + ";" + val + ",");
 			}
 			System.out.print(greaterOrEqual() + "\t");
@@ -1012,10 +1012,9 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			} else {
 				if (merged.getPageId().equals(deleted.getPageId())) {
 					for (short i = (short) (root.HEADER_SIZE + record_size), j = 0; j < root.numOfKeys - 1; i += record_size, ++j) {
-						K readInt = (K) (Integer) root.readInt(i);
-						if (key.compareTo(readInt) < 0) {
-							root._put(key,
-								(T) (Integer) root.readInt(i - value_size));
+						K readKey = root.readKey(i);
+						if (key.compareTo(readKey) < 0) {
+							root._put(key, root.readValue(i - value_size));
 						}
 					}
 				} else {

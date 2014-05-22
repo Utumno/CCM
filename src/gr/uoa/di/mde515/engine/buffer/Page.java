@@ -18,46 +18,46 @@ public class Page<T> {
 	}
 
 	public Page(Page<T> allocFrame) {
-		this(allocFrame.pageid.getId(), allocFrame.dat);
-	}
-
-	public ByteBuffer getData() {
-		return dat;
+		this(allocFrame.pageid.getId(), allocFrame.getDat());
 	}
 
 	public PageId<T> getPageId() {
 		return pageid;
 	}
 
+	ByteBuffer getDat() { // FIXME delete this
+		return dat;
+	}
+
 	// =========================================================================
 	// Read/Write
 	// =========================================================================
 	public byte readByte(int pos) {
-		return dat.get(pos);
+		return getDat().get(pos);
 	}
 
 	public int readInt(int pos) {
-		return dat.getInt(pos);
+		return getDat().getInt(pos);
 	}
 
 	public short readShort(int pos) {
-		return dat.getShort(pos);
+		return getDat().getShort(pos);
 	}
 
 	// TODO !!!! consider adding buff.setPageDity(this) to the write calls
 	public void writeShort(int pos, short value) {
-		dat.putShort(pos, value);
+		getDat().putShort(pos, value);
 		// buff.setPageDirty(this); // buff is BufferManager<Integer> - I need
 		// BufferManager<T>
 	}
 
 	public void writeByte(int pos, byte value) {
-		dat.put(pos, value);
+		getDat().put(pos, value);
 	}
 
 	public void writeInt(int pos, int value) {
 		try {
-			dat.putInt(pos, value);
+			getDat().putInt(pos, value);
 		} catch (IndexOutOfBoundsException e) {
 			System.out.println("BOUND " + pos + " val " + value);
 			throw e;
@@ -70,7 +70,7 @@ public class Page<T> {
 		builder.append("Page [pageid=");
 		builder.append(pageid);
 		builder.append(", dat=");
-		builder.append(dat);
+		builder.append(getDat());
 		builder.append("]");
 		return builder.toString();
 	}

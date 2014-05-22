@@ -1,6 +1,7 @@
 package gr.uoa.di.mde515.engine;
 
 import gr.uoa.di.mde515.engine.CCM.TransactionRequiredException;
+import gr.uoa.di.mde515.engine.buffer.IntegerIntegerSerializer;
 import gr.uoa.di.mde515.files.DataFile;
 import gr.uoa.di.mde515.files.IndexDiskFile;
 import gr.uoa.di.mde515.index.DiskIndex;
@@ -122,7 +123,7 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 		try {
 			dataFile = DataFile.init("temp.db", RECORD_SIZE);
 			index = new DiskIndex(new IndexDiskFile("index.db"), KEY_SIZE,
-				KEY_SIZE);
+				KEY_SIZE, new IntegerIntegerSerializer());
 			System.out.println("ENGINE INITIALIZED");
 		} catch (IOException | InterruptedException e) {
 			throw new RuntimeException("Can't open db file", e);
