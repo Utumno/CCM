@@ -207,7 +207,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 	public abstract class Node extends RecordsPage<K, T, T> {
 
 		// MUTABLE STATE
-		short numOfKeys; // NEVER ZERO EXCEPT ON CONSTRUCTION
+		volatile short numOfKeys; // NEVER ZERO EXCEPT ON CONSTRUCTION
 		// CONSTANTS
 		private static final short LEAF_OFFSET = 0;
 		// PROTECTED
@@ -1021,9 +1021,6 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 					root._put(key, merged.getPageId().getId());
 					key = keyMergedNode;
 				}
-				// root.setGreaterOrEqual(merged.getPageId().getId());
-				// // then we must remove the key that pointed to us (exists)
-				// key = (das_root)._keyWithValue(merged);
 			}
 			if (root.numOfKeys == 1) {
 				System.out.println("------------------> DELETE ROOT");

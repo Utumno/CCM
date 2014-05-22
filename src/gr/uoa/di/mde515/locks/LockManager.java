@@ -83,6 +83,10 @@ public class LockManager {
 		private final ReadWriteLock rw = new ReentrantReadWriteLock(true);
 		private final Lock r = rw.readLock();
 		private final Lock w = rw.writeLock();
+		/**
+		 * Keeps track of the for the page this LockStructure is mapped to. When
+		 * empty delete this LockStructure
+		 */
 		private final Map<Transaction, DBLock> requests = new LinkedHashMap<>();
 		private final Map<Transaction, Request> granted = new LinkedHashMap<>();
 
@@ -109,6 +113,10 @@ public class LockManager {
 			requests.put(request.tr, request.lock);
 		}
 
+		/**
+		 * Unlock a lock granted to Transaction {@code tr}. Return true when
+		 * this was the last request for this page.
+		 */
 		synchronized boolean unlock(Transaction tr) {
 			System.out.println(tr + " unlocking.");
 			for (Entry<Transaction, Request> transRequest : granted.entrySet()) {
@@ -122,13 +130,13 @@ public class LockManager {
 						break;
 					}
 					granted.remove(tr);
-					break;
+					break; // avoid a ConcurrentModificationException
 				}
 			}
 			for (Entry<Transaction, DBLock> transLock : requests.entrySet()) {
 				if (tr.equals(transLock.getKey())) {
 					requests.remove(tr);
-					break;
+					break; // avoid a ConcurrentModificationException
 				}
 			}
 			return requests.isEmpty();
