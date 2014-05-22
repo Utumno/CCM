@@ -5,6 +5,7 @@ import gr.uoa.di.mde515.files.DataFile;
 import gr.uoa.di.mde515.files.IndexDiskFile;
 import gr.uoa.di.mde515.index.DiskIndex;
 import gr.uoa.di.mde515.index.Index;
+import gr.uoa.di.mde515.index.IndexJava;
 import gr.uoa.di.mde515.index.KeyExistsException;
 import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
@@ -177,9 +178,9 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 	}
 
 	@Override
-	public void delete(Transaction tr, K key, DBLock el)
-			throws IOException, InterruptedException,
-			TransactionRequiredException, ExecutionException {
+	public void delete(Transaction tr, K key, DBLock el) throws IOException,
+			InterruptedException, TransactionRequiredException,
+			ExecutionException {
 		ccm.delete(tr, key, el, dataFile, index);
 	}
 
@@ -189,12 +190,12 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 	@Override
 	public void print(Transaction tr, DBLock e) throws IOException,
 			InterruptedException {
-		index.print(tr, e);
+		((DiskIndex) index).print(tr, e);
 	}
 
 	@Override
 	public void print() {
-		index.print();
+		((IndexJava) index).print();
 	}
 
 	@Override
