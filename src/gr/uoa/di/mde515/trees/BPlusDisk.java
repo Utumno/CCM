@@ -305,8 +305,8 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			return "@" + getPageId().getId();
 		}
 
-		T greaterOrEqual() {
-			return readValue(Engine.PAGE_SIZE - getKeySize());
+		T greaterOrEqual() { // FIXME !!
+			return (T) (Integer) readInt(Engine.PAGE_SIZE - getKeySize());
 		}
 
 		void setGreaterOrEqual(T v) {
@@ -435,7 +435,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			final K _lastKey = _lastKey();
 			if (_lastKey.compareTo(parent._firstKey()) < 0) // ...
 				return null; // it is the leftmost child
-			for (short i = 1; i < parent.numOfKeys - 1; ++i) {
+			for (short i = 1; i < parent.numOfKeys; ++i) {
 				K readKey = parent.readKey(i);
 				if (_lastKey.compareTo(readKey) < 0)
 					return newNodeFromDiskOrBuffer(tr, lock, // FIXME cast
@@ -634,11 +634,12 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			} else {
 				if (merged.getPageId().equals(deleted.getPageId())) {
 					// we merged with our left sibling
-					for (short i = 1; i < numOfKeys - 1; ++i) {
+					for (short i = 1; i < numOfKeys; ++i) {
 						K readKey = readKey(i);
 						if (keyDeleted.compareTo(readKey) < 0) {
 							_put(keyDeleted, readValue(i - 1));
 							keyDeleted = readKey(i - 1);
+							break;
 						}
 					}
 				} else {
@@ -999,10 +1000,11 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				}
 			} else {
 				if (merged.getPageId().equals(deleted.getPageId())) {
-					for (short i = 1; i < root.numOfKeys - 1; ++i) {
+					for (short i = 1; i < root.numOfKeys; ++i) {
 						K readKey = root.readKey(i);
 						if (key.compareTo(readKey) < 0) {
 							root._put(key, root.readValue(i - 1));
+							break;
 						}
 					}
 				} else {
