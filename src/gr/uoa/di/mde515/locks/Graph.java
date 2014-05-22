@@ -21,7 +21,7 @@ public class Graph {
 		while (t.detectCycles()) {
 			// local to the method
 			List<List<String>> findS = j.findSimpleCycles();
-			System.out.println("The cycles are " + findS);
+			System.out.println("The cycle(s) are " + findS);
 			// local to the method
 			Map<String, Integer> map = new HashMap<>();
 			for (int i = 0; i < findS.size(); i++) {
@@ -38,27 +38,20 @@ public class Graph {
 			Entry<String, Integer> entry = findMax(map);
 			String str = entry.getKey();
 			int freq = entry.getValue();
-			System.out.println("The frequency is " + freq);
 			if (freq > 1) {
-				System.out.println("VERTEX");
-				graph.removeVertex(str);// using the graph structure
-										// needs synchronization
-			} else {
-				// for (int i = 0; i < findS.size(); i++) {
 				System.out.println("The vertex to be removed is " + str);
 				graph.removeVertex(str);// using the graph structure
 										// needs synchronization
 				System.out.println("After removal");
-				System.out.println("Does it contain a cycle? "
-					+ t.detectCycles());
-				List<List<String>> qwe = j.findSimpleCycles();
-				System.out.println("The cycles are " + qwe);
-				// }
+			} else {
+				System.out.println("The vertex to be removed is " + str);
+				graph.removeVertex(str);// using the graph structure
+										// needs synchronization
+				System.out.println("After removal");
 			}
-			System.out.println("The max value is " + str);
 			System.out.println("Does it contain a cycle? " + t.detectCycles());
+			List<List<String>> findSA = j.findSimpleCycles();
 		}
-		System.out.println("While loop ended");
 	}
 
 	private Entry<String, Integer> findMax(Map<String, Integer> map) {
