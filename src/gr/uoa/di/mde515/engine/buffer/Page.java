@@ -74,4 +74,24 @@ public class Page<T> { // TODO abstract
 		builder.append("]");
 		return builder.toString();
 	}
+
+	@Override
+	public final int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((pageid == null) ? 0 : pageid.hashCode());
+		return result;
+	}
+
+	@Override
+	public final boolean equals(Object obj) {
+		if (this == obj) return true;
+		if (obj == null) return false;
+		if (getClass() != obj.getClass()) return false;
+		Page other = (Page) obj;
+		if (pageid == null) {
+			if (other.pageid != null) return false;
+		} else if (!pageid.equals(other.pageid)) return false;
+		return true;
+	}
 }

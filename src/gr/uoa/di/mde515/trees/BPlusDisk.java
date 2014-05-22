@@ -291,7 +291,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 
 		/** Returns true if removing from this node WILL result in underflow */
 		boolean willUnderflow() {
-			if (root.getPageId().equals(getPageId())) return numOfKeys == 1; // FIXME!!!!
+			if (root.equals(this)) return numOfKeys == 1; // FIXME!!!!
 			return numOfKeys == max_keys / 2; // TODO ............ Test
 		}
 
@@ -626,7 +626,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				// we deleted the right sibling of the leaf OR THE LEAF ITSELF
 				// IF IT WAS RIGHTMOST and it happened to be the greaterOrEqual
 				// of its parent (this) - sooo:
-				if (merged.getPageId().equals(deleted.getPageId())) {
+				if (merged.equals(deleted)) {
 					Record<K, T> _lastPair = _lastPair();
 					this.setGreaterOrEqual(_lastPair.getValue());
 					keyDeleted = _lastPair.getKey();
@@ -636,7 +636,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 					keyDeleted = keyMergedNode;
 				}
 			} else {
-				if (merged.getPageId().equals(deleted.getPageId())) {
+				if (merged.equals(deleted)) {
 					// we merged with our left sibling
 					for (short i = 1; i < numOfKeys; ++i) {
 						K readKey = readKey(i);
@@ -663,7 +663,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 
 		private Record<K, Node> merge(Transaction tr) throws IOException,
 				InterruptedException {
-			if (root.getPageId().equals(getPageId()))
+			if (root.equals(this))
 				throw new RuntimeException("Called merge on root");
 			System.out.println("------------------> IN MERGE INTERNAL NODE");
 			@SuppressWarnings("unchecked")
@@ -793,7 +793,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		Record<K, Node> deleteInLeaf(Transaction tr, K rec)
 				throws InterruptedException, IOException { // TODO why IO
 			// we are in leaf - if the leaf is root then it is the only node
-			if (root.getPageId().equals(this.getPageId())) {
+			if (root.equals(this)) {
 				_remove(rec);
 				return null;
 			}
@@ -809,7 +809,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		/** Must not be called on the root (if the root is leaf) */
 		Record<K, Node> merge(Transaction tr) throws InterruptedException,
 				IOException {
-			if (root.getPageId().equals(getPageId()))
+			if (root.equals(this))
 				throw new RuntimeException("Called merge on root");
 			System.out.println("------------------> IN MERGE LEAFNODE");
 			// TODO - the part below is common with internal node - refactor
@@ -900,8 +900,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 	// =========================================================================
 	private void insertInternal(Transaction tr, Node justSplit,
 			Record<K, Node> insert) throws InterruptedException, IOException {
-		if (root.getPageId().equals(justSplit.getPageId())) { // root must split
-			// (leaf or not) // TODO use PageId<T> equals in Node.equals
+		if (root.equals(justSplit)) { // root must split (leaf or not)
 			System.out.println("------------------> SPLIT ROOT");
 			InternalNode newRoot = new InternalNode(tr);
 			newRoot._put(insert.getKey(), justSplit.getPageId().getId());
@@ -971,7 +970,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		InternalNode parent = merged.parent(tr, DBLock.E, das_root);
 		// *********** if parent is root perform what's needed // TODO MOVE THIS
 		// in removeInternal()
-		if (root.getPageId().equals(parent.getPageId())) { // TODO page.equals()
+		if (root.equals(parent)) {
 			System.out.println("------------------> FIX ROOT");
 			if (newKey != null) {
 				// no merging took place but we need to update the keys
@@ -993,7 +992,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			K key = (das_root)._keyWithValue(deleted);
 			final K keyMergedNode = das_root._keyWithValue(merged);
 			if (key == null) {
-				if (merged.getPageId().equals(deleted.getPageId())) {
+				if (merged.equals(deleted)) {
 					// keyMergedNode == key == null
 					Record<K, T> _lastPair = root._lastPair();
 					root.setGreaterOrEqual(_lastPair.getValue());
@@ -1004,7 +1003,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 					key = keyMergedNode;
 				}
 			} else {
-				if (merged.getPageId().equals(deleted.getPageId())) {
+				if (merged.equals(deleted)) {
 					for (short i = 1; i < root.numOfKeys; ++i) {
 						K readKey = root.readKey(i);
 						if (key.compareTo(readKey) < 0) {
