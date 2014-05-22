@@ -207,7 +207,6 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				deleteFromPage.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS,
 					used_slots - 1);
 				buf.setPageDirty((Integer) p.getId());
-
 			} else {
 				deleteFromPage.writeInt(newFreeSlotposition, UNDEFINED);
 				deleteFromPage.writeInt(newFreeSlotposition + KEY_SIZE,

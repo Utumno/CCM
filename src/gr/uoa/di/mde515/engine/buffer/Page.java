@@ -4,7 +4,7 @@ import gr.uoa.di.mde515.index.PageId;
 
 import java.nio.ByteBuffer;
 
-public class Page<T> {
+public class Page<T> { // TODO abstract
 
 	// private static final BufferManager<Integer> buff = BufferManager
 	// .getInstance();

@@ -258,6 +258,9 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			return new InternalNode(pageID);
 		}
 
+		// =====================================================================
+		// Abstract
+		// =====================================================================
 		/**
 		 * Return the Leaf that should contain key k starting from this Node.
 		 * Locks the path up to the leaf.
@@ -414,7 +417,8 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				throw new NullPointerException("Root siblings ?");
 			if (_firstKey().compareTo(parent._lastKey()) >= 0) // ...
 				return null; // it is the "greater or equal" child (rightmost)
-			final K lastKey = _lastKey();
+			final K lastKey = _lastKey(); // ... debugger - the last key may be
+			// deleted
 			for (short i = 0; // up to parent's penultimate key
 			i < parent.numOfKeys - 1; ++i) {
 				K parKey = parent.readKey(i);
@@ -752,7 +756,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		@Override
 		InternalNode parent(Transaction tr, DBLock lock, InternalNode root1)
 				throws IOException, InterruptedException {
-			final Integer id = (Integer) getPageId().getId();
+			final T id = getPageId().getId();
 			if (root1._keyWithValue(this) != null
 				|| id.equals(root1.greaterOrEqual())) return root1;
 			return parent(tr, lock, // the CCE will be thrown from this cast
@@ -965,7 +969,8 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		K newKey = merge.getKey();
 		// merged and deleted (if a deletion occurred) parent should be the same
 		InternalNode parent = merged.parent(tr, DBLock.E, das_root);
-		// *********** if parent is root perform what's needed
+		// *********** if parent is root perform what's needed // TODO MOVE THIS
+		// in removeInternal()
 		if (root.getPageId().equals(parent.getPageId())) { // TODO page.equals()
 			System.out.println("------------------> FIX ROOT");
 			if (newKey != null) {
@@ -977,7 +982,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 					K key3 = (das_root)._keyWithValue(merged);
 					root._remove(key3);
 					root._put(newKey, merged.getPageId().getId());
-					return;
+					return; // TODO test this path
 				}
 				root._remove(rekeyedNodeKey);
 				root._put(newKey, reKeyed.getPageId().getId());

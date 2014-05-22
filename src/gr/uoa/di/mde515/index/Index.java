@@ -10,7 +10,7 @@ import java.util.List;
  * @param <K>
  *            the key type - the primary key in the data file
  * @param <T>
- *            the type of the pageId - int in this project
+ *            the type of the pageId - int in this project - FIXME
  */
 public interface Index<K extends Comparable<K>, T> {
 
@@ -23,16 +23,15 @@ public interface Index<K extends Comparable<K>, T> {
 	 * @throws InterruptedException
 	 * @throws IOException
 	 */
-	public abstract T lookupLocked(Transaction tr, K key, DBLock el)
-			throws IOException, InterruptedException;
-
-	public abstract void flush(List<PageId<Integer>> list) throws IOException;
-
-	public abstract void insert(Transaction tr, Record<K, T> rec)
-			throws IOException, InterruptedException;
-
-	public abstract void delete(Transaction tr, K key) throws IOException,
+	T lookupLocked(Transaction tr, K key, DBLock el) throws IOException,
 			InterruptedException;
 
-	public abstract void abort(List<PageId<Integer>> list) throws IOException;
+	void flush(List<PageId<Integer>> list) throws IOException;
+
+	void insert(Transaction tr, Record<K, T> rec) throws IOException,
+			InterruptedException;
+
+	void delete(Transaction tr, K key) throws IOException, InterruptedException;
+
+	void abort(List<PageId<Integer>> list) throws IOException;
 }

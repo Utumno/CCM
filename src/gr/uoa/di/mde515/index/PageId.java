@@ -1,8 +1,15 @@
 package gr.uoa.di.mde515.index;
 
-public class PageId<T> {
+/**
+ * A generic page id - defines the equals and hash code methods and wraps an id
+ * of type T. Must be immutable - will be if T is immutable.
+ *
+ * @param <T>
+ *            the type of the page id - must be immutable
+ */
+public final class PageId<T> {
 
-	T id;
+	private final T id;
 
 	public synchronized T getId() {
 		return id;

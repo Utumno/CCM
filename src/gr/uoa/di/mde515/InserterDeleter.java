@@ -24,10 +24,10 @@ final class InserterDeleter<T> implements Callable<T> {
 	@Override
 	public T call() throws Exception {
 		Transaction tr = eng.beginTransaction();
-		List<Integer> primeNumbers = new ArrayList<>(Arrays.asList(2, 3, 5,
-			7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 61, 59, 67,
-			71, 73, 79, 83, 89, 97, 101, 103, 109, 113, 127, 131, 137, 139,
-			149, 151, 157, 163, 167, 173, 179, 107));
+		List<Integer> primeNumbers = new ArrayList<>(Arrays.asList(2, 3, 5, 7,
+			11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 61, 59, 67, 71, 73,
+			79, 83, 89, 97, 101, 103, 109, 113, 127, 131, 137, 139, 149, 151,
+			157, 163, 167, 173, 179, 107));
 		// for (int j = 0; ++j < 10;) {
 		List<Integer> perm = Main.permutation(primeNumbers);
 		System.out.println(perm);
