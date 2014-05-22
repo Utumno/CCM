@@ -15,10 +15,9 @@ public class DiskIndex<K extends Comparable<K>, T> implements Index<K, T> {
 
 	private final BPlusDisk<K, T> bplus;
 
-	public DiskIndex(IndexDiskFile file, short key_size, short value_size,
-			Serializer<K, T> ser)
+	public DiskIndex(IndexDiskFile file, Serializer<K, T> ser)
 			throws IOException, InterruptedException {
-		bplus = new BPlusDisk<>(file, key_size, value_size, ser);
+		bplus = new BPlusDisk<>(file, ser);
 	}
 
 	/**

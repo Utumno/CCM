@@ -112,8 +112,7 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 
 final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 
-	private static final short RECORD_SIZE = 8;
-	private static final short KEY_SIZE = 4;
+	private static final short RECORD_SIZE = 8; // TODO bin
 	private final CCM ccm;
 	private final DataFile<K, V> dataFile;
 	private final Index<K, PageId<T>> index;
@@ -122,8 +121,8 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 		this.ccm = CCMImpl.instance();
 		try {
 			dataFile = DataFile.init("temp.db", RECORD_SIZE);
-			index = new DiskIndex(new IndexDiskFile("index.db"), KEY_SIZE,
-				KEY_SIZE, new IntegerIntegerSerializer());
+			index = new DiskIndex(new IndexDiskFile("index.db"),
+				new IntegerIntegerSerializer());
 			System.out.println("ENGINE INITIALIZED");
 		} catch (IOException | InterruptedException e) {
 			throw new RuntimeException("Can't open db file", e);
