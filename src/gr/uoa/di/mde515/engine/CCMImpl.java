@@ -158,6 +158,7 @@ enum CCMImpl implements CCM {
 					throw new KeyDoesntExistException("" + key);
 				file.lockHeader(tr, DBLock.E);
 				file.delete(tr, new PageId<>(lookupLocked), key);
+				index.delete(tr, key);
 				return null;
 			}
 		});
