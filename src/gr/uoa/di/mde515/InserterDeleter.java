@@ -24,10 +24,10 @@ final class InserterDeleter<T> implements Callable<T> {
 	@Override
 	public T call() throws Exception {
 		Transaction tr = eng.beginTransaction();
-		List<Integer> primeNumbers = new ArrayList<>(Arrays.asList(2, 3, 5,
-			7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 61, 59, 67,
-			71, 73, 79, 83, 89, 97, 101, 103, 109, 113, 127, 131, 137, 139,
-			149, 151, 157, 163, 167, 173, 179, 107));
+		List<Integer> primeNumbers = new ArrayList<>(Arrays.asList(2, 3, 5, 7,
+			11, 13, 17, 19, 23, 29, 31, 41, 43, 47, 53, 61, 59, 67, 71, 73, 79,
+			83, 89, 97, 101, 103, 109, 113, 127, 131, 137, 139, 149, 151, 157,
+			163, 167, 173, 179, 107));
 		// for (int j = 0; ++j < 10;) {
 		List<Integer> perm = Main.permutation(primeNumbers);
 		System.out.println(perm);
@@ -40,6 +40,18 @@ final class InserterDeleter<T> implements Callable<T> {
 				eng.print(tr, DBLock.E);
 				// Thread.sleep(300);
 			}
+			perm = Main.permutation(primeNumbers);
+			System.out.println(perm);
+			// for (int in = RECORDS - 1; in >= 0; --in) {
+			for (Integer in : perm) {
+				System.out.println("--------------LOOKUP " + in);
+				Record<Integer, Integer> rkv = eng.lookup(tr, in, DBLock.E);
+				System.out.println("The record is "
+					+ (rkv == null ? null
+							: ("key " + rkv.getKey() + "  value " + rkv
+								.getValue())) + " -- " + tr);
+				// Thread.sleep(100);
+			}
 			eng.print(tr, DBLock.E);
 			// Thread.sleep(500);
 			System.out.println("DELETING");
@@ -48,7 +60,7 @@ final class InserterDeleter<T> implements Callable<T> {
 			System.out.println(perm);
 			// for (int in = RECORDS - 1; in >= 0; --in) {
 			for (Integer in : perm) {
-				System.out.println("--------------DELE " + in);
+				System.out.println("--------------DELETING " + in);
 				eng.delete(tr, in, DBLock.E);
 				eng.print(tr, DBLock.E);
 				// Thread.sleep(100);
