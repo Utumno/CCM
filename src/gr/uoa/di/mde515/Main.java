@@ -24,8 +24,7 @@ public class Main {
 
 	private static Random r = new Random();
 	// THREADS //
-	private static final int NUM_OF_THREADS = Runtime.getRuntime()
-		.availableProcessors();
+	private static final int NUM_OF_THREADS = 1;
 	private static final ExecutorService exec = Executors
 		.newFixedThreadPool(NUM_OF_THREADS);
 
@@ -34,12 +33,11 @@ public class Main {
 		final Engine<Integer, Integer, Integer> eng = Engine.newInstance();
 		try {
 			// ArrayList<Inserter<T>> arrayList = new ArrayList<>();
-			ArrayList<Lookuper<T>> arrayList = new ArrayList<>();
-			// ArrayList<InserterDeleter<T>> arrayList = new ArrayList<>();
-			for (int i = 0; i < 100; ++i)
-				// arrayList.add(new InserterDeleter<T>(eng, new Record<>(0,
-				// 0)));
-				arrayList.add(new Lookuper<T>(eng, i));
+			// ArrayList<Lookuper<T>> arrayList = new ArrayList<>();
+			ArrayList<InserterDeleter<T>> arrayList = new ArrayList<>();
+			for (int i = 0; i < 1; ++i)
+				arrayList.add(new InserterDeleter<T>(eng, new Record<>(0, 0)));
+			// arrayList.add(new Lookuper<T>(eng, i));
 			// arrayList.add(new Inserter<T>(eng, new Record<>(i, i)));
 			List<Future<T>> invokeAll = exec.invokeAll(arrayList, 1000000,
 				TimeUnit.MILLISECONDS);
