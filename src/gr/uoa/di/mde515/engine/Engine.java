@@ -8,7 +8,6 @@ import gr.uoa.di.mde515.index.DiskIndex;
 import gr.uoa.di.mde515.index.Index;
 import gr.uoa.di.mde515.index.IndexJava;
 import gr.uoa.di.mde515.index.KeyExistsException;
-import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.locks.DBLock;
 
@@ -112,20 +111,24 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 
 final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 
+	private static final String DB_FILE = "temp.db";
+	private static final String INDEX_FILE = "index.db";
 	private static final short RECORD_SIZE = 8; // TODO bin
 	private final CCM ccm;
 	private final DataFile<K, V> dataFile;
-	private final Index<K, PageId<T>> index;
+	private final Index index;
 
 	EngineImpl() {
 		this.ccm = CCMImpl.instance();
+		String opening = DB_FILE;
 		try {
-			dataFile = DataFile.init("temp.db", RECORD_SIZE);
-			index = new DiskIndex(new IndexDiskFile("index.db"),
+			dataFile = DataFile.init(opening, RECORD_SIZE);
+			opening = INDEX_FILE;
+			index = new DiskIndex(new IndexDiskFile(opening),
 				new IntegerIntegerSerializer());
 			System.out.println("ENGINE INITIALIZED");
 		} catch (IOException | InterruptedException e) {
-			throw new RuntimeException("Can't open db file", e);
+			throw new RuntimeException("Can't open " + opening + " file", e);
 		}
 	}
 
@@ -201,7 +204,7 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 	@Override
 	public void insertIndex(Transaction tr, Record<K, T> rec)
 			throws IOException, InterruptedException {
-		index.insert(tr, (Record<K, PageId<T>>) rec);
+		index.insert(tr, rec);
 	}
 
 	@Override

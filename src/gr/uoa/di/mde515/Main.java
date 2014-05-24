@@ -36,7 +36,7 @@ public class Main {
 			// ArrayList<Lookuper<T>> arrayList = new ArrayList<>();
 			ArrayList<InserterDeleter<T>> arrayList = new ArrayList<>();
 			// for (int i = 0; i < 100; ++i)
-				arrayList.add(new InserterDeleter<T>(eng, new Record<>(0, 0)));
+			arrayList.add(new InserterDeleter<T>(eng, new Record<>(0, 0)));
 			// arrayList.add(new Lookuper<T>(eng, i));
 			// arrayList.add(new Inserter<T>(eng, new Record<>(i, i)));
 			List<Future<T>> invokeAll = exec.invokeAll(arrayList, 1000000,

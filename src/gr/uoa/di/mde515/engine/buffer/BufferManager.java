@@ -28,7 +28,11 @@ public final class BufferManager<T> {
 	private final Set<Integer> pinPerm = new HashSet<>();
 	private static final BufferManager<Integer> instance = new BufferManager<>(
 		NUM_BUFFERS);
-	/** All actions on the state fields must be performed using this lock */
+	/**
+	 * All actions on the state fields must be performed holding this lock. Also
+	 * all writes to byte buffers must be performed holding this lock (TODO
+	 * enough for readers ?)
+	 */
 	private static final Object POOL_LOCK = new Object();
 
 	private BufferManager(int numBufs) {
@@ -144,9 +148,7 @@ public final class BufferManager<T> {
 	/**
 	 * Returns a Page corresponding to an existing block of {@code file}, backed
 	 * up by a frame in the main memory. It first checks if there is a Frame
-	 * already allocated and if not it waits for an empty Frame from the free
-	 * list and then updates the map of pageIDs and frameNumbers along with
-	 * returning the specified Page. FIXME thread safe
+	 * already allocated and if not it waits for an empty Frame
 	 *
 	 * FIXME FIXME FIXME - let Lock manager know
 	 *
@@ -201,6 +203,7 @@ public final class BufferManager<T> {
 		}
 	}
 
+	/** Better testing TODO */
 	public Page<T> allocPermanentPage(T pageID, DiskFile disk)
 			throws IOException, InterruptedException {
 		synchronized (POOL_LOCK) {
@@ -270,10 +273,9 @@ public final class BufferManager<T> {
 	 * @return
 	 */
 	private int decreasePinCount(int frameNumber, T pageID) {
-		int pinCount = -1;
 		final Frame frame = getFrame(frameNumber);
-		if ((!pinPerm.contains(frame))
-			&& (pinCount = frame.decreasePincount()) == 0)
+		if ((!pinPerm.contains(frame)) // TODO move to replacement algorithm
+			&& (frame.decreasePincount()) == 0)
 			_free(pageID, frameNumber);
 		return frame.getPinCount().intValue();
 	}

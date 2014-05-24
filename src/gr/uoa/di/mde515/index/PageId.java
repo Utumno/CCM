@@ -2,7 +2,8 @@ package gr.uoa.di.mde515.index;
 
 /**
  * A generic page id - defines the equals and hash code methods and wraps an id
- * of type T. Must be immutable - will be if T is immutable.
+ * of type T. Must be immutable - will be if T is immutable. If I verify
+ * immutability I can make equals just check the instance with ==
  *
  * @param <T>
  *            the type of the page id - must be immutable
@@ -11,7 +12,7 @@ public final class PageId<T> {
 
 	private final T id;
 
-	public synchronized T getId() {
+	public synchronized T getId() { // TODO bin
 		return id;
 	}
 

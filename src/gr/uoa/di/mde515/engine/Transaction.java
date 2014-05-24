@@ -19,6 +19,7 @@ public class Transaction {
 	private static final LockManager lm = LockManager.getInstance();
 	private final long threadId; // not really needed FIXME
 	private final String threadName;
+	// TODO merge below two maps
 	private final EnumMap<DBLock, List<PageId<Integer>>> lockedDataPages = new EnumMap<>(
 		DBLock.class);
 	private final EnumMap<DBLock, List<PageId<Integer>>> lockedIndexPages = new EnumMap<>(
@@ -81,7 +82,8 @@ public class Transaction {
 
 	/**
 	 * Tries to lock a page if not already locked. May block. Returns true if
-	 * the page was locked or false if the page was already locked.
+	 * the page was locked for the first time or false if the page was already
+	 * locked.
 	 *
 	 * @param pageID
 	 *            the pageId to be locked

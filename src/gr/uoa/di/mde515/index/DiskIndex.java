@@ -24,11 +24,11 @@ public class DiskIndex<K extends Comparable<K>, T> implements Index<K, T> {
 	 * Locks the path from the root to the leaf where a key is to be inserted on
 	 * behalf of a given transaction - WIP
 	 *
-	 * @return
-	 *
-	 *
+	 * @return the value for {@code key} or null if {@code key} is not found
 	 * @throws InterruptedException
+	 *             from the buffer manager
 	 * @throws IOException
+	 *             from the disk file
 	 */
 	@Override
 	public T lookupLocked(Transaction tr, K key, DBLock el) throws IOException,
