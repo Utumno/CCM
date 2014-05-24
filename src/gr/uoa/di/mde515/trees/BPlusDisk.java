@@ -138,7 +138,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 	}
 
 	public void flushRootAndNodes() throws IOException {
-		Root.rootToFile((Integer) root.getPageId().getId());
+		Root.rootToFile(root.getPageId().toInt());
 		Root.nodesToFile(nodeId.get());
 	}
 
@@ -435,11 +435,11 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				K parKey = parent.readKey(i);
 				if (lastKey.compareTo(parKey) < 0)
 					return newNodeFromDiskOrBuffer(tr, lock, // FIXME cast
-						(Integer) parent.readValue(i + 1));
+						new PageId<>(parent.readValue(i + 1)).toInt());
 			}
 			// this is the last key so return the "greater or equal"
 			return newNodeFromDiskOrBuffer(tr, lock, // FIXME cast
-				(Integer) parent.greaterOrEqual());
+				new PageId<>(parent.greaterOrEqual()).toInt());
 		}
 
 		// TODO assert this.parent == parent
@@ -454,10 +454,10 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				K readKey = parent.readKey(i);
 				if (_lastKey.compareTo(readKey) < 0)
 					return newNodeFromDiskOrBuffer(tr, lock, // FIXME cast
-						(Integer) parent.readValue(i - 1));
+						new PageId<>(parent.readValue(i - 1)).toInt());
 			}
 			return newNodeFromDiskOrBuffer(tr, lock, // FIXME cast
-				(Integer) parent._lastPair().getValue());
+				new PageId<>(parent._lastPair().getValue()).toInt());
 		}
 	}
 
