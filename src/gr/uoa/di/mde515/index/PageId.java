@@ -48,4 +48,8 @@ public final class PageId<T> {
 		builder.append("]");
 		return builder.toString();
 	}
+
+	public int toInt() {
+		return (Integer) id;
+	}
 }

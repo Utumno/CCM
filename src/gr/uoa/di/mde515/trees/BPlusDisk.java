@@ -122,16 +122,16 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 
 	public <R extends Record<K, T>> void insert(Transaction tr, R rec)
 			throws IOException, InterruptedException {
-		setRoot(root.newNodeFromDiskOrBuffer(tr, DBLock.E, (Integer) root
-			.getPageId().getId()));
+		setRoot(root.newNodeFromDiskOrBuffer(tr, DBLock.E, root.getPageId()
+			.toInt()));
 		final LeafNode leafNode = root.findLeaf(tr, DBLock.E, rec.getKey());
 		_insertInLeaf(tr, rec, leafNode);
 	}
 
 	public void delete(Transaction tr, K key) throws IOException,
 			InterruptedException {
-		root = root.newNodeFromDiskOrBuffer(tr, DBLock.E, (Integer) root
-			.getPageId().getId());
+		root = root.newNodeFromDiskOrBuffer(tr, DBLock.E, root.getPageId()
+			.toInt());
 		final LeafNode leafNode = root.findLeaf(tr, DBLock.E, key);
 		// FIXME lock the siblings too!!
 		_deleteInLeaf(tr, key, leafNode);
@@ -243,7 +243,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			super((Page<T>) buf.allocFrameForNewPage(nodeId.decrementAndGet()),
 					ser, HEADER_SIZE);
 			if (tr != null) { // if null we are creating the first root !
-				final Integer id = (Integer) getPageId().getId();
+				final Integer id = getPageId().toInt();
 				if (tr.lock(id, DBLock.E)) { // should always return true //
 					// notice the lock is for WRITING !
 					buf.pinPage(id);
@@ -253,7 +253,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			writeByte(LEAF_OFFSET, (byte) ((leaf) ? 1 : 0));
 			numOfKeys = 0; // Unneeded
 			writeShort(NUM_KEYS_OFFSET, (short) 0);
-			buf.setPageDirty((Integer) this.getPageId().getId());
+			buf.setPageDirty(getPageId().toInt());
 		}
 
 		Node newNodeFromDiskOrBuffer(Transaction tr, DBLock lock, int pageID)
@@ -321,7 +321,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 
 		void setGreaterOrEqual(T v) { // FIXME grOrEqual needs casts - ?
 			writeInt(Engine.PAGE_SIZE - getKeySize(), (Integer) v);
-			buf.setPageDirty((Integer) this.getPageId().getId());
+			buf.setPageDirty(getPageId().toInt());
 		}
 
 		@Override
@@ -350,7 +350,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			} // if key not found return false
 			--numOfKeys;
 			writeShort(NUM_KEYS_OFFSET, numOfKeys);
-			buf.setPageDirty((Integer) this.getPageId().getId());
+			buf.setPageDirty(getPageId().toInt());
 		}
 
 		/**
@@ -370,7 +370,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 					v = tmpValue;
 				} else if (k.compareTo(tmpKey) == 0) {
 					writeValue(i, v);
-					buf.setPageDirty((Integer) this.getPageId().getId());
+					buf.setPageDirty(getPageId().toInt());
 					return; // replace the value and do NOT ++numOfKeys
 				}
 			}
@@ -378,7 +378,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			writeValue(numOfKeys, v);
 			++numOfKeys;
 			writeShort(NUM_KEYS_OFFSET, numOfKeys);
-			buf.setPageDirty((Integer) this.getPageId().getId());
+			buf.setPageDirty(getPageId().toInt());
 		}
 
 		/**
@@ -418,7 +418,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			}
 			numOfKeys -= removals;
 			writeShort(NUM_KEYS_OFFSET, numOfKeys);
-			buf.setPageDirty((Integer) this.getPageId().getId());
+			buf.setPageDirty(getPageId().toInt());
 		}
 
 		// TODO assert this.parent == parent
@@ -585,7 +585,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			}
 			Record<K, T> _lastPair = _lastPair();
 			writeShort(NUM_KEYS_OFFSET, --numOfKeys); // discard _lastPair
-			buf.setPageDirty((Integer) this.getPageId().getId());
+			buf.setPageDirty(getPageId().toInt());
 			setGreaterOrEqual(_lastPair.getValue());
 			return new Record<K, Node>(_lastPair.getKey(), sibling);
 		}
@@ -901,7 +901,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				sibling._put(rec.getKey(), rec.getValue());
 			}
 			writeShort(NUM_KEYS_OFFSET, numOfKeys);
-			buf.setPageDirty((Integer) this.getPageId().getId());
+			buf.setPageDirty(getPageId().toInt());
 			return new Record<K, Node>(sibling._firstPair().getKey(), sibling);
 		}
 	}
