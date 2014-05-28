@@ -4,6 +4,7 @@ import gr.uoa.di.mde515.engine.CCM.TransactionRequiredException;
 import gr.uoa.di.mde515.engine.Engine;
 import gr.uoa.di.mde515.engine.Engine.TransactionFailedException;
 import gr.uoa.di.mde515.engine.Transaction;
+import gr.uoa.di.mde515.engine.buffer.IntegerIntegerSerializer;
 import gr.uoa.di.mde515.index.KeyExistsException;
 import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.locks.DBLock;
@@ -30,7 +31,9 @@ public class Main {
 
 	public static <T> void main(String[] args) throws InterruptedException,
 			IOException {
-		final Engine<Integer, Integer, Integer> eng = Engine.newInstance();
+		final Engine<Integer, Integer, Integer> eng = (Engine<Integer, Integer, Integer>) Engine
+			.newInstance(new IntegerIntegerSerializer());// FIXME unchecked and
+															// ugly
 		try {
 			// ArrayList<Inserter<T>> arrayList = new ArrayList<>();
 			// ArrayList<Lookuper<T>> arrayList = new ArrayList<>();
@@ -51,7 +54,8 @@ public class Main {
 			}
 		} finally {
 			exec.shutdown();
-			boolean terminated = exec.awaitTermination(13, TimeUnit.SECONDS);
+			/* boolean terminated = */exec.awaitTermination(13,
+				TimeUnit.SECONDS);
 			// if timed out terminated will be false
 			// if (!terminated) {
 			// List<Runnable> notExecuted = INSTANCE.exec.shutdownNow();
@@ -61,7 +65,8 @@ public class Main {
 	}
 
 	@SuppressWarnings("unused")
-	private static void treePrint(Engine eng) throws FileNotFoundException,
+	private static void treePrint(Engine<Integer, Integer, Integer> eng)
+			throws FileNotFoundException,
 			IOException, InterruptedException, TransactionRequiredException,
 			KeyExistsException, TransactionFailedException {
 		List<Integer> primeNumbers = new ArrayList<>(Arrays.asList(2, 3, 5, 7,

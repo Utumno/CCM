@@ -55,7 +55,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 	private final IndexDiskFile file;
 	// fields
 	// TODO private lock + thread safety
-	private Node root;
+	private volatile Node root;
 	private AtomicInteger nodeId = new AtomicInteger(0);
 	private final Serializer<K, T> ser;
 

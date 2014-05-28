@@ -1,7 +1,7 @@
 package gr.uoa.di.mde515.engine;
 
 import gr.uoa.di.mde515.engine.CCM.TransactionRequiredException;
-import gr.uoa.di.mde515.engine.buffer.IntegerIntegerSerializer;
+import gr.uoa.di.mde515.engine.buffer.Serializer;
 import gr.uoa.di.mde515.files.DataFile;
 import gr.uoa.di.mde515.files.IndexDiskFile;
 import gr.uoa.di.mde515.index.DiskIndex;
@@ -49,9 +49,14 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 	}
 
 	public static final short PAGE_SIZE = 72;
-	private static final Engine instance = new EngineImpl();
+	private static volatile Engine<?, ?, ?> instance;
+	private final static Object HACK = new Object(); // TODO fix this mess
 
-	public static Engine newInstance() {
+	public static <K extends Comparable<K>, V, T> Engine<?, ?, ?> newInstance(
+			Serializer<K, T> ser) {
+		if (instance == null) synchronized (HACK) {
+			if (instance == null) instance = new EngineImpl<K, V, T>(ser);
+		}
 		return instance;
 	}
 
@@ -116,16 +121,15 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 	private static final short RECORD_SIZE = 8; // TODO bin
 	private final CCM ccm;
 	private final DataFile<K, V> dataFile;
-	private final Index index;
+	private final Index<K, T> index;
 
-	EngineImpl() {
+	EngineImpl(Serializer<K, T> ser) {
 		this.ccm = CCMImpl.instance();
 		String opening = DB_FILE;
 		try {
 			dataFile = DataFile.init(opening, RECORD_SIZE);
 			opening = INDEX_FILE;
-			index = new DiskIndex(new IndexDiskFile(opening),
-				new IntegerIntegerSerializer());
+			index = new DiskIndex<>(new IndexDiskFile(opening), ser);
 			System.out.println("ENGINE INITIALIZED");
 		} catch (IOException | InterruptedException e) {
 			throw new RuntimeException("Can't open " + opening + " file", e);
@@ -193,12 +197,12 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 	@Override
 	public void print(Transaction tr, DBLock e) throws IOException,
 			InterruptedException {
-		((DiskIndex) index).print(tr, e);
+		((DiskIndex<K, T>) index).print(tr, e);
 	}
 
 	@Override
 	public void print() {
-		((IndexJava) index).print();
+		((IndexJava<K, T>) index).print();
 	}
 
 	@Override
