@@ -1,5 +1,6 @@
 package gr.uoa.di.mde515.engine;
 
+import gr.uoa.di.mde515.engine.Engine.TransactionalOperation;
 import gr.uoa.di.mde515.files.DataFile;
 import gr.uoa.di.mde515.index.Index;
 import gr.uoa.di.mde515.index.KeyExistsException;
@@ -59,4 +60,6 @@ public interface CCM {
 
 	<K extends Comparable<K>, V> void commit(Transaction tr,
 			DataFile<K, V> dataFile, Index<K, ?> index) throws IOException;
+
+	void submit(TransactionalOperation to);
 }

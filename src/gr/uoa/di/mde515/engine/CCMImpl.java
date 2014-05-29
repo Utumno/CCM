@@ -1,5 +1,6 @@
 package gr.uoa.di.mde515.engine;
 
+import gr.uoa.di.mde515.engine.Engine.TransactionalOperation;
 import gr.uoa.di.mde515.files.DataFile;
 import gr.uoa.di.mde515.index.Index;
 import gr.uoa.di.mde515.index.KeyDoesntExistException;
@@ -15,15 +16,35 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 enum CCMImpl implements CCM {
 	INSTANCE;
 
 	final List<Transaction> transactions = Collections
 		.synchronizedList(new ArrayList<Transaction>()); // ...
+	// THREADS //
+	private final int NUM_OF_THREADS = Runtime.getRuntime()
+		.availableProcessors();
+	private final ExecutorService exec = Executors
+		.newFixedThreadPool(NUM_OF_THREADS);
 
 	public static CCM instance() {
 		return INSTANCE;
+	}
+
+	// =========================================================================
+	// TransactionalOperation wrappers
+	// =========================================================================
+	private void exec(Engine.TransactionalOperation to) {
+		try {
+			to.execute();
+		} finally {
+			to.endTransaction();
+		}
 	}
 
 	// =========================================================================
@@ -88,10 +109,12 @@ enum CCMImpl implements CCM {
 		if (!transactions.contains(trans))
 			throw new TransactionRequiredException();
 		trans.validateThread();
+		Future<?> submit = exec.submit(crud);
 		try {
-			crud.call();
-		} catch (Exception e) {
-			throw new ExecutionException("Executing callable failed", e);
+			submit.get(); // blocks
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+			Thread.currentThread().interrupt();
 		}
 	}
 
@@ -99,7 +122,19 @@ enum CCMImpl implements CCM {
 	// API
 	// =========================================================================
 	@Override
-	public void shutdown() throws InterruptedException {}
+	public void shutdown() throws InterruptedException {
+		INSTANCE.exec.shutdown();
+		boolean terminated = INSTANCE.exec.awaitTermination(13,
+			TimeUnit.SECONDS); // if timed out terminated will be false
+		// if (!terminated) {
+		// List<Runnable> notExecuted = INSTANCE.exec.shutdownNow();
+		// }
+	}
+
+	@Override
+	public void submit(TransactionalOperation to) {
+		throw new UnsupportedOperationException("Not implemented"); // TODO
+	}
 
 	// =========================================================================
 	// Active transaction

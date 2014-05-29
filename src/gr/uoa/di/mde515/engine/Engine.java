@@ -39,6 +39,29 @@ import java.util.concurrent.ExecutionException;
  */
 public abstract class Engine<K extends Comparable<K>, V, T> {
 
+	public abstract void submit(TransactionalOperation to);
+
+	public abstract class TransactionalOperation {
+
+		final Transaction trans;
+
+		public TransactionalOperation() {
+			trans = beginTransaction();
+		}
+
+		public abstract void execute();
+
+		public Record<K, V> insert(Record<K, V> record)
+				throws TransactionRequiredException, KeyExistsException,
+				TransactionFailedException {
+			return Engine.this.insert(trans, record);
+		}
+
+		public void endTransaction() {
+			throw new UnsupportedOperationException("Not implemented"); // TODO
+		}
+	}
+
 	public static final class TransactionFailedException extends Exception {
 
 		private static final long serialVersionUID = -4298165326203675694L;
@@ -134,6 +157,11 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 		} catch (IOException | InterruptedException e) {
 			throw new RuntimeException("Can't open " + opening + " file", e);
 		}
+	}
+
+	@Override
+	public void submit(Engine<K, V, T>.TransactionalOperation to) {
+		ccm.submit(to);
 	}
 
 	@Override

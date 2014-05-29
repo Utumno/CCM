@@ -3,6 +3,7 @@ package gr.uoa.di.mde515;
 import gr.uoa.di.mde515.engine.CCM.TransactionRequiredException;
 import gr.uoa.di.mde515.engine.Engine;
 import gr.uoa.di.mde515.engine.Engine.TransactionFailedException;
+import gr.uoa.di.mde515.engine.Engine.TransactionalOperation;
 import gr.uoa.di.mde515.engine.Transaction;
 import gr.uoa.di.mde515.engine.buffer.IntegerIntegerSerializer;
 import gr.uoa.di.mde515.index.KeyExistsException;
@@ -15,19 +16,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 public class Main {
 
 	private static Random r = new Random();
-	// THREADS //
-	private static final int NUM_OF_THREADS = 1;
-	private static final ExecutorService exec = Executors
-		.newFixedThreadPool(NUM_OF_THREADS);
 
 	public static <T> void main(String[] args) throws InterruptedException,
 			IOException {
@@ -35,6 +27,13 @@ public class Main {
 			.newInstance(new IntegerIntegerSerializer());// FIXME unchecked and
 															// ugly
 		try {
+			TransactionalOperation to = eng.new TransactionalOperation() {
+
+				@Override
+				public void execute() {
+					throw new UnsupportedOperationException("Not implemented"); // TODO
+				}
+			};
 			// ArrayList<Inserter<T>> arrayList = new ArrayList<>();
 			// ArrayList<Lookuper<T>> arrayList = new ArrayList<>();
 			ArrayList<InserterDeleter<T>> arrayList = new ArrayList<>();
@@ -42,33 +41,26 @@ public class Main {
 			arrayList.add(new InserterDeleter<T>(eng, new Record<>(0, 0)));
 			// arrayList.add(new Lookuper<T>(eng, i));
 			// arrayList.add(new Inserter<T>(eng, new Record<>(i, i)));
-			List<Future<T>> invokeAll = exec.invokeAll(arrayList, 1000000,
-				TimeUnit.MILLISECONDS);
-			for (Future<T> future : invokeAll) {
-				try {
-					future.get();
-				} catch (ExecutionException e) {
-					// TODO policy
-					e.printStackTrace();
-				}
-			}
-		} finally {
-			exec.shutdown();
-			/* boolean terminated = */exec.awaitTermination(13,
-				TimeUnit.SECONDS);
-			// if timed out terminated will be false
-			// if (!terminated) {
-			// List<Runnable> notExecuted = INSTANCE.exec.shutdownNow();
+			// List<Future<T>> invokeAll = exec.invokeAll(arrayList, 1000000,
+			// TimeUnit.MILLISECONDS);
+			// for (Future<T> future : invokeAll) {
+			// try {
+			// future.get();
+			// } catch (ExecutionException e) {
+			// // TODO policy
+			// e.printStackTrace();
 			// }
+			// }
+		} finally {
 			eng.shutdown();
 		}
 	}
 
 	@SuppressWarnings("unused")
 	private static void treePrint(Engine<Integer, Integer, Integer> eng)
-			throws FileNotFoundException,
-			IOException, InterruptedException, TransactionRequiredException,
-			KeyExistsException, TransactionFailedException {
+			throws FileNotFoundException, IOException, InterruptedException,
+			TransactionRequiredException, KeyExistsException,
+			TransactionFailedException {
 		List<Integer> primeNumbers = new ArrayList<>(Arrays.asList(2, 3, 5, 7,
 			11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 61, 59, 67, 71, 73,
 			79, 83, 89, 97, 101, 103, 109, 113, 127, 131, 137, 139, 149, 151,
