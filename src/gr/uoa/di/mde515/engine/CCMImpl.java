@@ -39,12 +39,27 @@ enum CCMImpl implements CCM {
 	// =========================================================================
 	// TransactionalOperation wrappers
 	// =========================================================================
-	private void exec(Engine.TransactionalOperation to) {
-		try {
-			to.execute();
-		} finally {
-			to.endTransaction();
-		}
+	@Override
+	public Future submit(final TransactionalOperation to) {
+		return exec.submit(new Callable() {
+
+			@Override
+			public Object call() throws Exception {
+				to.init(); // the transaction is thread confined
+				try {
+					to.execute();
+				} catch (InterruptedException e) {
+					to.abort();
+					Thread.currentThread().interrupt();
+				} catch (Exception e) {
+					to.abort();
+					throw e;
+				} finally {
+					to.endTransaction();
+				}
+				return null;
+			}
+		}); // I need to call submit.get() to have the ExecutionException thrown
 	}
 
 	// =========================================================================
@@ -129,11 +144,6 @@ enum CCMImpl implements CCM {
 		// if (!terminated) {
 		// List<Runnable> notExecuted = INSTANCE.exec.shutdownNow();
 		// }
-	}
-
-	@Override
-	public void submit(TransactionalOperation to) {
-		throw new UnsupportedOperationException("Not implemented"); // TODO
 	}
 
 	// =========================================================================

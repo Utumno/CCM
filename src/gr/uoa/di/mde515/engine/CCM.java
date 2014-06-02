@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 public interface CCM {
 
@@ -61,5 +62,5 @@ public interface CCM {
 	<K extends Comparable<K>, V> void commit(Transaction tr,
 			DataFile<K, V> dataFile, Index<K, ?> index) throws IOException;
 
-	void submit(TransactionalOperation to);
+	<K extends Comparable<K>, V, T> Future submit(TransactionalOperation to);
 }

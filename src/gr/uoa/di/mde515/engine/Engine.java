@@ -45,22 +45,48 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 
 	public abstract class TransactionalOperation {
 
-		final Transaction trans;
+		Transaction trans; // should be final ! make sure it's thread confined
 
-		public TransactionalOperation() {
-			trans = beginTransaction();
+		/** FIXME: remove exceptions and make it to a functional iface */
+		public abstract void execute() throws InterruptedException,
+				IOException, TransactionRequiredException, KeyExistsException,
+				TransactionFailedException, ExecutionException;
+
+		public final Record<K, V> lookup(K key, DBLock e) throws IOException,
+				InterruptedException {
+			return Engine.this.lookup(trans, key, e);
 		}
 
-		public abstract void execute();
-
-		public Record<K, V> insert(Record<K, V> record)
+		public final Record<K, V> insert(Record<K, V> record)
 				throws TransactionRequiredException, KeyExistsException,
 				TransactionFailedException {
 			return Engine.this.insert(trans, record);
 		}
 
-		public void endTransaction() {
-			throw new UnsupportedOperationException("Not implemented"); // TODO
+		public final void delete(K in, DBLock e) throws IOException,
+				InterruptedException, TransactionRequiredException,
+				ExecutionException {
+			Engine.this.delete(trans, in, e);
+		}
+
+		public final void abort() throws IOException {
+			Engine.this.abort(trans);
+		}
+
+		public final void commit() throws IOException {
+			Engine.this.commit(trans);
+		}
+
+		protected void print(DBLock e) throws IOException, InterruptedException {
+			Engine.this.print(trans, e);
+		}
+
+		void init() {
+			trans = beginTransaction();
+		}
+
+		void endTransaction() {
+			Engine.this.endTransaction(trans);
 		}
 	}
 
