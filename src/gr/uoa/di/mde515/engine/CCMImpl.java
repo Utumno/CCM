@@ -27,8 +27,10 @@ enum CCMImpl implements CCM {
 	final List<Transaction> transactions = Collections
 		.synchronizedList(new ArrayList<Transaction>()); // ...
 	// THREADS //
-	private final int NUM_OF_THREADS = Runtime.getRuntime()
-		.availableProcessors();
+	private final int NUM_OF_THREADS = 1/*
+										 * Runtime.getRuntime()
+										 * .availableProcessors()
+										 */;
 	private final ExecutorService exec = Executors
 		.newFixedThreadPool(NUM_OF_THREADS);
 

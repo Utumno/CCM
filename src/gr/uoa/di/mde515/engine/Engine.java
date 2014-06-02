@@ -13,6 +13,7 @@ import gr.uoa.di.mde515.locks.DBLock;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 /**
  * Represents the DB external interface. It is a monofilestic engine but can be
@@ -39,7 +40,7 @@ import java.util.concurrent.ExecutionException;
  */
 public abstract class Engine<K extends Comparable<K>, V, T> {
 
-	public static final short PAGE_SIZE = 72;
+	public static final short PAGE_SIZE = 48;
 	private static volatile Engine<?, ?, ?> instance;
 	private final static Object HACK = new Object(); // TODO fix this mess
 
@@ -99,7 +100,7 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 		}
 	}
 
-	public abstract void submit(TransactionalOperation to);
+	public abstract Future submit(TransactionalOperation to);
 
 	public static <K extends Comparable<K>, V, T> Engine<?, ?, ?> newInstance(
 			Serializer<K, T> ser) {
@@ -186,8 +187,8 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 	}
 
 	@Override
-	public void submit(Engine<K, V, T>.TransactionalOperation to) {
-		ccm.submit(to);
+	public Future submit(Engine<K, V, T>.TransactionalOperation to) {
+		return ccm.submit(to);
 	}
 
 	@Override

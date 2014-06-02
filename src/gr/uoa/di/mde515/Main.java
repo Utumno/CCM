@@ -17,13 +17,14 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 public class Main {
 
 	private static Random r = new Random();
 
 	public static <T> void main(String[] args) throws InterruptedException,
-			IOException {
+			IOException, ExecutionException {
 		final Engine<Integer, Integer, Integer> eng = (Engine<Integer, Integer, Integer>) Engine
 			.newInstance(new IntegerIntegerSerializer());// FIXME unchecked and
 															// ugly
@@ -50,7 +51,8 @@ public class Main {
 					// eng.print(tr, DBLock.E);
 				}
 			};
-			eng.submit(to);
+			Future submit = eng.submit(to);
+			submit.get();
 			to = eng.new TransactionalOperation() {
 
 				@Override
@@ -92,7 +94,7 @@ public class Main {
 					// eng.print(tr, DBLock.E);
 				}
 			};
-			eng.submit(to);
+			eng.submit(to).get();
 			// ArrayList<Inserter<T>> arrayList = new ArrayList<>();
 			// ArrayList<Lookuper<T>> arrayList = new ArrayList<>();
 			// ArrayList<InserterDeleter<T>> arrayList = new ArrayList<>();
