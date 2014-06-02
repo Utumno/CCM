@@ -66,7 +66,7 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 
 		public final void delete(K in, DBLock e) throws IOException,
 				InterruptedException, TransactionRequiredException,
-				ExecutionException {
+				TransactionFailedException {
 			Engine.this.delete(trans, in, e);
 		}
 
@@ -95,7 +95,7 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 
 		private static final long serialVersionUID = -4298165326203675694L;
 
-		public TransactionFailedException(ExecutionException e) {
+		public TransactionFailedException(Exception e) {
 			super("Transaction operation failed", e);
 		}
 	}
@@ -131,7 +131,7 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 
 	public abstract void delete(Transaction tr, K key, DBLock el)
 			throws IOException, InterruptedException,
-			TransactionRequiredException, ExecutionException;
+			TransactionRequiredException, TransactionFailedException;
 
 	public abstract Record<K, V> lookup(Transaction tr, K key, DBLock el)
 			throws IOException, InterruptedException; // TODO
@@ -205,11 +205,7 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 	public Record<K, V> insert(Transaction tr, Record<K, V> record)
 			throws TransactionRequiredException, KeyExistsException,
 			TransactionFailedException {
-		try {
-			return ccm.insert(tr, record, dataFile, index);
-		} catch (ExecutionException e) {
-			throw new TransactionFailedException(e);
-		}
+		return ccm.insert(tr, record, dataFile, index);
 	}
 
 	@Override
@@ -242,7 +238,7 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 	@Override
 	public void delete(Transaction tr, K key, DBLock el) throws IOException,
 			InterruptedException, TransactionRequiredException,
-			ExecutionException {
+			TransactionFailedException {
 		ccm.delete(tr, key, el, dataFile, index);
 	}
 

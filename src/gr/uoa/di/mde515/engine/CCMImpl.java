@@ -1,5 +1,6 @@
 package gr.uoa.di.mde515.engine;
 
+import gr.uoa.di.mde515.engine.Engine.TransactionFailedException;
 import gr.uoa.di.mde515.engine.Engine.TransactionalOperation;
 import gr.uoa.di.mde515.files.DataFile;
 import gr.uoa.di.mde515.index.Index;
@@ -15,7 +16,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -119,20 +119,26 @@ enum CCMImpl implements CCM {
 	 *            db operation to be performed
 	 * @throws TransactionRequiredException
 	 *             if no transaction was supplied
+	 * @throws TransactionFailedException
 	 */
 	private void _operate_(DBoperation<?> crud)
-			throws TransactionRequiredException, ExecutionException {
+			throws TransactionRequiredException, TransactionFailedException {
 		final Transaction trans = crud.getTrans(); // not null
 		if (!transactions.contains(trans))
 			throw new TransactionRequiredException();
 		trans.validateThread();
-		Future<?> submit = exec.submit(crud);
 		try {
-			submit.get(); // blocks
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-			Thread.currentThread().interrupt();
+			crud.call();
+		} catch (Exception e) {
+			throw new Engine.TransactionFailedException(e);
 		}
+		// Future<?> submit = exec.submit(crud);
+		// try {
+		// submit.get(); // blocks
+		// } catch (InterruptedException e) {
+		// e.printStackTrace();
+		// Thread.currentThread().interrupt();
+		// }
 	}
 
 	// =========================================================================
@@ -162,7 +168,7 @@ enum CCMImpl implements CCM {
 	public <K extends Comparable<K>, V, T> Record<K, V> insert(
 			final Transaction tr, final Record<K, V> record,
 			final DataFile<K, V> dataFile, final Index<K, T> index)
-			throws TransactionRequiredException, ExecutionException {
+			throws TransactionRequiredException, TransactionFailedException {
 		_operate_(new DBRecordOperation<K, V>(tr, record) {
 
 			@Override
@@ -193,8 +199,8 @@ enum CCMImpl implements CCM {
 	@Override
 	public <K extends Comparable<K>, V, T> void delete(final Transaction tr,
 			final K key, DBLock el, final DataFile<K, V> file,
-			final Index<K, T> index) throws IOException, InterruptedException,
-			TransactionRequiredException, ExecutionException {
+			final Index<K, T> index) throws
+			TransactionRequiredException, TransactionFailedException {
 		_operate_(new DBKeyOperation<K, V>(tr, key) {
 
 			@Override

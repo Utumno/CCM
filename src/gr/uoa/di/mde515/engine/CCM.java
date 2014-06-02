@@ -1,5 +1,6 @@
 package gr.uoa.di.mde515.engine;
 
+import gr.uoa.di.mde515.engine.Engine.TransactionFailedException;
 import gr.uoa.di.mde515.engine.Engine.TransactionalOperation;
 import gr.uoa.di.mde515.files.DataFile;
 import gr.uoa.di.mde515.index.Index;
@@ -10,7 +11,6 @@ import gr.uoa.di.mde515.locks.DBLock;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 public interface CCM {
@@ -31,12 +31,13 @@ public interface CCM {
 	<K extends Comparable<K>, V, T> Record<K, V> insert(Transaction tr,
 			Record<K, V> record, DataFile<K, V> file, final Index<K, T> index)
 			throws TransactionRequiredException, KeyExistsException,
-			ExecutionException;
+			TransactionFailedException;
 
 	<K extends Comparable<K>, V, T> void delete(Transaction tr, K key,
 			DBLock el, DataFile<K, V> file, final Index<K, T> index)
 			throws IOException, InterruptedException,
-			TransactionRequiredException, ExecutionException;
+			TransactionRequiredException,
+			TransactionFailedException;
 
 	<K extends Comparable<K>, V, T> Record<K, V> lookup(Transaction tr, K key,
 			DBLock el, DataFile<K, V> dataFile, Index<K, T> index)
