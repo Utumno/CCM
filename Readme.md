@@ -1,7 +1,12 @@
-This is a model of the database operations focusing on the transactions handling part
+This is a small DB model of sorts, focusing on the transactions handling part (no query optimizer etc)
+Features
 
-Model:
+- a BPlus tree index on disk, supporting lookup delete and insert operations - using locking
+- a LockManager supporting two face locking, strict (not really concurrent unless only reads are performed - TODO)
+- a draft of deadlock manager (high priority this one)
+- a heap file on disk (TODO: generify)
+- an API for requesting a transactional operation (subclass Engine.TransactionalOperation, then call Engine.submit)
 
-- Any transaction is associated with one only thread - henceforth referred to as the client.
-- The client requests a transaction (TODO: bounds) and then passes it as argument to the methods of the Engine interface.
-- Those methods delegate to threads internal to the engine which may block if a lock needed can not be acquired.
+Comes as an eclipse (Kepler/Luna) project (java 1.7 execution environment) - run .settings/CCM_RUN.launch run configuration (should be autoadded).
+
+DISCLAIMER : pre alpha. Maybe I'll throw some more time on it but don't hold your breath. Issues welcome though :)
