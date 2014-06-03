@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class Transaction {
+public final class Transaction {
 
 	private static final AtomicLong transactionId;
 	private static final LockManager lm = LockManager.getInstance();
@@ -34,10 +34,10 @@ public class Transaction {
 		transactionId = new AtomicLong();
 	}
 
-	Transaction() {
+	/* package private */Transaction() {
 		transId = transactionId.incrementAndGet();
 		threadId = Thread.currentThread().getId();
-		threadName = "Thread (" + threadId + ") for transaction " + transId;
+		threadName = "Thread [" + threadId + "] for transaction " + transId;
 		Thread.currentThread().setName(threadName);
 		lockedDataPages.put(DBLock.E, new ArrayList<PageId<Integer>>());
 		lockedDataPages.put(DBLock.S, new ArrayList<PageId<Integer>>());
@@ -47,39 +47,9 @@ public class Transaction {
 		System.out.println(this + " INITIALIZED");
 	}
 
-	public void validateThread() {
-		final long id = Thread.currentThread().getId();
-		final String name = Thread.currentThread().getName();
-		if (id != threadId || !name.equals(threadName)) {
-			throw new IllegalStateException("Calling thread (" + id + ": "
-				+ name + ") is not owner of transaction with id " + threadId);
-		}
-	}
-
-	public <K extends Comparable<K>, V> void commit(
-			final DataFile<K, V> dataFile, final Index<K, ?> index)
-			throws IOException {
-		System.out.println(this + " flushing " + lockedDataPages
-			+ lockedIndexPages);
-		state = state.transition(State.COMMITING);
-		for (List<PageId<Integer>> list : lockedDataPages.values())
-			dataFile.flush(list);
-		for (List<PageId<Integer>> list : lockedIndexPages.values())
-			index.flush(list);
-	}
-
-	public <K extends Comparable<K>, V> void abort(
-			final DataFile<K, V> dataFile, final Index<K, ?> index)
-			throws IOException {
-		System.out.println(this + " aborting " + lockedDataPages
-			+ lockedIndexPages);
-		state = state.transition(State.COMMITING);
-		for (List<PageId<Integer>> list : lockedDataPages.values())
-			dataFile.abort(list);
-		for (List<PageId<Integer>> list : lockedIndexPages.values())
-			index.abort(list);
-	}
-
+	// =========================================================================
+	// API
+	// =========================================================================
 	/**
 	 * Tries to lock a page if not already locked. May block. Returns true if
 	 * the page was locked for the first time or false if the page was already
@@ -118,7 +88,41 @@ public class Transaction {
 		return false;
 	}
 
-	public void end() {
+	// =========================================================================
+	// Package private
+	// =========================================================================
+	void validateThread() {
+		final long id = Thread.currentThread().getId();
+		final String name = Thread.currentThread().getName();
+		if (id != threadId || !name.equals(threadName)) {
+			throw new IllegalStateException("Calling thread (" + id + ": "
+				+ name + ") is not owner of transaction with id " + transId);
+		}
+	}
+
+	<K extends Comparable<K>, V> void commit(final DataFile<K, V> dataFile,
+			final Index<K, ?> index) throws IOException {
+		System.out.println(this + " flushing " + lockedDataPages
+			+ lockedIndexPages);
+		state = state.transition(State.COMMITING);
+		for (List<PageId<Integer>> list : lockedDataPages.values())
+			dataFile.flush(list);
+		for (List<PageId<Integer>> list : lockedIndexPages.values())
+			index.flush(list);
+	}
+
+	<K extends Comparable<K>, V> void abort(final DataFile<K, V> dataFile,
+			final Index<K, ?> index) throws IOException {
+		System.out.println(this + " aborting " + lockedDataPages
+			+ lockedIndexPages);
+		state = state.transition(State.COMMITING);
+		for (List<PageId<Integer>> list : lockedDataPages.values())
+			dataFile.abort(list);
+		for (List<PageId<Integer>> list : lockedIndexPages.values())
+			index.abort(list);
+	}
+
+	void end() {
 		// state = state.transition(State.ENDING); // FIXME
 		// java.util.concurrent.ExecutionException:
 		// java.lang.IllegalStateException: ACTIVE to ENDING
@@ -136,15 +140,6 @@ public class Transaction {
 		}
 	}
 
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("Transaction [id=");
-		builder.append(transId);
-		builder.append("]");
-		return builder.toString();
-	}
-
 	// =========================================================================
 	// Helpers
 	// =========================================================================
@@ -159,8 +154,9 @@ public class Transaction {
 	}
 
 	private enum State {
-		ACTIVE, COMMITING, ENDING, UNLOCKING;
+		ACTIVE, COMMITING, ABORTING, ENDING;
 
+		/** Meant to allow ACTIVE > COMMIT (once) or ABORT (many) > ENDING */
 		State transition(State next) {
 			switch (this) {
 			case ACTIVE:
@@ -168,13 +164,29 @@ public class Transaction {
 					throw new IllegalStateException(this + " to " + next);
 				return next;
 			case COMMITING:
-				if (next == ACTIVE || next == this)
+				if (next == ACTIVE || next == this) // call commit once
 					throw new IllegalStateException(this + " to " + next);
 				return ENDING;
+			case ABORTING:
+				if (next == ACTIVE || next == COMMITING)
+					throw new IllegalStateException(this + " to " + next);
+				return (next == this) ? this : ENDING;
 			default:
 				throw new IllegalStateException(this + " to " + next);
 			}
 		}
+	}
+
+	// =========================================================================
+	// Object methods
+	// =========================================================================
+	@Override
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("Transaction [id=");
+		builder.append(transId);
+		builder.append("]");
+		return builder.toString();
 	}
 
 	@Override

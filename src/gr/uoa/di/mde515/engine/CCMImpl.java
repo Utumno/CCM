@@ -1,5 +1,7 @@
 package gr.uoa.di.mde515.engine;
 
+import gr.uoa.di.mde515.engine.Engine.TransactionFailedException;
+import gr.uoa.di.mde515.engine.Engine.TransactionalOperation;
 import gr.uoa.di.mde515.files.DataFile;
 import gr.uoa.di.mde515.index.Index;
 import gr.uoa.di.mde515.index.KeyDoesntExistException;
@@ -11,19 +13,88 @@ import gr.uoa.di.mde515.locks.DBLock;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 enum CCMImpl implements CCM {
 	INSTANCE;
 
 	final List<Transaction> transactions = Collections
 		.synchronizedList(new ArrayList<Transaction>()); // ...
+	// THREADS //
+	private final int NUM_OF_THREADS = 1/*
+										 * Runtime.getRuntime()
+										 * .availableProcessors()
+										 */;
+	private final ExecutorService exec = Executors
+		.newFixedThreadPool(NUM_OF_THREADS);
 
 	public static CCM instance() {
 		return INSTANCE;
+	}
+
+	// =========================================================================
+	// TransactionalOperation wrappers API
+	// =========================================================================
+	@Override
+	public Future submit(final TransactionalOperation to) {
+		return exec.submit(new Callable() {
+
+			@Override
+			public Object call() throws Exception {
+				to.init(); // the transaction is thread confined
+				try {
+					to.execute();
+				} catch (InterruptedException e) {
+					to.abort();
+					Thread.currentThread().interrupt();
+				} catch (Exception e) {
+					to.abort();
+					throw e;
+				} finally {
+					to.endTransaction();
+				}
+				return null;
+			}
+		}); // I need to call submit.get() to have the ExecutionException thrown
+	}
+
+	@Override
+	public <K extends Comparable<K>, V, T, L> List<Future<L>> submitAll(
+			final Collection<Engine<K, V, T>.TransactionalOperation> tos)
+			throws InterruptedException {
+		Collection<Callable<L>> callables = new ArrayList<>();
+		for (final Engine<K, V, T>.TransactionalOperation to : tos) {
+			Callable<L> call = new Callable<L>() {
+
+				@Override
+				public L call() throws Exception {
+					to.init(); // the transaction is thread confined
+					try {
+						to.execute();
+					} catch (InterruptedException e) {
+						to.abort();
+						Thread.currentThread().interrupt();
+					} catch (Exception e) {
+						to.abort();
+						throw e;
+					} finally {
+						to.endTransaction();
+					}
+					return null;
+				}
+			};
+			callables.add(call);
+		}
+		return exec.invokeAll(callables); // TODO report to eclipse
+		// invokeAll(callables) when callables is a Collection suggests to
+		// replace with invokeAll(tasks,timeout,unit) which has the same problem
 	}
 
 	// =========================================================================
@@ -61,12 +132,12 @@ enum CCMImpl implements CCM {
 			extends DBoperation<Object> {
 
 		@SuppressWarnings("unused")
-		private final K rec;
+		private final K key;
 
-		DBKeyOperation(Transaction trans, K rec) {
+		DBKeyOperation(Transaction trans, K key) {
 			super(trans);
-			if (rec == null) throw new NullPointerException();
-			this.rec = rec;
+			if (key == null) throw new NullPointerException();
+			this.key = key;
 		}
 	}
 
@@ -79,19 +150,20 @@ enum CCMImpl implements CCM {
 	 *
 	 * @param crud
 	 *            db operation to be performed
-	 * @throws TransactionRequiredException
-	 *             if no transaction was supplied
+	 * @throws TransactionFailedException
 	 */
 	private void _operate_(DBoperation<?> crud)
-			throws TransactionRequiredException, ExecutionException {
+			throws TransactionFailedException {
 		final Transaction trans = crud.getTrans(); // not null
 		if (!transactions.contains(trans))
-			throw new TransactionRequiredException();
+			throw new RuntimeException(new TransactionRequiredException());
 		trans.validateThread();
 		try {
-			crud.call();
+			crud.call(); // notice I START NO THREAD
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
 		} catch (Exception e) {
-			throw new ExecutionException("Executing callable failed", e);
+			throw new Engine.TransactionFailedException(e);
 		}
 	}
 
@@ -99,7 +171,14 @@ enum CCMImpl implements CCM {
 	// API
 	// =========================================================================
 	@Override
-	public void shutdown() throws InterruptedException {}
+	public void shutdown() throws InterruptedException {
+		INSTANCE.exec.shutdown();
+		boolean terminated = INSTANCE.exec.awaitTermination(13,
+			TimeUnit.SECONDS); // if timed out terminated will be false
+		// if (!terminated) {
+		// List<Runnable> notExecuted = INSTANCE.exec.shutdownNow();
+		// }
+	}
 
 	// =========================================================================
 	// Active transaction
@@ -115,7 +194,7 @@ enum CCMImpl implements CCM {
 	public <K extends Comparable<K>, V, T> Record<K, V> insert(
 			final Transaction tr, final Record<K, V> record,
 			final DataFile<K, V> dataFile, final Index<K, T> index)
-			throws TransactionRequiredException, ExecutionException {
+			throws TransactionFailedException {
 		_operate_(new DBRecordOperation<K, V>(tr, record) {
 
 			@Override
@@ -137,7 +216,7 @@ enum CCMImpl implements CCM {
 	@Override
 	public <K extends Comparable<K>, V, T> Record<K, V> lookup(Transaction tr,
 			K key, DBLock el, final DataFile<K, V> dataFile, Index<K, T> index)
-			throws KeyExistsException, IOException, InterruptedException {
+			throws IOException, InterruptedException {
 		T id = index.lookupLocked(tr, key, el);
 		if (id == null) return null;
 		return new Record<>(key, dataFile.get(tr, new PageId<>(id), key));
@@ -146,12 +225,11 @@ enum CCMImpl implements CCM {
 	@Override
 	public <K extends Comparable<K>, V, T> void delete(final Transaction tr,
 			final K key, DBLock el, final DataFile<K, V> file,
-			final Index<K, T> index) throws IOException, InterruptedException,
-			TransactionRequiredException, ExecutionException {
+			final Index<K, T> index) throws TransactionFailedException {
 		_operate_(new DBKeyOperation<K, V>(tr, key) {
 
 			@Override
-			public Record<K, V> call() throws KeyExistsException, IOException,
+			public Record<K, V> call() throws IOException,
 					InterruptedException, KeyDoesntExistException {
 				T lookupLocked = index.lookupLocked(tr, key, DBLock.E);
 				if (lookupLocked == null)
