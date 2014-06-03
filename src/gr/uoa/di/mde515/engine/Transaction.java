@@ -159,8 +159,9 @@ public class Transaction {
 	}
 
 	private enum State {
-		ACTIVE, COMMITING, ENDING, UNLOCKING;
+		ACTIVE, COMMITING, ABORTING, ENDING;
 
+		/** Meant to allow ACTIVE > COMMIT (once) or ABORT (many) > ENDING */
 		State transition(State next) {
 			switch (this) {
 			case ACTIVE:
@@ -168,9 +169,13 @@ public class Transaction {
 					throw new IllegalStateException(this + " to " + next);
 				return next;
 			case COMMITING:
-				if (next == ACTIVE || next == this)
+				if (next == ACTIVE || next == this) // call commit once
 					throw new IllegalStateException(this + " to " + next);
 				return ENDING;
+			case ABORTING:
+				if (next == ACTIVE || next == COMMITING)
+					throw new IllegalStateException(this + " to " + next);
+				return (next == this) ? this : ENDING;
 			default:
 				throw new IllegalStateException(this + " to " + next);
 			}
