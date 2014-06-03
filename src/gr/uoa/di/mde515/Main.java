@@ -1,6 +1,5 @@
 package gr.uoa.di.mde515;
 
-import gr.uoa.di.mde515.engine.CCM.TransactionRequiredException;
 import gr.uoa.di.mde515.engine.Engine;
 import gr.uoa.di.mde515.engine.Engine.TransactionFailedException;
 import gr.uoa.di.mde515.engine.Engine.TransactionalOperation;
@@ -59,14 +58,13 @@ public class Main {
 	@SuppressWarnings("unused")
 	private static void treePrint(Engine<Integer, Integer, Integer> eng)
 			throws FileNotFoundException, IOException, InterruptedException,
-			TransactionRequiredException, KeyExistsException,
-			TransactionFailedException, ExecutionException {
+			KeyExistsException, TransactionFailedException, ExecutionException {
 		Engine<Integer, Integer, Integer>.TransactionalOperation to = eng.new TransactionalOperation() {
 
 			@Override
 			public void execute() throws InterruptedException, IOException,
-					TransactionRequiredException, KeyExistsException,
-					TransactionFailedException, ExecutionException {
+					KeyExistsException, TransactionFailedException,
+					ExecutionException {
 				List<Integer> primeNumbers = new ArrayList<>(Arrays.asList(2,
 					3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53,
 					61, 59, 67, 71, 73, 79, 83, 89, 97, 101, 103, 109, 113,
@@ -99,9 +97,8 @@ public class Main {
 
 			@Override
 			public void execute() throws InterruptedException, IOException,
-					TransactionRequiredException, KeyExistsException,
-					TransactionFailedException, ExecutionException,
-					TransactionRequiredException {
+					KeyExistsException, TransactionFailedException,
+					ExecutionException {
 				delete(key, DBLock.E);
 				System.out.println("DELETED " + key);
 				commit();
@@ -117,8 +114,8 @@ public class Main {
 
 			@Override
 			public void execute() throws InterruptedException, IOException,
-					TransactionRequiredException, KeyExistsException,
-					TransactionFailedException, ExecutionException {
+					KeyExistsException, TransactionFailedException,
+					ExecutionException {
 				Record<K, V> rkv = lookup(key, DBLock.S);
 				System.out.println("The record is "
 					+ (rkv == null ? null
@@ -137,8 +134,8 @@ public class Main {
 
 			@Override
 			public void execute() throws IOException, InterruptedException,
-					TransactionRequiredException, KeyExistsException,
-					TransactionFailedException, ExecutionException {
+					KeyExistsException, TransactionFailedException,
+					ExecutionException {
 				List<Integer> primeNumbers = new ArrayList<>(Arrays.asList(2,
 					3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53,
 					61, 59, 67, 71, 73, 79, 83, 89, 97, 101, 103, 109, 113,
@@ -182,8 +179,7 @@ public class Main {
 
 			@Override
 			public void execute() throws IOException, InterruptedException,
-					TransactionRequiredException, KeyExistsException,
-					TransactionFailedException {
+					KeyExistsException, TransactionFailedException {
 				Record<Integer, Integer> rkv = lookup(rec.getKey(), DBLock.E);
 				System.out.println("The record is "
 					+ (rkv == null ? null

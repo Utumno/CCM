@@ -150,28 +150,21 @@ enum CCMImpl implements CCM {
 	 *
 	 * @param crud
 	 *            db operation to be performed
-	 * @throws TransactionRequiredException
-	 *             if no transaction was supplied
 	 * @throws TransactionFailedException
 	 */
 	private void _operate_(DBoperation<?> crud)
-			throws TransactionRequiredException, TransactionFailedException {
+			throws TransactionFailedException {
 		final Transaction trans = crud.getTrans(); // not null
 		if (!transactions.contains(trans))
-			throw new TransactionRequiredException();
+			throw new RuntimeException(new TransactionRequiredException());
 		trans.validateThread();
 		try {
-			crud.call();
+			crud.call(); // notice I START NO THREAD
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
 		} catch (Exception e) {
 			throw new Engine.TransactionFailedException(e);
 		}
-		// Future<?> submit = exec.submit(crud);
-		// try {
-		// submit.get(); // blocks
-		// } catch (InterruptedException e) {
-		// e.printStackTrace();
-		// Thread.currentThread().interrupt();
-		// }
 	}
 
 	// =========================================================================
@@ -201,7 +194,7 @@ enum CCMImpl implements CCM {
 	public <K extends Comparable<K>, V, T> Record<K, V> insert(
 			final Transaction tr, final Record<K, V> record,
 			final DataFile<K, V> dataFile, final Index<K, T> index)
-			throws TransactionRequiredException, TransactionFailedException {
+			throws TransactionFailedException {
 		_operate_(new DBRecordOperation<K, V>(tr, record) {
 
 			@Override
@@ -232,8 +225,7 @@ enum CCMImpl implements CCM {
 	@Override
 	public <K extends Comparable<K>, V, T> void delete(final Transaction tr,
 			final K key, DBLock el, final DataFile<K, V> file,
-			final Index<K, T> index) throws TransactionRequiredException,
-			TransactionFailedException {
+			final Index<K, T> index) throws TransactionFailedException {
 		_operate_(new DBKeyOperation<K, V>(tr, key) {
 
 			@Override

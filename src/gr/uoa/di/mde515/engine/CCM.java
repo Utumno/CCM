@@ -31,13 +31,12 @@ public interface CCM {
 
 	<K extends Comparable<K>, V, T> Record<K, V> insert(Transaction tr,
 			Record<K, V> record, DataFile<K, V> file, final Index<K, T> index)
-			throws TransactionRequiredException, KeyExistsException,
+			throws KeyExistsException,
 			TransactionFailedException;
 
 	<K extends Comparable<K>, V, T> void delete(Transaction tr, K key,
 			DBLock el, DataFile<K, V> file, final Index<K, T> index)
 			throws IOException, InterruptedException,
-			TransactionRequiredException,
 			TransactionFailedException;
 
 	<K extends Comparable<K>, V, T> Record<K, V> lookup(Transaction tr, K key,

@@ -57,8 +57,8 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 
 		/** FIXME: remove exceptions and make it to a functional iface */
 		public abstract void execute() throws InterruptedException,
-				IOException, TransactionRequiredException, KeyExistsException,
-				TransactionFailedException, ExecutionException;
+				IOException, KeyExistsException, TransactionFailedException,
+				ExecutionException;
 
 		public final Record<K, V> lookup(K key, DBLock e) throws IOException,
 				InterruptedException {
@@ -66,14 +66,12 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 		}
 
 		public final Record<K, V> insert(Record<K, V> record)
-				throws TransactionRequiredException, KeyExistsException,
-				TransactionFailedException {
+				throws KeyExistsException, TransactionFailedException {
 			return Engine.this.insert(trans, record);
 		}
 
 		public final void delete(K in, DBLock e) throws IOException,
-				InterruptedException, TransactionRequiredException,
-				TransactionFailedException {
+				InterruptedException, TransactionFailedException {
 			Engine.this.delete(trans, in, e);
 		}
 
@@ -138,8 +136,7 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 	abstract void endTransaction(Transaction tr);
 
 	abstract Record<K, V> insert(Transaction tr, Record<K, V> record)
-			throws TransactionRequiredException, KeyExistsException,
-			TransactionFailedException;
+			throws KeyExistsException, TransactionFailedException;
 
 	abstract void commit(Transaction tr) throws IOException;
 
@@ -149,8 +146,7 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 	abstract void abort(Transaction tr) throws IOException;
 
 	abstract void delete(Transaction tr, K key, DBLock el) throws IOException,
-			InterruptedException, TransactionRequiredException,
-			TransactionFailedException;
+			InterruptedException, TransactionFailedException;
 
 	abstract Record<K, V> lookup(Transaction tr, K key, DBLock el)
 			throws IOException, InterruptedException; // TODO boolean lookup
@@ -228,8 +224,7 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 
 	@Override
 	Record<K, V> insert(Transaction tr, Record<K, V> record)
-			throws TransactionRequiredException, KeyExistsException,
-			TransactionFailedException {
+			throws KeyExistsException, TransactionFailedException {
 		return ccm.insert(tr, record, dataFile, index);
 	}
 
@@ -241,8 +236,7 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 
 	@Override
 	void delete(Transaction tr, K key, DBLock el) throws IOException,
-			InterruptedException, TransactionRequiredException,
-			TransactionFailedException {
+			InterruptedException, TransactionFailedException {
 		ccm.delete(tr, key, el, dataFile, index);
 	}
 
