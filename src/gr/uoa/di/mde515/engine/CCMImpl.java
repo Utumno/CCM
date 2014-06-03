@@ -13,6 +13,7 @@ import gr.uoa.di.mde515.locks.DBLock;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -62,6 +63,38 @@ enum CCMImpl implements CCM {
 				return null;
 			}
 		}); // I need to call submit.get() to have the ExecutionException thrown
+	}
+
+	@Override
+	public <K extends Comparable<K>, V, T, L> List<Future<L>> submitAll(
+			final Collection<Engine<K, V, T>.TransactionalOperation> tos)
+			throws InterruptedException {
+		Collection<Callable<L>> callables = new ArrayList<>();
+		for (final Engine<K, V, T>.TransactionalOperation to : tos) {
+			Callable<L> call = new Callable<L>() {
+
+				@Override
+				public L call() throws Exception {
+					to.init(); // the transaction is thread confined
+					try {
+						to.execute();
+					} catch (InterruptedException e) {
+						to.abort();
+						Thread.currentThread().interrupt();
+					} catch (Exception e) {
+						to.abort();
+						throw e;
+					} finally {
+						to.endTransaction();
+					}
+					return null;
+				}
+			};
+			callables.add(call);
+		}
+		return exec.invokeAll(callables); // TODO report to eclipse
+		// invokeAll(callables) when callables is a Collection suggests to
+		// replace with invokeAll(tasks,timeout,unit) which has the same problem
 	}
 
 	// =========================================================================
@@ -199,8 +232,8 @@ enum CCMImpl implements CCM {
 	@Override
 	public <K extends Comparable<K>, V, T> void delete(final Transaction tr,
 			final K key, DBLock el, final DataFile<K, V> file,
-			final Index<K, T> index) throws
-			TransactionRequiredException, TransactionFailedException {
+			final Index<K, T> index) throws TransactionRequiredException,
+			TransactionFailedException {
 		_operate_(new DBKeyOperation<K, V>(tr, key) {
 
 			@Override

@@ -12,6 +12,8 @@ import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.locks.DBLock;
 
 import java.io.IOException;
+import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
@@ -44,6 +46,11 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 	private static volatile Engine<?, ?, ?> instance;
 	private final static Object HACK = new Object(); // TODO fix this mess
 
+	/**
+	 * The clients must override the execute method of this class then submit
+	 * the TransactionalOperation instance(s). Each TransactionalOperation will
+	 * be executed inside a transaction.
+	 */
 	public abstract class TransactionalOperation {
 
 		Transaction trans; // should be final ! make sure it's thread confined
@@ -82,6 +89,14 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 			Engine.this.print(trans, e);
 		}
 
+		protected void insertIndex(Record<K, T> rec) throws IOException,
+				InterruptedException {
+			Engine.this.insertIndex(trans, rec);
+		}
+
+		// =====================================================================
+		// Package private - Transaction management
+		// =====================================================================
 		void init() {
 			trans = beginTransaction();
 		}
@@ -102,6 +117,9 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 
 	public abstract Future submit(TransactionalOperation to);
 
+	public abstract <L> List<Future<L>> submitAll(
+			Collection<TransactionalOperation> to) throws InterruptedException;
+
 	public static <K extends Comparable<K>, V, T> Engine<?, ?, ?> newInstance(
 			Serializer<K, T> ser) {
 		if (instance == null) synchronized (HACK) {
@@ -113,36 +131,32 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 	public abstract void shutdown() throws InterruptedException, IOException;
 
 	// =========================================================================
-	// Abstract methods
+	// Abstract Package private methods
 	// =========================================================================
-	public abstract Transaction beginTransaction();
+	abstract Transaction beginTransaction();
 
-	public abstract void endTransaction(Transaction tr);
+	abstract void endTransaction(Transaction tr);
 
-	public abstract Record<K, V> insert(Transaction tr, Record<K, V> record)
+	abstract Record<K, V> insert(Transaction tr, Record<K, V> record)
 			throws TransactionRequiredException, KeyExistsException,
 			TransactionFailedException;
 
-	public abstract void commit(Transaction tr) throws IOException;
+	abstract void commit(Transaction tr) throws IOException;
 
-	public abstract void waitTransaction(long time) throws InterruptedException;
+	abstract void waitTransaction(Transaction tr, long time)
+			throws InterruptedException;
 
-	public abstract void abort(Transaction tr) throws IOException;
+	abstract void abort(Transaction tr) throws IOException;
 
-	public abstract void delete(Transaction tr, K key, DBLock el)
-			throws IOException, InterruptedException,
-			TransactionRequiredException, TransactionFailedException;
+	abstract void delete(Transaction tr, K key, DBLock el) throws IOException,
+			InterruptedException, TransactionRequiredException,
+			TransactionFailedException;
 
-	public abstract Record<K, V> lookup(Transaction tr, K key, DBLock el)
-			throws IOException, InterruptedException; // TODO
-	// boolean lookup
-	//
+	abstract Record<K, V> lookup(Transaction tr, K key, DBLock el)
+			throws IOException, InterruptedException; // TODO boolean lookup
 	// Record<K,V> update(T key);
-	//
 	// List<Record<K,V>> range(T key1, T key2);
-	//
 	// File bulk_load(File fileOfRecords);
-	//
 	// File bulk_delete(File fileOfKeys);
 	// =========================================================================
 	// Debug
@@ -192,35 +206,10 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 	}
 
 	@Override
-	public Transaction beginTransaction() {
-		return ccm.beginTransaction();
-	}
-
-	@Override
-	public void endTransaction(Transaction tr) {
-		ccm.endTransaction(tr);
-	}
-
-	@Override
-	public Record<K, V> insert(Transaction tr, Record<K, V> record)
-			throws TransactionRequiredException, KeyExistsException,
-			TransactionFailedException {
-		return ccm.insert(tr, record, dataFile, index);
-	}
-
-	@Override
-	public void commit(Transaction tr) throws IOException {
-		ccm.commit(tr, dataFile, index);
-	}
-
-	@Override
-	public void waitTransaction(long time) throws InterruptedException {
-		Thread.sleep(time);
-	}
-
-	@Override
-	public void abort(Transaction tr) throws IOException {
-		ccm.abort(tr, dataFile, index);
+	public <L> List<Future<L>> submitAll(
+			Collection<Engine<K, V, T>.TransactionalOperation> to)
+			throws InterruptedException {
+		return ccm.submitAll(to);
 	}
 
 	@Override
@@ -229,17 +218,52 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 		dataFile.close();
 	}
 
+	// =========================================================================
+	// Package private
+	// =========================================================================
 	@Override
-	public Record<K, V> lookup(Transaction tr, K key, DBLock el)
-			throws IOException, InterruptedException {
+	Transaction beginTransaction() {
+		return ccm.beginTransaction();
+	}
+
+	@Override
+	Record<K, V> insert(Transaction tr, Record<K, V> record)
+			throws TransactionRequiredException, KeyExistsException,
+			TransactionFailedException {
+		return ccm.insert(tr, record, dataFile, index);
+	}
+
+	@Override
+	Record<K, V> lookup(Transaction tr, K key, DBLock el) throws IOException,
+			InterruptedException {
 		return ccm.lookup(tr, key, el, dataFile, index);
 	}
 
 	@Override
-	public void delete(Transaction tr, K key, DBLock el) throws IOException,
+	void delete(Transaction tr, K key, DBLock el) throws IOException,
 			InterruptedException, TransactionRequiredException,
 			TransactionFailedException {
 		ccm.delete(tr, key, el, dataFile, index);
+	}
+
+	@Override
+	void waitTransaction(Transaction tr, long time) throws InterruptedException {
+		Thread.sleep(time); // FIXME disallow waits after commit/abort
+	}
+
+	@Override
+	void commit(Transaction tr) throws IOException {
+		ccm.commit(tr, dataFile, index);
+	}
+
+	@Override
+	void abort(Transaction tr) throws IOException {
+		ccm.abort(tr, dataFile, index);
+	}
+
+	@Override
+	void endTransaction(Transaction tr) {
+		ccm.endTransaction(tr);
 	}
 
 	// =========================================================================
