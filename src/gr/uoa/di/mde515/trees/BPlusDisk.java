@@ -57,9 +57,15 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 	// TODO private lock + thread safety
 	private volatile Node root;
 	private AtomicInteger nodeId = new AtomicInteger(0);
+	/** Used to write K and T to disc and read them back */
 	private final Serializer<K, T> ser;
 
-	static final class Root { // serialization proxy really
+	/**
+	 * The BPlus writes the last nodeId and root node id to files and reads them
+	 * from there on restart of the engine. This class is responsible for these
+	 * operations.
+	 */
+	private static final class Root {
 
 		private static final Path ROOT_PATH = FileSystems.getDefault().getPath(
 			"root.txt");
@@ -328,6 +334,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		public String toString() {
 			return "@" + getPageId().getId();
 		}
+
 		// =====================================================================
 		// Methods that go to a Page subclass for Sorted Data files TODO
 		// =====================================================================

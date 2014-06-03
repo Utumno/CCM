@@ -55,6 +55,9 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 
 		Transaction trans; // should be final ! make sure it's thread confined
 
+		// =====================================================================
+		// API
+		// =====================================================================
 		/** FIXME: remove exceptions and make it to a functional iface */
 		public abstract void execute() throws InterruptedException,
 				IOException, KeyExistsException, TransactionFailedException,
@@ -83,10 +86,12 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 			Engine.this.commit(trans);
 		}
 
+		/** ONLY FOR DEBUG */
 		protected void print(DBLock e) throws IOException, InterruptedException {
 			Engine.this.print(trans, e);
 		}
 
+		/** ONLY FOR DEBUG */
 		protected void insertIndex(Record<K, T> rec) throws IOException,
 				InterruptedException {
 			Engine.this.insertIndex(trans, rec);

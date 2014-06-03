@@ -40,7 +40,7 @@ enum CCMImpl implements CCM {
 	}
 
 	// =========================================================================
-	// TransactionalOperation wrappers
+	// TransactionalOperation wrappers API
 	// =========================================================================
 	@Override
 	public Future submit(final TransactionalOperation to) {
@@ -132,12 +132,12 @@ enum CCMImpl implements CCM {
 			extends DBoperation<Object> {
 
 		@SuppressWarnings("unused")
-		private final K rec;
+		private final K key;
 
-		DBKeyOperation(Transaction trans, K rec) {
+		DBKeyOperation(Transaction trans, K key) {
 			super(trans);
-			if (rec == null) throw new NullPointerException();
-			this.rec = rec;
+			if (key == null) throw new NullPointerException();
+			this.key = key;
 		}
 	}
 
