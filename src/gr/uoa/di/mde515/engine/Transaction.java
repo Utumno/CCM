@@ -37,7 +37,7 @@ public class Transaction {
 	Transaction() {
 		transId = transactionId.incrementAndGet();
 		threadId = Thread.currentThread().getId();
-		threadName = "Thread (" + threadId + ") for transaction " + transId;
+		threadName = "Thread [" + threadId + "] for transaction " + transId;
 		Thread.currentThread().setName(threadName);
 		lockedDataPages.put(DBLock.E, new ArrayList<PageId<Integer>>());
 		lockedDataPages.put(DBLock.S, new ArrayList<PageId<Integer>>());
@@ -52,7 +52,7 @@ public class Transaction {
 		final String name = Thread.currentThread().getName();
 		if (id != threadId || !name.equals(threadName)) {
 			throw new IllegalStateException("Calling thread (" + id + ": "
-				+ name + ") is not owner of transaction with id " + threadId);
+				+ name + ") is not owner of transaction with id " + transId);
 		}
 	}
 

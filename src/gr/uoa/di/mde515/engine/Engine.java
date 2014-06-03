@@ -39,7 +39,9 @@ import java.util.concurrent.ExecutionException;
  */
 public abstract class Engine<K extends Comparable<K>, V, T> {
 
-	public abstract void submit(TransactionalOperation to);
+	public static final short PAGE_SIZE = 72;
+	private static volatile Engine<?, ?, ?> instance;
+	private final static Object HACK = new Object(); // TODO fix this mess
 
 	public abstract class TransactionalOperation {
 
@@ -71,9 +73,7 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 		}
 	}
 
-	public static final short PAGE_SIZE = 72;
-	private static volatile Engine<?, ?, ?> instance;
-	private final static Object HACK = new Object(); // TODO fix this mess
+	public abstract void submit(TransactionalOperation to);
 
 	public static <K extends Comparable<K>, V, T> Engine<?, ?, ?> newInstance(
 			Serializer<K, T> ser) {
