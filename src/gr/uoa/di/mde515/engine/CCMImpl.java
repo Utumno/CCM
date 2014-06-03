@@ -172,7 +172,7 @@ enum CCMImpl implements CCM {
 	@Override
 	public <K extends Comparable<K>, V, T> Record<K, V> lookup(Transaction tr,
 			K key, DBLock el, final DataFile<K, V> dataFile, Index<K, T> index)
-			throws KeyExistsException, IOException, InterruptedException {
+			throws IOException, InterruptedException {
 		T id = index.lookupLocked(tr, key, el);
 		if (id == null) return null;
 		return new Record<>(key, dataFile.get(tr, new PageId<>(id), key));
@@ -186,7 +186,7 @@ enum CCMImpl implements CCM {
 		_operate_(new DBKeyOperation<K, V>(tr, key) {
 
 			@Override
-			public Record<K, V> call() throws KeyExistsException, IOException,
+			public Record<K, V> call() throws IOException,
 					InterruptedException, KeyDoesntExistException {
 				T lookupLocked = index.lookupLocked(tr, key, DBLock.E);
 				if (lookupLocked == null)

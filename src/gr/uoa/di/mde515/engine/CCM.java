@@ -39,7 +39,7 @@ public interface CCM {
 
 	<K extends Comparable<K>, V, T> Record<K, V> lookup(Transaction tr, K key,
 			DBLock el, DataFile<K, V> dataFile, Index<K, T> index)
-			throws KeyExistsException, IOException, InterruptedException;
+			throws IOException, InterruptedException;
 
 	<K extends Comparable<K>, V> Record<K, V> update(Transaction tr, K key,
 			DataFile<K, V> file);

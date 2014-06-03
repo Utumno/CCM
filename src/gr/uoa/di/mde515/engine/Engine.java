@@ -103,11 +103,11 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 	public abstract void abort(Transaction tr) throws IOException;
 
 	public abstract void delete(Transaction tr, K key, DBLock el)
-			throws KeyExistsException, IOException, InterruptedException,
+			throws IOException, InterruptedException,
 			TransactionRequiredException, ExecutionException;
 
 	public abstract Record<K, V> lookup(Transaction tr, K key, DBLock el)
-			throws KeyExistsException, IOException, InterruptedException; // TODO
+			throws IOException, InterruptedException; // TODO
 	// boolean lookup
 	//
 	// Record<K,V> update(T key);
@@ -208,7 +208,7 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 
 	@Override
 	public Record<K, V> lookup(Transaction tr, K key, DBLock el)
-			throws KeyExistsException, IOException, InterruptedException {
+			throws IOException, InterruptedException {
 		return ccm.lookup(tr, key, el, dataFile, index);
 	}
 
