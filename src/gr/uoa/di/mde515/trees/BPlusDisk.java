@@ -31,9 +31,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  * 12345 -> 12 345
  * </pre>
  *
- * When 2 nodes merge (in case the siblings from the _same_ parent (one of them
- * may be null) have not enough nodes to borrow one so the node merges with one
- * of its siblings) it is always the right node that is deleted
+ * When 2 nodes merge (in case the siblings of a node (from the _same_ parent -
+ * one of them may be null) have not enough nodes to borrow one so the node
+ * merges with one of the siblings) it is always the right node that is deleted
  *
  * <pre>
  * (nodes ijk)
@@ -42,7 +42,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  * </pre>
  *
  * FOR NOW stores Integers as PAGE_IDs. FIXME - follow the casts to Integers
+ * (basically change BufferManager<Integer> to BufferManager<T>).
  *
+ * @param <K>
+ *            the type of the key of the one and only file
  * @param <T>
  *            the type of the value of the records to be stored in the leaf
  *            nodes - when the tree is used as an Index this corresponds to the
@@ -53,8 +56,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 	private static final BufferManager<Integer> buf = BufferManager
 		.getInstance();
 	private final IndexDiskFile file;
-	// fields
-	// TODO private lock + thread safety
+	// fields - TODO private lock + thread safety
 	private volatile Node root;
 	private AtomicInteger nodeId = new AtomicInteger(0);
 	/** Used to write K and T to disc and read them back */

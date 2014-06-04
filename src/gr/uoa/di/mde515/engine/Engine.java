@@ -42,10 +42,10 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 	// =========================================================================
 	// Engine API
 	// =========================================================================
-	public abstract Future submit(TransactionalOperation to);
+	public abstract <L> Future<L> submit(TransactionalOperation to);
 
 	public abstract <L> List<Future<L>> submitAll(
-			Collection<TransactionalOperation> to) throws InterruptedException;
+			Collection<TransactionalOperation> tos) throws InterruptedException;
 
 	public static <K extends Comparable<K>, V, T> Engine<?, ?, ?> newInstance(
 			Serializer<K, T> ser) {
@@ -204,7 +204,7 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 	}
 
 	@Override
-	public Future submit(Engine<K, V, T>.TransactionalOperation to) {
+	public <L> Future<L> submit(Engine<K, V, T>.TransactionalOperation to) {
 		return ccm.submit(to);
 	}
 

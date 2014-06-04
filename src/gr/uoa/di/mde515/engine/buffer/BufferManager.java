@@ -1,6 +1,7 @@
 package gr.uoa.di.mde515.engine.buffer;
 
 import gr.uoa.di.mde515.files.DiskFile;
+import gr.uoa.di.mde515.index.PageId;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -136,11 +137,12 @@ public final class BufferManager<T> {
 	 * @param disk
 	 * @throws IOException
 	 */
-	public void flushPage(int pageID, DiskFile disk) throws IOException {
+	public void flushPage(T pageID, DiskFile disk) throws IOException {
 		synchronized (POOL_LOCK) {
 			int frameNumber = pageIdToFrameNumber.get(pageID);
 			final Frame frame = getFrame(frameNumber);
-			if (frame.isDirty()) disk.writePage(pageID, frame.getBuffer());
+			if (frame.isDirty())
+				disk.writePage(new PageId<>(pageID).toInt(), frame.getBuffer());
 			frame.setDirty(false);
 		}
 	}

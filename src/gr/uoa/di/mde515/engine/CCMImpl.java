@@ -104,6 +104,7 @@ enum CCMImpl implements CCM {
 	@Override
 	public void shutdown() throws InterruptedException {
 		INSTANCE.exec.shutdown();
+		@SuppressWarnings("unused")
 		boolean terminated = INSTANCE.exec.awaitTermination(13,
 			TimeUnit.SECONDS); // if timed out terminated will be false
 		// if (!terminated) {

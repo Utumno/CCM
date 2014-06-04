@@ -150,7 +150,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	 * @throws InterruptedException
 	 */
 	@Override
-	public PageId insert(Transaction tr, Record<K, V> record)
+	public <T> PageId<T> insert(Transaction tr, Record<K, V> record)
 			throws IOException, InterruptedException {
 		int pageID = getFreeListPageId();
 		Page<Integer> p;
@@ -275,7 +275,6 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 
 	@Override
 	public void abort(List<PageId<Integer>> pageIds) throws IOException {
-		System.out.println("FINALLY REACHED");
 		for (PageId<Integer> pageID : pageIds) {
 			buf.killPage(pageID.getId(), file);
 		}

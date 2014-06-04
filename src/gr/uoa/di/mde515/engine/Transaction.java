@@ -24,12 +24,11 @@ public final class Transaction {
 		DBLock.class);
 	private final EnumMap<DBLock, List<PageId<Integer>>> lockedIndexPages = new EnumMap<>(
 		DBLock.class);
-	private final long transId;
-	private volatile State state;
-	// TODO Random unique trans identifier added to thread name
+	private final long transId; // TODO Random unique trans identifier? see:
 	// http://www.javapractices.com/topic/TopicAction.do?Id=56
 	// http://bugs.java.com/view_bug.do?bug_id=6611830
 	// http://stackoverflow.com/questions/7212635/is-java-util-uuid-thread-safe
+	private volatile State state;
 	static {
 		transactionId = new AtomicLong();
 	}

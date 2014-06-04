@@ -17,7 +17,7 @@ public abstract class DataFile<K extends Comparable<K>, V> {
 		return new HeapFile<>(filename, recordSize);
 	}
 
-	public abstract PageId insert(Transaction tr, Record<K, V> rec)
+	public abstract <T> PageId<T> insert(Transaction tr, Record<K, V> rec)
 			throws IOException, InterruptedException;
 
 	public abstract <T> void delete(Transaction tr, PageId<T> p, K key)
