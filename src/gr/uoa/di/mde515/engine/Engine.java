@@ -12,6 +12,7 @@ import gr.uoa.di.mde515.locks.DBLock;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
 /**
@@ -42,11 +43,37 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 	// =========================================================================
 	// Engine API
 	// =========================================================================
+	/**
+	 * Execute a TransactionalOperation in its own thread - the
+	 * TransactionalOperation instance is not to be reused afterwards. Takes
+	 * care of unlocking the locks held by the transaction.
+	 *
+	 * Implementation: calls submit on an {@link ExecutorService}
+	 *
+	 * @param to
+	 *            the TransactionalOperation to be executed
+	 * @return a Future with the {@link TransactionalOperation#execute()} result
+	 */
 	public abstract <L> Future<L> submit(TransactionalOperation to);
 
+	/**
+	 * Execute a collection TransactionalOperation
+	 * <em> each in its own thread</em>, as a separate transaction - the
+	 * TransactionalOperation instances are not to be reused afterwards. Takes
+	 * care of unlocking the locks held by the transaction.
+	 *
+	 * Implementation: calls {@link ExecutorService#invokeAll(Collection)} on an
+	 * ExecutorService. TODO - call invokeAll
+	 *
+	 * @param tos
+	 *            the Collection of the TransactionalOperation to be executed
+	 * @throws InterruptedException
+	 *             thrown by {@link ExecutorService#invokeAll(Collection)}
+	 */
 	public abstract <L> List<Future<L>> submitAll(
 			Collection<TransactionalOperation> tos) throws InterruptedException;
 
+	// TODO: proper factory
 	public static <K extends Comparable<K>, V, T> Engine<?, ?, ?> newInstance(
 			Serializer<K, T> ser) {
 		if (instance == null) synchronized (HACK) {
@@ -69,8 +96,7 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 		// =====================================================================
 		// TransactionalOperation API
 		// =====================================================================
-		/** FIXME: remove exceptions add return type */
-		public abstract void execute() throws TransactionFailedException;
+		public abstract <L> L execute() throws TransactionFailedException;
 
 		public final Record<K, V> lookup(K key, DBLock e)
 				throws TransactionFailedException {

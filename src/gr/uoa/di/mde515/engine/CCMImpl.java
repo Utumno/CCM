@@ -57,14 +57,13 @@ enum CCMImpl implements CCM {
 			public L call() throws TransactionFailedException {
 				to.init(); // the transaction is thread confined
 				try {
-					to.execute();
-				} catch (TransactionFailedException e) {
+					return to.execute();
+				} catch (/* any old */Exception e) {
 					to.abort();
 					throw e;
 				} finally {
 					to.endTransaction();
 				}
-				return null; // FIXME return L
 			}
 		}); // I need to call submit.get() to have the ExecutionException thrown
 	}
@@ -81,14 +80,13 @@ enum CCMImpl implements CCM {
 				public L call() throws TransactionFailedException {
 					to.init(); // the transaction is thread confined
 					try {
-						to.execute();
-					} catch (TransactionFailedException e) {
+						return to.execute();
+					} catch (/* any old */Exception e) {
 						to.abort();
 						throw e;
 					} finally {
 						to.endTransaction();
 					}
-					return null; // FIXME return L
 				}
 			};
 			callables.add(call);

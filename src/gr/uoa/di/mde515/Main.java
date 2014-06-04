@@ -59,7 +59,7 @@ public class Main {
 		Engine<Integer, Integer, Integer>.TransactionalOperation to = eng.new TransactionalOperation() {
 
 			@Override
-			public void execute() throws TransactionFailedException {
+			public Void execute() throws TransactionFailedException {
 				List<Integer> primeNumbers = new ArrayList<>(Arrays.asList(2,
 					3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53,
 					61, 59, 67, 71, 73, 79, 83, 89, 97, 101, 103, 109, 113,
@@ -75,6 +75,7 @@ public class Main {
 				print(DBLock.E);
 				System.out.println();
 				commit();
+				return null;
 			}
 		};
 		eng.submit(to).get();
@@ -90,10 +91,11 @@ public class Main {
 		return eng.new TransactionalOperation() {
 
 			@Override
-			public void execute() throws TransactionFailedException {
+			public Void execute() throws TransactionFailedException {
 				delete(key, DBLock.E);
 				System.out.println("DELETED " + key);
 				commit();
+				return null;
 			}
 		};
 	}
@@ -105,12 +107,13 @@ public class Main {
 		return eng.new TransactionalOperation() {
 
 			@Override
-			public void execute() throws TransactionFailedException {
+			public Record<K, V> execute() throws TransactionFailedException {
 				Record<K, V> rkv = lookup(key, DBLock.S);
 				System.out.println("The record is "
 					+ (rkv == null ? null
 							: ("key " + rkv.getKey() + "  value " + rkv
 								.getValue())));
+				return rkv;
 			}
 		};
 	}
@@ -123,7 +126,7 @@ public class Main {
 		return eng.new TransactionalOperation() {
 
 			@Override
-			public void execute() throws TransactionFailedException {
+			public Void execute() throws TransactionFailedException {
 				List<Integer> primeNumbers = new ArrayList<>(Arrays.asList(2,
 					3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53,
 					61, 59, 67, 71, 73, 79, 83, 89, 97, 101, 103, 109, 113,
@@ -156,6 +159,7 @@ public class Main {
 				// Thread.sleep(2000);
 				commit();
 				// eng.print(tr, DBLock.E);
+				return null;
 			}
 		};
 	}
@@ -166,7 +170,7 @@ public class Main {
 		return eng.new TransactionalOperation() {
 
 			@Override
-			public void execute() throws TransactionFailedException {
+			public Void execute() throws TransactionFailedException {
 				Record<Integer, Integer> rkv = lookup(rec.getKey(), DBLock.E);
 				System.out.println("The record is "
 					+ (rkv == null ? null
@@ -180,6 +184,7 @@ public class Main {
 				}
 				commit();
 				// eng.print(tr, DBLock.E);
+				return null;
 			}
 		};
 	}
