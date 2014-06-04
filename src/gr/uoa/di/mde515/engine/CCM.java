@@ -1,20 +1,17 @@
 package gr.uoa.di.mde515.engine;
 
 import gr.uoa.di.mde515.engine.Engine.TransactionFailedException;
-import gr.uoa.di.mde515.engine.Engine.TransactionalOperation;
 import gr.uoa.di.mde515.files.DataFile;
 import gr.uoa.di.mde515.index.Index;
-import gr.uoa.di.mde515.index.KeyExistsException;
 import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.locks.DBLock;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Future;
 
-public interface CCM {
+interface CCM {
 
 	final class TransactionRequiredException extends Exception {
 
@@ -27,38 +24,42 @@ public interface CCM {
 
 	Transaction beginTransaction();
 
-	void endTransaction(Transaction tr);
-
 	<K extends Comparable<K>, V, T> Record<K, V> insert(Transaction tr,
 			Record<K, V> record, DataFile<K, V> file, final Index<K, T> index)
-			throws KeyExistsException,
-			TransactionFailedException;
+			throws TransactionFailedException;
 
 	<K extends Comparable<K>, V, T> void delete(Transaction tr, K key,
 			DBLock el, DataFile<K, V> file, final Index<K, T> index)
-			throws IOException, InterruptedException,
-			TransactionFailedException;
+			throws TransactionFailedException;
 
 	<K extends Comparable<K>, V, T> Record<K, V> lookup(Transaction tr, K key,
 			DBLock el, DataFile<K, V> dataFile, Index<K, T> index)
-			throws IOException, InterruptedException;
+			throws TransactionFailedException;
 
 	boolean waitTransaction(Transaction tr, long t);
 
-	void shutdown() throws InterruptedException;
-
 	<K extends Comparable<K>, V> void commit(Transaction tr,
-			DataFile<K, V> dataFile, Index<K, ?> index) throws IOException;
+			DataFile<K, V> dataFile, Index<K, ?> index)
+			throws TransactionFailedException;
 
 	<K extends Comparable<K>, V> void abort(Transaction tr,
-			DataFile<K, V> dataFile, Index<K, ?> index) throws IOException;
+			DataFile<K, V> dataFile, Index<K, ?> index)
+			throws TransactionFailedException;
 
-	<K extends Comparable<K>, V, T> Future submit(TransactionalOperation to);
+	void endTransaction(Transaction tr);
+
+	void shutdown() throws InterruptedException;
+
+	<K extends Comparable<K>, V, T, L> Future<L> submit(
+			Engine<K, V, T>.TransactionalOperation to);
 
 	<K extends Comparable<K>, V, T, L> List<Future<L>> submitAll(
 			Collection<Engine<K, V, T>.TransactionalOperation> to)
 			throws InterruptedException;
 
+	// =========================================================================
+	// Not implemented
+	// =========================================================================
 	<K extends Comparable<K>, V> Record<K, V> update(Transaction tr, K key,
 			DataFile<K, V> file);
 

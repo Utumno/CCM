@@ -1,7 +1,6 @@
 package gr.uoa.di.mde515.engine;
 
 import gr.uoa.di.mde515.engine.Engine.TransactionFailedException;
-import gr.uoa.di.mde515.engine.Engine.TransactionalOperation;
 import gr.uoa.di.mde515.files.DataFile;
 import gr.uoa.di.mde515.index.Index;
 import gr.uoa.di.mde515.index.KeyDoesntExistException;
@@ -22,6 +21,13 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * All methods that require a Transaction will throw a
+ * {@code NullPointerException} if the supplied transaction is {@code null} and
+ * a {@link TransactionRequiredException} if the transaction supplied is not
+ * valid. All exceptions from lower levels are wrapped in a
+ * {@link TransactionFailedException}.
+ */
 enum CCMImpl implements CCM {
 	INSTANCE;
 
@@ -40,27 +46,25 @@ enum CCMImpl implements CCM {
 	}
 
 	// =========================================================================
-	// TransactionalOperation wrappers API
+	// TransactionalOperation submit API
 	// =========================================================================
 	@Override
-	public Future submit(final TransactionalOperation to) {
-		return exec.submit(new Callable() {
+	public <K extends Comparable<K>, V, T, L> Future<L> submit(
+			final Engine<K, V, T>.TransactionalOperation to) {
+		return exec.submit(new Callable<L>() {
 
 			@Override
-			public Object call() throws Exception {
+			public L call() throws TransactionFailedException {
 				to.init(); // the transaction is thread confined
 				try {
 					to.execute();
-				} catch (InterruptedException e) {
-					to.abort();
-					Thread.currentThread().interrupt();
-				} catch (Exception e) {
+				} catch (TransactionFailedException e) {
 					to.abort();
 					throw e;
 				} finally {
 					to.endTransaction();
 				}
-				return null;
+				return null; // FIXME return L
 			}
 		}); // I need to call submit.get() to have the ExecutionException thrown
 	}
@@ -74,20 +78,17 @@ enum CCMImpl implements CCM {
 			Callable<L> call = new Callable<L>() {
 
 				@Override
-				public L call() throws Exception {
+				public L call() throws TransactionFailedException {
 					to.init(); // the transaction is thread confined
 					try {
 						to.execute();
-					} catch (InterruptedException e) {
-						to.abort();
-						Thread.currentThread().interrupt();
-					} catch (Exception e) {
+					} catch (TransactionFailedException e) {
 						to.abort();
 						throw e;
 					} finally {
 						to.endTransaction();
 					}
-					return null;
+					return null; // FIXME return L
 				}
 			};
 			callables.add(call);
@@ -95,76 +96,6 @@ enum CCMImpl implements CCM {
 		return exec.invokeAll(callables); // TODO report to eclipse
 		// invokeAll(callables) when callables is a Collection suggests to
 		// replace with invokeAll(tasks,timeout,unit) which has the same problem
-	}
-
-	// =========================================================================
-	// Private execute around implementation
-	// =========================================================================
-	private static abstract class DBoperation<R> implements Callable<R> {
-
-		private final Transaction trans;
-
-		DBoperation(Transaction trans) {
-			if (trans == null)
-				throw new NullPointerException("Null transaction.");
-			this.trans = trans;
-		}
-
-		final Transaction getTrans() {
-			return trans;
-		}
-	}
-
-	private static abstract class DBRecordOperation<K extends Comparable<K>, V>
-			extends DBoperation<Object> {
-
-		@SuppressWarnings("unused")
-		private final Record<K, V> rec;
-
-		DBRecordOperation(Transaction trans, Record<K, V> rec) {
-			super(trans);
-			if (rec == null) throw new NullPointerException();
-			this.rec = rec;
-		}
-	}
-
-	private static abstract class DBKeyOperation<K extends Comparable<K>, V>
-			extends DBoperation<Object> {
-
-		@SuppressWarnings("unused")
-		private final K key;
-
-		DBKeyOperation(Transaction trans, K key) {
-			super(trans);
-			if (key == null) throw new NullPointerException();
-			this.key = key;
-		}
-	}
-
-	/**
-	 * <a href=
-	 * "http://stackoverflow.com/questions/341971/what-is-the-execute-around-idiom"
-	 * >Execute around </a> the crud operation supplied. Delegates to a worker
-	 * thread from the pool while the current thread blocks waiting for the
-	 * result of the db operation. TODO - add return types and generify
-	 *
-	 * @param crud
-	 *            db operation to be performed
-	 * @throws TransactionFailedException
-	 */
-	private void _operate_(DBoperation<?> crud)
-			throws TransactionFailedException {
-		final Transaction trans = crud.getTrans(); // not null
-		if (!transactions.contains(trans))
-			throw new RuntimeException(new TransactionRequiredException());
-		trans.validateThread();
-		try {
-			crud.call(); // notice I START NO THREAD
-		} catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
-		} catch (Exception e) {
-			throw new Engine.TransactionFailedException(e);
-		}
 	}
 
 	// =========================================================================
@@ -181,7 +112,7 @@ enum CCMImpl implements CCM {
 	}
 
 	// =========================================================================
-	// Active transaction
+	// Active transaction - should be Package Private
 	// =========================================================================
 	@Override
 	public Transaction beginTransaction() {
@@ -195,51 +126,53 @@ enum CCMImpl implements CCM {
 			final Transaction tr, final Record<K, V> record,
 			final DataFile<K, V> dataFile, final Index<K, T> index)
 			throws TransactionFailedException {
-		_operate_(new DBRecordOperation<K, V>(tr, record) {
-
-			@Override
-			public Record<K, V> call() throws KeyExistsException, IOException,
-					InterruptedException {
-				T lookupLocked = index.lookupLocked(tr, record.getKey(),
-					DBLock.E);
-				if (lookupLocked != null)
-					throw new KeyExistsException("" + record.getKey());
-				dataFile.lockHeader(tr, DBLock.E);
-				PageId<T> pageID = dataFile.insert(tr, record);
-				index.insert(tr, new Record<>(record.getKey(), pageID.getId()));
-				return record;
-			}
-		});
-		return record;
+		if (record == null) throw new NullPointerException();
+		_validate(tr);
+		try {
+			T lookupLocked = index.lookupLocked(tr, record.getKey(), DBLock.E);
+			if (lookupLocked != null)
+				throw new KeyExistsException("" + record.getKey());
+			dataFile.lockHeader(tr, DBLock.E);
+			PageId<T> pageID = dataFile.insert(tr, record);
+			index.insert(tr, new Record<>(record.getKey(), pageID.getId()));
+			return record; // NOOP
+		} catch (IOException | InterruptedException | KeyExistsException e) {
+			throw new TransactionFailedException(e);
+		}
 	}
 
 	@Override
-	public <K extends Comparable<K>, V, T> Record<K, V> lookup(Transaction tr,
-			K key, DBLock el, final DataFile<K, V> dataFile, Index<K, T> index)
-			throws IOException, InterruptedException {
-		T id = index.lookupLocked(tr, key, el);
-		if (id == null) return null;
-		return new Record<>(key, dataFile.get(tr, new PageId<>(id), key));
+	public <K extends Comparable<K>, V, T> Record<K, V> lookup(
+			final Transaction tr, final K key, final DBLock el,
+			DataFile<K, V> dataFile, Index<K, T> index)
+			throws TransactionFailedException {
+		if (key == null) throw new NullPointerException();
+		_validate(tr);
+		try {
+			T id = index.lookupLocked(tr, key, el);
+			if (id == null) return null;
+			return new Record<>(key, dataFile.get(tr, new PageId<>(id), key));
+		} catch (IOException | InterruptedException e) {
+			throw new TransactionFailedException(e);
+		}
 	}
 
 	@Override
 	public <K extends Comparable<K>, V, T> void delete(final Transaction tr,
 			final K key, DBLock el, final DataFile<K, V> file,
 			final Index<K, T> index) throws TransactionFailedException {
-		_operate_(new DBKeyOperation<K, V>(tr, key) {
-
-			@Override
-			public Record<K, V> call() throws IOException,
-					InterruptedException, KeyDoesntExistException {
-				T lookupLocked = index.lookupLocked(tr, key, DBLock.E);
-				if (lookupLocked == null)
-					throw new KeyDoesntExistException("" + key);
-				file.lockHeader(tr, DBLock.E);
-				file.delete(tr, new PageId<>(lookupLocked), key);
-				index.delete(tr, key);
-				return null;
-			}
-		});
+		if (key == null) throw new NullPointerException();
+		_validate(tr);
+		try {
+			T lookupLocked = index.lookupLocked(tr, key, DBLock.E);
+			if (lookupLocked == null)
+				throw new KeyDoesntExistException("" + key);
+			file.lockHeader(tr, DBLock.E);
+			file.delete(tr, new PageId<>(lookupLocked), key);
+			index.delete(tr, key);
+		} catch (IOException | InterruptedException | KeyDoesntExistException e) {
+			throw new TransactionFailedException(e);
+		}
 	}
 
 	// =========================================================================
@@ -247,14 +180,27 @@ enum CCMImpl implements CCM {
 	// =========================================================================
 	@Override
 	public <K extends Comparable<K>, V> void commit(Transaction tr,
-			DataFile<K, V> dataFile, Index<K, ?> index) throws IOException {
-		tr.commit(dataFile, index);
+			DataFile<K, V> dataFile, Index<K, ?> index)
+			throws TransactionFailedException {
+		_validate(tr);
+		try {
+			tr.commit(dataFile, index);
+		} catch (IOException e) {
+			throw new TransactionFailedException(e);
+		}
 	}
 
+	/** May throw IO when trying to reread a dirty permanent page - BAD */
 	@Override
 	public <K extends Comparable<K>, V> void abort(Transaction tr,
-			DataFile<K, V> dataFile, Index<K, ?> index) throws IOException {
-		tr.abort(dataFile, index);
+			DataFile<K, V> dataFile, Index<K, ?> index)
+			throws TransactionFailedException {
+		_validate(tr);
+		try {
+			tr.abort(dataFile, index);
+		} catch (IOException e) {
+			throw new TransactionFailedException(e);
+		}
 	}
 
 	// =========================================================================
@@ -294,5 +240,14 @@ enum CCMImpl implements CCM {
 	@Override
 	public void bulkDelete(Transaction tr, Path fileOfKeys, Object newParam) {
 		throw new UnsupportedOperationException("Not implemented"); // TODO
+	}
+
+	// =========================================================================
+	// Helpers
+	// =========================================================================
+	private void _validate(Transaction tr) {
+		if (!transactions.contains(tr))
+			throw new RuntimeException(new TransactionRequiredException());
+		tr.validateThread();
 	}
 }

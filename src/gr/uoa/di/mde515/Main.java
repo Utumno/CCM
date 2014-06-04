@@ -2,13 +2,10 @@ package gr.uoa.di.mde515;
 
 import gr.uoa.di.mde515.engine.Engine;
 import gr.uoa.di.mde515.engine.Engine.TransactionFailedException;
-import gr.uoa.di.mde515.engine.Engine.TransactionalOperation;
 import gr.uoa.di.mde515.engine.buffer.IntegerIntegerSerializer;
-import gr.uoa.di.mde515.index.KeyExistsException;
 import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.locks.DBLock;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -57,14 +54,12 @@ public class Main {
 	// =========================================================================
 	@SuppressWarnings("unused")
 	private static void treePrint(Engine<Integer, Integer, Integer> eng)
-			throws FileNotFoundException, IOException, InterruptedException,
-			KeyExistsException, TransactionFailedException, ExecutionException {
+			throws TransactionFailedException, InterruptedException,
+			ExecutionException {
 		Engine<Integer, Integer, Integer>.TransactionalOperation to = eng.new TransactionalOperation() {
 
 			@Override
-			public void execute() throws InterruptedException, IOException,
-					KeyExistsException, TransactionFailedException,
-					ExecutionException {
+			public void execute() throws TransactionFailedException {
 				List<Integer> primeNumbers = new ArrayList<>(Arrays.asList(2,
 					3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53,
 					61, 59, 67, 71, 73, 79, 83, 89, 97, 101, 103, 109, 113,
@@ -74,7 +69,7 @@ public class Main {
 				for (Integer in : perm) {
 					Record<Integer, Integer> rec = new Record<>(in, in);
 					insertIndex(rec);
-					Thread.sleep(300);
+					// Thread.sleep(300);
 					// bPlusTree.print(tr, DBLock.E);
 				}
 				print(DBLock.E);
@@ -91,14 +86,11 @@ public class Main {
 	@SuppressWarnings("unused")
 	private static <K extends Comparable<K>, V, T>
 			Engine<K, V, T>.TransactionalOperation deleter(Engine<K, V, T> eng,
-					final K key) throws InterruptedException,
-					ExecutionException {
+					final K key) {
 		return eng.new TransactionalOperation() {
 
 			@Override
-			public void execute() throws InterruptedException, IOException,
-					KeyExistsException, TransactionFailedException,
-					ExecutionException {
+			public void execute() throws TransactionFailedException {
 				delete(key, DBLock.E);
 				System.out.println("DELETED " + key);
 				commit();
@@ -113,9 +105,7 @@ public class Main {
 		return eng.new TransactionalOperation() {
 
 			@Override
-			public void execute() throws InterruptedException, IOException,
-					KeyExistsException, TransactionFailedException,
-					ExecutionException {
+			public void execute() throws TransactionFailedException {
 				Record<K, V> rkv = lookup(key, DBLock.S);
 				System.out.println("The record is "
 					+ (rkv == null ? null
@@ -133,9 +123,7 @@ public class Main {
 		return eng.new TransactionalOperation() {
 
 			@Override
-			public void execute() throws IOException, InterruptedException,
-					KeyExistsException, TransactionFailedException,
-					ExecutionException {
+			public void execute() throws TransactionFailedException {
 				List<Integer> primeNumbers = new ArrayList<>(Arrays.asList(2,
 					3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53,
 					61, 59, 67, 71, 73, 79, 83, 89, 97, 101, 103, 109, 113,
@@ -172,14 +160,13 @@ public class Main {
 		};
 	}
 
-	private static TransactionalOperation inserterWithLookup(
-			Engine<Integer, Integer, Integer> eng,
-			final Record<Integer, Integer> rec) {
+	private static Engine<Integer, Integer, Integer>.TransactionalOperation
+			inserterWithLookup(Engine<Integer, Integer, Integer> eng,
+					final Record<Integer, Integer> rec) {
 		return eng.new TransactionalOperation() {
 
 			@Override
-			public void execute() throws IOException, InterruptedException,
-					KeyExistsException, TransactionFailedException {
+			public void execute() throws TransactionFailedException {
 				Record<Integer, Integer> rkv = lookup(rec.getKey(), DBLock.E);
 				System.out.println("The record is "
 					+ (rkv == null ? null
