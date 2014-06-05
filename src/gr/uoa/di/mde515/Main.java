@@ -74,7 +74,6 @@ public class Main {
 				}
 				print(DBLock.E);
 				System.out.println();
-				commit();
 				return null;
 			}
 		};
@@ -94,7 +93,6 @@ public class Main {
 			public Void execute() throws TransactionFailedException {
 				delete(key, DBLock.E);
 				System.out.println("DELETED " + key);
-				commit();
 				return null;
 			}
 		};
@@ -157,7 +155,6 @@ public class Main {
 				}
 				print(DBLock.E); // must be -1::0
 				// Thread.sleep(2000);
-				commit();
 				// eng.print(tr, DBLock.E);
 				return null;
 			}
@@ -182,7 +179,6 @@ public class Main {
 					System.out.println("THE RECORD already exists. "
 						+ "NOT inserting");
 				}
-				commit();
 				// eng.print(tr, DBLock.E);
 				return null;
 			}

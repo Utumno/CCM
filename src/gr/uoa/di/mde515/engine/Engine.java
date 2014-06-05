@@ -113,14 +113,6 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 			Engine.this.delete(trans, in, e);
 		}
 
-		public final void abort() throws TransactionFailedException {
-			Engine.this.abort(trans);
-		}
-
-		public final void commit() throws TransactionFailedException {
-			Engine.this.commit(trans);
-		}
-
 		/** ONLY FOR DEBUG */
 		protected final void print(DBLock el) throws TransactionFailedException {
 			try {
@@ -143,12 +135,20 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 		// =====================================================================
 		// Package private - Transaction management
 		// =====================================================================
-		void init() {
+		final void init() {
 			trans = beginTransaction();
 		}
 
-		void endTransaction() {
+		final void endTransaction() {
 			Engine.this.endTransaction(trans);
+		}
+
+		final void abort() throws TransactionFailedException {
+			Engine.this.abort(trans);
+		}
+
+		final void commit() throws TransactionFailedException {
+			Engine.this.commit(trans);
 		}
 	}
 

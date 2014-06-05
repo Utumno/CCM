@@ -114,7 +114,7 @@ public final class Transaction {
 			final Index<K, ?> index) throws IOException {
 		System.out.println(this + " aborting " + lockedDataPages
 			+ lockedIndexPages);
-		state = state.transition(State.COMMITING);
+		state = state.transition(State.ABORTING);
 		for (List<PageId<Integer>> list : lockedDataPages.values())
 			dataFile.abort(list);
 		for (List<PageId<Integer>> list : lockedIndexPages.values())
@@ -122,9 +122,7 @@ public final class Transaction {
 	}
 
 	void end() {
-		// state = state.transition(State.ENDING); // FIXME
-		// java.util.concurrent.ExecutionException:
-		// java.lang.IllegalStateException: ACTIVE to ENDING
+		state = state.transition(State.ENDING);
 		for (Entry<DBLock, List<PageId<Integer>>> entries : lockedDataPages
 			.entrySet()) {
 			for (PageId<Integer> pid : entries.getValue()) {
@@ -155,23 +153,40 @@ public final class Transaction {
 	private enum State {
 		ACTIVE, COMMITING, ABORTING, ENDING;
 
-		/** Meant to allow ACTIVE > COMMIT (once) or ABORT (many) > ENDING */
-		State transition(State next) {
+		/**
+		 * Meant to allow ACTIVE > COMMIT (once) or ABORT (many) > ENDING.
+		 *
+		 * @param next
+		 *            the next state
+		 * @throws IllegalTransitionException
+		 *             if above does not hold
+		 */
+		State transition(State next) throws IllegalTransitionException {
 			switch (this) {
 			case ACTIVE:
 				if (next == ENDING)
-					throw new IllegalStateException(this + " to " + next);
+					throw new IllegalTransitionException(this + " to " + next);
 				return next;
 			case COMMITING:
 				if (next == ACTIVE || next == this) // call commit once
-					throw new IllegalStateException(this + " to " + next);
-				return ENDING;
+					throw new IllegalTransitionException(this + " to " + next);
+				return next; // can call abort from commit (commit failed)
 			case ABORTING:
 				if (next == ACTIVE || next == COMMITING)
-					throw new IllegalStateException(this + " to " + next);
-				return (next == this) ? this : ENDING;
+					throw new IllegalTransitionException(this + " to " + next);
+				return next;
 			default:
-				throw new IllegalStateException(this + " to " + next);
+				throw new IllegalTransitionException(this + " to " + next);
+			}
+		}
+
+		/** TODO make into checked exception */
+		final class IllegalTransitionException extends RuntimeException {
+
+			private static final long serialVersionUID = -2944616043222631837L;
+
+			public IllegalTransitionException(String string) {
+				super(string);
 			}
 		}
 	}
