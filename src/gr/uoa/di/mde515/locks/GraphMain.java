@@ -12,7 +12,7 @@ import org.jgrapht.graph.SimpleDirectedGraph;
 public class GraphMain {
 
 	public static void main(String[] args) {
-		DirectedGraph<String, DefaultEdge> graph = new SimpleDirectedGraph<String, DefaultEdge>(
+		DirectedGraph<String, DefaultEdge> graph = new SimpleDirectedGraph<>(
 			DefaultEdge.class);
 		Graph g = new Graph();
 		String G = "G";
@@ -40,7 +40,7 @@ public class GraphMain {
 		System.out.println("Does it contain a cycle? " + t.detectCycles());
 		System.out.println("Is the M part of the cycle? "
 			+ t.detectCyclesContainingVertex(M));
-		Set<String> s = new TreeSet<String>();
+		Set<String> s = new TreeSet<>();
 		System.out.println("The find cycles " + t.findCycles());
 		System.out.println("The cycle containing vertex M is "
 			+ t.findCyclesContainingVertex(M));

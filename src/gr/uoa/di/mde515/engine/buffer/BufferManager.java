@@ -47,14 +47,13 @@ public final class BufferManager<T> {
 	}
 
 	@SuppressWarnings("unused")
-	// TODO
 	private static enum ReplacementAlgorithm {
-		LRU;
+		LRU; // TODO
 	}
 
 	/**
 	 * The BufferManager follows the singleton pattern. So one BufferManager is
-	 * created.
+	 * created. TODO proper generic factory !
 	 */
 	public static BufferManager<Integer> getInstance() {
 		return instance;

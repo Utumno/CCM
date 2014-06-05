@@ -25,16 +25,7 @@ final class Frame {
 	}
 
 	public ByteBuffer getBuffer() {
-		// System.out.println("Start getBufferFromFrame");
-		// System.out.println("The framenumber is " + getFrameNumber());
-		// System.out.println("The (getBufferFromFrame)ByteBuffer is "
-		// + data.hashCode());
-		// System.out.println("End getBufferFromFrame");
 		return data;
-	}
-
-	public int printByteBufferHashCode() {
-		return data.hashCode();
 	}
 
 	public boolean isDirty() {

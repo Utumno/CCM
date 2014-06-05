@@ -61,7 +61,7 @@ public class Graph {
 		System.out.println("While loop ended");
 	}
 
-	private Entry<String, Integer> findMax(Map<String, Integer> map) {
+	private static Entry<String, Integer> findMax(Map<String, Integer> map) {
 		Map.Entry<String, Integer> maxEntry = null;
 		for (Map.Entry<String, Integer> entry : map.entrySet()) {
 			if (maxEntry == null
