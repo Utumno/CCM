@@ -1,20 +1,19 @@
 package gr.uoa.di.mde515.engine.buffer;
 
+import gr.uoa.di.mde515.engine.Engine;
+
 import java.nio.ByteBuffer;
 
-// TODO - implement Serializer ?
 /**
- * Represents a sloted page of keys and values with fixed size values and keys
- * and a fixed size header.
+ * Represents a sloted page. Each slot holds a key and a value, both of fixed
+ * size. The page has a fixed size header.
  *
  * @param <K>
- *            the key type
+ *            the key type, must extend comparable
  * @param <V>
- *            the value
- * @param <T>
- *            the type of the PageId<T>
+ *            the value type
  */
-public class RecordsPage<K extends Comparable<K>, V, T> extends Page {
+public class RecordsPage<K extends Comparable<K>, V> extends Page {
 
 	// private static final BufferManager<Integer> buff = BufferManager
 	// .getInstance();
@@ -23,6 +22,11 @@ public class RecordsPage<K extends Comparable<K>, V, T> extends Page {
 	private final Serializer<V> serVal;
 	private final short header_size;
 	private final int record_size;
+	private final short max_keys;
+
+	protected final short getMax_keys() {
+		return max_keys;
+	}
 
 	public RecordsPage(int pageid, ByteBuffer dat, Serializer<K> serKey,
 			Serializer<V> serVal, short header_size) {
@@ -31,6 +35,8 @@ public class RecordsPage<K extends Comparable<K>, V, T> extends Page {
 		this.serVal = serVal;
 		this.header_size = header_size;
 		record_size = serKey.getTypeSize() + serVal.getTypeSize();
+		max_keys = (short) ((Engine.PAGE_SIZE - header_size - serKey
+			.getTypeSize()) / record_size);
 	}
 
 	public RecordsPage(Page page, Serializer<K> serKey, Serializer<V> serVal,
@@ -40,6 +46,8 @@ public class RecordsPage<K extends Comparable<K>, V, T> extends Page {
 		this.serVal = serVal;
 		this.header_size = header_size;
 		record_size = serKey.getTypeSize() + serVal.getTypeSize();
+		max_keys = (short) ((Engine.PAGE_SIZE - header_size - serKey
+			.getTypeSize()) / record_size);
 	}
 
 	// =========================================================================
@@ -62,13 +70,5 @@ public class RecordsPage<K extends Comparable<K>, V, T> extends Page {
 	protected void writeValue(int slot, V value) {
 		serVal.writeValue(getDat(),
 			header_size + slot * record_size + serKey.getTypeSize(), value);
-	}
-
-	protected short getKeySize() {
-		return serKey.getTypeSize();
-	}
-
-	protected final int getRecordSize() {
-		return record_size;
 	}
 }

@@ -66,14 +66,8 @@ public class Page { // TODO abstract
 	// Object Overrides
 	// =========================================================================
 	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("Page [pageid=");
-		builder.append(pageid);
-		builder.append(", dat=");
-		builder.append(getDat());
-		builder.append("]");
-		return builder.toString();
+	public final String toString() {
+		return "@" + getPageId();
 	}
 
 	@Override
