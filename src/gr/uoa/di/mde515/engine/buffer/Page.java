@@ -1,27 +1,25 @@
 package gr.uoa.di.mde515.engine.buffer;
 
-import gr.uoa.di.mde515.index.PageId;
-
 import java.nio.ByteBuffer;
 
-public class Page<T> { // TODO abstract
+public class Page { // TODO abstract
 
 	// private static final BufferManager<Integer> buff = BufferManager
 	// .getInstance();
 	// FIXME immutable ?
-	private final PageId<T> pageid;
+	private final int pageid;
 	private final ByteBuffer dat;
 
-	public Page(T pageid, ByteBuffer dat) {
-		this.pageid = new PageId<>(pageid);
+	public Page(int pageid, ByteBuffer dat) {
+		this.pageid = pageid;
 		this.dat = dat;
 	}
 
-	public Page(Page<T> allocFrame) {
-		this(allocFrame.pageid.getId(), allocFrame.getDat());
+	public Page(Page allocFrame) {
+		this(allocFrame.pageid, allocFrame.getDat());
 	}
 
-	public PageId<T> getPageId() {
+	public int getPageId() {
 		return pageid;
 	}
 
@@ -64,6 +62,9 @@ public class Page<T> { // TODO abstract
 		}
 	}
 
+	// =========================================================================
+	// Object Overrides
+	// =========================================================================
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
@@ -76,22 +77,20 @@ public class Page<T> { // TODO abstract
 	}
 
 	@Override
-	public final int hashCode() {
+	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((pageid == null) ? 0 : pageid.hashCode());
+		result = prime * result + pageid;
 		return result;
 	}
 
 	@Override
-	public final boolean equals(Object obj) {
+	public boolean equals(Object obj) {
 		if (this == obj) return true;
 		if (obj == null) return false;
 		if (getClass() != obj.getClass()) return false;
 		Page other = (Page) obj;
-		if (pageid == null) {
-			if (other.pageid != null) return false;
-		} else if (!pageid.equals(other.pageid)) return false;
+		if (pageid != other.pageid) return false;
 		return true;
 	}
 }

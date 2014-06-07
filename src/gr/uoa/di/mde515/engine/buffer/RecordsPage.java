@@ -14,7 +14,7 @@ import java.nio.ByteBuffer;
  * @param <T>
  *            the type of the PageId<T>
  */
-public class RecordsPage<K extends Comparable<K>, V, T> extends Page<T> {
+public class RecordsPage<K extends Comparable<K>, V, T> extends Page {
 
 	// private static final BufferManager<Integer> buff = BufferManager
 	// .getInstance();
@@ -22,14 +22,14 @@ public class RecordsPage<K extends Comparable<K>, V, T> extends Page<T> {
 	private final Serializer<K, V> ser;
 	private final short header_size;
 
-	public RecordsPage(T pageid, ByteBuffer dat, Serializer<K, V> ser,
+	public RecordsPage(int pageid, ByteBuffer dat, Serializer<K, V> ser,
 			short header_size) {
 		super(pageid, dat);
 		this.ser = ser;
 		this.header_size = header_size;
 	}
 
-	public RecordsPage(Page<T> page, Serializer<K, V> ser, short header_size) {
+	public RecordsPage(Page page, Serializer<K, V> ser, short header_size) {
 		super(page);
 		this.ser = ser;
 		this.header_size = header_size;

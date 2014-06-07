@@ -14,7 +14,7 @@ import java.util.List;
 
 public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 
-	private static final BufferManager<Integer> buf = BufferManager
+	private static final BufferManager buf = BufferManager
 		.getInstance();
 	// storage layer
 	private final DiskFile file;
@@ -57,9 +57,9 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		private static final int OFFSET_RECORD_SIZE = 12;
 		private static final int OFFSET_NUM_OF_PAGES = 14;
 		// BufferManager
-		private static final BufferManager<Integer> buff = BufferManager
+		private static final BufferManager buff = BufferManager
 			.getInstance();
-		private final Page<Integer> header_page;
+		private final Page header_page;
 
 		Header(DiskFile file, short recordSize) throws IOException,
 				InterruptedException {
@@ -153,7 +153,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	public <T> PageId<T> insert(Transaction tr, Record<K, V> record)
 			throws IOException, InterruptedException {
 		int pageID = getFreeListPageId();
-		Page<Integer> p;
+		Page p;
 		if (tr.lock(pageID, DBLock.E)) { // locks for the first time
 			p = buf.allocFrame(pageID, file);
 			// FIXME - race in pin ??? - add boolean pin param in allocFrame
@@ -176,7 +176,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	public <T> void delete(Transaction tr, PageId<T> p, K key)
 			throws IOException, InterruptedException {
 		int newFreeSlotposition = 0;
-		Page<Integer> deleteFromPage;
+		Page deleteFromPage;
 		if (tr.lock((Integer) p.getId(), DBLock.E)) {
 			deleteFromPage = buf.allocFrame((Integer) p.getId(), file);
 			// FIXME - race in pin ??? - add boolean pin param in allocFrame
@@ -229,7 +229,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 			// update the file header
 			if (head.getFreeList() != UNDEFINED) {
 				// get next free page
-				Page<Integer> nextPage;
+				Page nextPage;
 				if (tr.lock(head.getFreeList(), DBLock.E)) {
 					// time
 					nextPage = buf.allocFrame(head.getFreeList(), file);
@@ -244,8 +244,8 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				deleteFromPage.writeInt(OFFSET_NEXT_PAGE,
 					nextPage.readInt(OFFSET_CURRENT_PAGE));
 				deleteFromPage.writeInt(OFFSET_PREVIOUS_PAGE, 0);
-				buf.setPageDirty(nextPage.getPageId().getId());
-				buf.setPageDirty(deleteFromPage.getPageId().getId());
+				buf.setPageDirty(nextPage.getPageId());
+				buf.setPageDirty(deleteFromPage.getPageId());
 				head.setFreeList(deleteFromPage.readInt(OFFSET_CURRENT_PAGE));
 				head.pageWrite();
 				buf.setPageDirty(0);
@@ -253,7 +253,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				head.setFreeList(deleteFromPage.readInt(OFFSET_CURRENT_PAGE));
 				deleteFromPage.writeInt(OFFSET_NEXT_PAGE, 0);
 				deleteFromPage.writeInt(OFFSET_PREVIOUS_PAGE, 0);
-				buf.setPageDirty(deleteFromPage.getPageId().getId());
+				buf.setPageDirty(deleteFromPage.getPageId());
 				head.pageWrite();
 				buf.setPageDirty(0);
 			}
@@ -265,7 +265,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 			InterruptedException {
 		if (key == null)
 			throw new NullPointerException("Trying to get a null key");
-		Page<Integer> allocFrame = buf.allocFrame((Integer) p.getId(), file);
+		Page allocFrame = buf.allocFrame((Integer) p.getId(), file);
 		for (int i = PAGE_HEADER_LENGTH, j = 0; j < head.MAXIMUM_NUMBER_OF_SLOTS; i += head.RECORD_SIZE, ++j) {
 			if (key.compareTo((K) (Integer) allocFrame.readInt(i)) == 0)
 				return (V) (Integer) allocFrame.readInt(i + KEY_SIZE);
@@ -328,7 +328,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	 */
 	private static void createPageInMemory(int pageID)
 			throws InterruptedException {
-		Page<?> p = buf.allocFrameForNewPage(pageID);
+		Page p = buf.allocFrameForNewPage(pageID);
 		for (int i = 0; i < PAGE_SIZE; i = i + 4) {
 			p.writeInt(i, 0);
 		}
@@ -340,7 +340,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		buf.setPageDirty(pageID);
 	}
 
-	private void writeIntoFrame(Page<Integer> p, int key, int value) {
+	private void writeIntoFrame(Page p, int key, int value) {
 		int freeSlot = p.readInt(OFFSET_NEXT_FREE_SLOT);
 		// consider the free slots
 		int nextFreeSlot = p.readInt(freeSlot + KEY_SIZE);
@@ -352,7 +352,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				.readInt(OFFSET_CURRENT_NUMBER_OF_SLOTS);
 			p.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS,
 				current_number_of_slots + 1);
-			buf.setPageDirty(p.getPageId().getId());
+			buf.setPageDirty(p.getPageId());
 		} else {
 			// update the next slot
 			p.writeInt(OFFSET_NEXT_FREE_SLOT, nextFreeSlot);
@@ -363,11 +363,11 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				.readInt(OFFSET_CURRENT_NUMBER_OF_SLOTS);
 			p.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS,
 				current_number_of_slots + 1);
-			buf.setPageDirty(p.getPageId().getId());
+			buf.setPageDirty(p.getPageId());
 		}
 	}
 
-	private void checkReachLimitOfPage(Page<Integer> p, Transaction tr)
+	private void checkReachLimitOfPage(Page p, Transaction tr)
 			throws IOException, InterruptedException {
 		int current_number_of_slots = p.readInt(OFFSET_CURRENT_NUMBER_OF_SLOTS);
 		if (current_number_of_slots == head.MAXIMUM_NUMBER_OF_SLOTS) {
@@ -377,7 +377,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 			p.writeInt(OFFSET_PREVIOUS_PAGE, 0);
 			head.setFreeList(next_page);
 			if (next_page != UNDEFINED) {
-				Page<Integer> s;
+				Page s;
 				System.out.println("The NEXT FRAME HERE");
 				if (tr.lock(next_page, DBLock.E)) { // locks for the first time
 					s = buf.allocFrame(next_page, file);
@@ -389,7 +389,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				}
 				s = buf.allocFrame(next_page, file);
 				s.writeInt(OFFSET_PREVIOUS_PAGE, 0);
-				buf.setPageDirty(s.getPageId().getId());
+				buf.setPageDirty(s.getPageId());
 				// buf.flushPage(next_page, file); // FIXME FLUSH ??
 			}
 		}
