@@ -50,7 +50,7 @@ enum CCMImpl implements CCM {
 	// =========================================================================
 	@Override
 	public <K extends Comparable<K>, V, T, L> Future<L> submit(
-			final Engine<K, V, T>.TransactionalOperation to) {
+			final Engine<K, V>.TransactionalOperation to) {
 		return exec.submit(new Callable<L>() {
 
 			@Override
@@ -89,10 +89,10 @@ enum CCMImpl implements CCM {
 
 	@Override
 	public <K extends Comparable<K>, V, T, L> List<Future<L>> submitAll(
-			final Collection<Engine<K, V, T>.TransactionalOperation> tos)
+			final Collection<Engine<K, V>.TransactionalOperation> tos)
 			throws InterruptedException {
 		Collection<Callable<L>> callables = new ArrayList<>();
-		for (final Engine<K, V, T>.TransactionalOperation to : tos) {
+		for (final Engine<K, V>.TransactionalOperation to : tos) {
 			Callable<L> call = new Callable<L>() {
 
 				@Override

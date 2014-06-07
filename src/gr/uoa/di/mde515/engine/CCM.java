@@ -51,10 +51,10 @@ interface CCM {
 	void shutdown() throws InterruptedException;
 
 	<K extends Comparable<K>, V, T, L> Future<L> submit(
-			Engine<K, V, T>.TransactionalOperation to);
+			Engine<K, V>.TransactionalOperation to);
 
 	<K extends Comparable<K>, V, T, L> List<Future<L>> submitAll(
-			Collection<Engine<K, V, T>.TransactionalOperation> to)
+			Collection<Engine<K, V>.TransactionalOperation> to)
 			throws InterruptedException;
 
 	// =========================================================================

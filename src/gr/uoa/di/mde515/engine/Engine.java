@@ -19,26 +19,24 @@ import java.util.concurrent.Future;
 /**
  * Represents the DB external interface. It is a monofilestic engine but can be
  * extended to handle more files, by making the methods instead of the class
- * generic. This though leads to some complications given that the files have
- * also generic parameters. Should be an interface implemented by enums (for
- * singleton property) but with the addition of a static factory (TODO: java 8
- * ?). <br/>
+ * generic for added complexity. The pages of the files are stamped with an
+ * integer id, which is negative for the pages of the index file. Should be an
+ * interface implemented by enums (for singleton property) but with the addition
+ * of a static factory (TODO: java 8 ?). <br/>
+ * The current Heap file implementation expects Integers (there are casts that
+ * will blow if not) FIXME - generify
  *
  * @param <K>
  *            the key type of the records in the one and only one file. Must
- *            extend {@link Comparable} - the current implementation expects
- *            Integers (there are casts that will blow if not) FIXME - generify
+ *            extend {@link Comparable}
  * @param <V>
  *            the type of the records value - that is all the attributes except
  *            the key. No restrictions here.
- * @param <T>
- *            the type of the page IDs - the current implementation expects
- *            Integers (there are casts that will blow if not) FIXME - generify
  */
-public abstract class Engine<K extends Comparable<K>, V, T> {
+public abstract class Engine<K extends Comparable<K>, V> {
 
 	public static final short PAGE_SIZE = 48;
-	private static volatile Engine<?, ?, ?> instance;
+	private static volatile Engine<?, ?> instance;
 	private final static Object HACK = new Object(); // TODO fix this mess
 
 	// =========================================================================
@@ -64,7 +62,7 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 	 * care of unlocking the locks held by the transaction.
 	 *
 	 * Implementation: calls {@link ExecutorService#invokeAll(Collection)} on an
-	 * ExecutorService. TODO - call invokeAll
+	 * ExecutorService. TODO - call invokeAll(tasks, timeout, unit)
 	 *
 	 * @param tos
 	 *            the Collection of the TransactionalOperation to be executed
@@ -75,11 +73,10 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 			Collection<TransactionalOperation> tos) throws InterruptedException;
 
 	// TODO: proper factory
-	public static <K extends Comparable<K>, V, T> Engine<?, ?, ?> newInstance(
+	public static <K extends Comparable<K>, V> Engine<?, ?> newInstance(
 			Serializer<K> serKey, Serializer<V> serVal) {
 		if (instance == null) synchronized (HACK) {
-				if (instance == null)
-					instance = new EngineImpl<K, V, T>(serKey, serVal);
+			if (instance == null) instance = new EngineImpl<>(serKey, serVal);
 		}
 		return instance;
 	}
@@ -191,7 +188,7 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 	// File bulk_load(File fileOfRecords);
 	// File bulk_delete(File fileOfKeys);
 	// =========================================================================
-	// Debug
+	// Abstract debug methods
 	// =========================================================================
 	/** ONLY FOR DEBUG */
 	public abstract void deleteIndex(Transaction tr, K rec) throws IOException,
@@ -209,9 +206,9 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 			InterruptedException;
 }
 
-final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
+final class EngineImpl<K extends Comparable<K>, V> extends Engine<K, V> {
 
-	private static final String DB_FILE = "temp.db";
+	private static final String DB_FILE = "db.db";
 	private static final String INDEX_FILE = "index.db";
 	private static final short RECORD_SIZE = 8; // TODO bin
 	private final CCM ccm;
@@ -233,13 +230,13 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 	}
 
 	@Override
-	public <L> Future<L> submit(Engine<K, V, T>.TransactionalOperation to) {
+	public <L> Future<L> submit(Engine<K, V>.TransactionalOperation to) {
 		return ccm.submit(to);
 	}
 
 	@Override
 	public <L> List<Future<L>> submitAll(
-			Collection<Engine<K, V, T>.TransactionalOperation> to)
+			Collection<Engine<K, V>.TransactionalOperation> to)
 			throws InterruptedException {
 		return ccm.submitAll(to);
 	}
@@ -302,12 +299,12 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 	@Override
 	public void print(Transaction tr, DBLock e) throws IOException,
 			InterruptedException {
-		((DiskIndex<K, T>) index).print(tr, e);
+		((DiskIndex<K, Integer>) index).print(tr, e);
 	}
 
 	@Override
 	public void print() {
-		((IndexJava<K, T>) index).print();
+		((IndexJava<K, Integer>) index).print();
 	}
 
 	@Override
