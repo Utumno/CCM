@@ -24,7 +24,7 @@ public class DiskFile {
 
 	/**
 	 * The method allows to read the contents of a disk block to a frame in
-	 * memory. *
+	 * memory.
 	 *
 	 * @param pageID
 	 * @param frame
