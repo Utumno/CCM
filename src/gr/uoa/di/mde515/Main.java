@@ -2,7 +2,7 @@ package gr.uoa.di.mde515;
 
 import gr.uoa.di.mde515.engine.Engine;
 import gr.uoa.di.mde515.engine.Engine.TransactionFailedException;
-import gr.uoa.di.mde515.engine.buffer.IntegerIntegerSerializer;
+import gr.uoa.di.mde515.engine.buffer.IntegerSerializer;
 import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.locks.DBLock;
 
@@ -19,9 +19,9 @@ public class Main {
 
 	public static void main(String[] args) throws InterruptedException,
 			IOException, ExecutionException {
-		final Engine<Integer, Integer, Integer> eng = (Engine<Integer, Integer, Integer>) Engine
-			.newInstance(new IntegerIntegerSerializer());// FIXME unchecked and
-															// ugly
+		final Engine<Integer, Integer> eng = (Engine<Integer, Integer>) Engine
+			.newInstance(IntegerSerializer.INSTANCE, IntegerSerializer.INSTANCE);
+		// FIXME unchecked and ugly
 		try {
 			// I need to call get so the thread blocks - otherwise execution
 			// reaches the finally block and threads block (...)
@@ -53,10 +53,10 @@ public class Main {
 	// TEST METHODS - TODO JUnit
 	// =========================================================================
 	@SuppressWarnings("unused")
-	private static void treePrint(Engine<Integer, Integer, Integer> eng)
+	private static void treePrint(Engine<Integer, Integer> eng)
 			throws TransactionFailedException, InterruptedException,
 			ExecutionException {
-		Engine<Integer, Integer, Integer>.TransactionalOperation to = eng.new TransactionalOperation() {
+		Engine<Integer, Integer>.TransactionalOperation to = eng.new TransactionalOperation() {
 
 			@Override
 			public Void execute() throws TransactionFailedException {
@@ -85,7 +85,7 @@ public class Main {
 	// =========================================================================
 	@SuppressWarnings("unused")
 	private static <K extends Comparable<K>, V, T>
-			Engine<K, V, T>.TransactionalOperation deleter(Engine<K, V, T> eng,
+			Engine<K, V>.TransactionalOperation deleter(Engine<K, V> eng,
 					final K key) {
 		return eng.new TransactionalOperation() {
 
@@ -100,8 +100,8 @@ public class Main {
 
 	@SuppressWarnings("unused")
 	private static <K extends Comparable<K>, V, T>
-			Engine<K, V, T>.TransactionalOperation lookuper(
-					Engine<K, V, T> eng, final K key) {
+			Engine<K, V>.TransactionalOperation lookuper(Engine<K, V> eng,
+					final K key) {
 		return eng.new TransactionalOperation() {
 
 			@Override
@@ -119,8 +119,8 @@ public class Main {
 	// =========================================================================
 	// More Transactional Operations examples - TODO JUnit - FIXME integers
 	// =========================================================================
-	private static Engine<Integer, Integer, Integer>.TransactionalOperation
-			inserterDeleter(Engine<Integer, Integer, Integer> eng) {
+	private static Engine<Integer, Integer>.TransactionalOperation
+			inserterDeleter(Engine<Integer, Integer> eng) {
 		return eng.new TransactionalOperation() {
 
 			@Override
@@ -161,8 +161,8 @@ public class Main {
 		};
 	}
 
-	private static Engine<Integer, Integer, Integer>.TransactionalOperation
-			inserterWithLookup(Engine<Integer, Integer, Integer> eng,
+	private static Engine<Integer, Integer>.TransactionalOperation
+			inserterWithLookup(Engine<Integer, Integer> eng,
 					final Record<Integer, Integer> rec) {
 		return eng.new TransactionalOperation() {
 

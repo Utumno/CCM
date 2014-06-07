@@ -3,11 +3,11 @@ package gr.uoa.di.mde515.trees;
 import gr.uoa.di.mde515.engine.Engine;
 import gr.uoa.di.mde515.engine.Transaction;
 import gr.uoa.di.mde515.engine.buffer.BufferManager;
+import gr.uoa.di.mde515.engine.buffer.IntegerSerializer;
 import gr.uoa.di.mde515.engine.buffer.Page;
 import gr.uoa.di.mde515.engine.buffer.RecordsPage;
 import gr.uoa.di.mde515.engine.buffer.Serializer;
 import gr.uoa.di.mde515.files.IndexDiskFile;
-import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.locks.DBLock;
 
@@ -41,26 +41,23 @@ import java.util.concurrent.atomic.AtomicInteger;
  * i34 j56 -> i346
  * </pre>
  *
- * FOR NOW stores Integers as PAGE_IDs. FIXME - follow the casts to Integers
- * (basically change BufferManager<Integer> to BufferManager<T>).
- *
  * @param <K>
  *            the type of the key of the one and only file
  * @param <T>
  *            the type of the value of the records to be stored in the leaf
  *            nodes - when the tree is used as an Index this corresponds to the
- *            page id of the data file the key is located
+ *            page id of the page (of the data file) the key is located
  */
 public final class BPlusDisk<K extends Comparable<K>, T> {
 
-	private static final BufferManager<Integer> buf = BufferManager
-		.getInstance();
+	private static final BufferManager buf = BufferManager.getInstance();
 	private final IndexDiskFile file;
 	// fields - TODO private lock + thread safety
-	private volatile Node root;
+	private volatile Node<?> root;
 	private AtomicInteger nodeId = new AtomicInteger(0);
-	/** Used to write K and T to disc and read them back */
-	private final Serializer<K, T> ser;
+	// Used to write K and T to disc and read them back
+	private final Serializer<K> serKey;
+	private final Serializer<T> serVal;
 
 	/**
 	 * The BPlus writes the last nodeId and root node id to files and reads them
@@ -95,15 +92,16 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		}
 	}
 
-	public BPlusDisk(IndexDiskFile file, Serializer<K, T> ser)
-			throws IOException, InterruptedException {
-		this.ser = ser;
+	public BPlusDisk(IndexDiskFile file, Serializer<K> serKey,
+			Serializer<T> serVal) throws IOException, InterruptedException {
+		this.serKey = serKey;
+		this.serVal = serVal;
 		this.file = file;
 		if (file.read() != -1) {
 			System.out.println(file + " already exists");
 			nodeId.set(Root.nodesFromFile());
 			int rootFromFile = Root.rootFromFile();
-			Page<Integer> allocFrame = buf.allocFrame(rootFromFile, file);
+			Page allocFrame = buf.allocFrame(rootFromFile, file);
 			boolean leaf = allocFrame.readByte(Node.LEAF_OFFSET) == 1;
 			setRoot((leaf) ? new LeafNode(rootFromFile) : new InternalNode(
 				rootFromFile));
@@ -118,41 +116,34 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 	// =========================================================================
 	// API
 	// =========================================================================
-	public void flush(List<PageId<Integer>> pageIds) throws IOException {
-		for (PageId<Integer> pageID : pageIds) {
-			final Integer pid = pageID.getId();
-			buf.flushPage(pid, file);
-			System.out.println("PID " + pid);
-			buf.unpinPage(pid);
+	public void flush(List<Integer> pageIds) throws IOException {
+		for (int pageID : pageIds) {
+			buf.flushPage(pageID, file);
+			System.out.println("PID " + pageID);
+			buf.unpinPage(pageID);
 		}
-		flushRootAndNodes();
+		Root.rootToFile(root.getPageId());
+		Root.nodesToFile(nodeId.get());
 	}
 
 	public <R extends Record<K, T>> void insert(Transaction tr, R rec)
 			throws IOException, InterruptedException {
-		setRoot(root.newNodeFromDiskOrBuffer(tr, DBLock.E, root.getPageId()
-			.toInt()));
+		setRoot(root.newNodeFromDiskOrBuffer(tr, DBLock.E, root.getPageId()));
 		final LeafNode leafNode = root.findLeaf(tr, DBLock.E, rec.getKey());
 		_insertInLeaf(tr, rec, leafNode);
 	}
 
 	public void delete(Transaction tr, K key) throws IOException,
 			InterruptedException {
-		root = root.newNodeFromDiskOrBuffer(tr, DBLock.E, root.getPageId()
-			.toInt());
+		root = root.newNodeFromDiskOrBuffer(tr, DBLock.E, root.getPageId());
 		final LeafNode leafNode = root.findLeaf(tr, DBLock.E, key);
 		// FIXME lock the siblings too!!
 		_deleteInLeaf(tr, key, leafNode);
 	}
 
-	public void flushRootAndNodes() throws IOException {
-		Root.rootToFile(root.getPageId().toInt());
-		Root.nodesToFile(nodeId.get());
-	}
-
-	public void abort(List<PageId<Integer>> pageIds) throws IOException {
-		for (PageId<Integer> pageID : pageIds) {
-			buf.killPage(pageID.getId(), file);
+	public void abort(List<Integer> pageIds) throws IOException {
+		for (int pageID : pageIds) {
+			buf.killPage(pageID, file);
 		}
 	}
 
@@ -162,7 +153,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		items.add(root);
 		while (!items.isEmpty()) {
 			List<Node> children = new ArrayList<>();
-			for (Node node : items) {
+			for (Node<?> node : items) {
 				final Collection<Node> print = node.print(tr, lock);
 				if (print != null) children.addAll(print);
 			}
@@ -173,10 +164,9 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 
 	public void lockPath(Transaction tr, K key, DBLock el, Map<K, T> sm)
 			throws IOException, InterruptedException {
-		PageId<T> indexPage = getRootPageId();
+		Integer indexPage = getRootPageId();
 		while (indexPage != null) {
-			indexPage = getNextPageIdToLock((PageId<Integer>) indexPage, key,
-				sm, tr, el);
+			indexPage = getNextPageIdToLock(indexPage, key, sm, tr, el);
 		}
 	}
 
@@ -191,24 +181,26 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 	 * @throws InterruptedException
 	 * @throws IOException
 	 */
-	private PageId<T> getNextPageIdToLock(PageId<Integer> toLock, K key,
-			Map<K, T> m, Transaction tr, DBLock lock) throws IOException,
+	private Integer getNextPageIdToLock(int toLock, K key, Map<K, T> m,
+			Transaction tr, DBLock lock) throws IOException,
 			InterruptedException {
-		Integer pageId = toLock.getId();
-		Node node = root.newNodeFromDiskOrBuffer(tr, lock, pageId);
+		Node<?> node = root.newNodeFromDiskOrBuffer(tr, lock, toLock);
 		if (node.isLeaf()) {
-			m.put(key, node._get(key));
+			@SuppressWarnings("unchecked")
+			// it is a Leaf Node
+			LeafNode leaf = (LeafNode) node;
+			m.put(key, leaf._get(key));
 			return null; // locked the path to the key
 		}
 		@SuppressWarnings("unchecked")
 		// node is not leaf here
 		InternalNode in = (InternalNode) node;
-		final Node nextNode = in._lookup(tr, lock, key);
+		final Node<?> nextNode = in._lookup(tr, lock, key);
 		return nextNode.getPageId();
 	}
 
 	/** Return a page id for the root node */
-	private synchronized PageId<T> getRootPageId() {
+	private synchronized int getRootPageId() {
 		return root.getPageId();
 	}
 
@@ -216,7 +208,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 	// Nodes
 	// =========================================================================
 	@SuppressWarnings("synthetic-access")
-	public abstract class Node extends RecordsPage<K, T, T> {
+	public abstract class Node<V> extends RecordsPage<K, V> {
 
 		// MUTABLE STATE
 		volatile short numOfKeys; // NEVER ZERO EXCEPT ON CONSTRUCTION
@@ -227,31 +219,28 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		protected static final short NUM_KEYS_OFFSET = 1;
 		// FINALS
 		private final boolean isLeaf;
-		/** TODO move to the tree ! */
-		private final short max_keys = (short) ((Engine.PAGE_SIZE - HEADER_SIZE - getKeySize()) / getRecordSize());
-
-		synchronized short getMax_keys() { // AUTOGENERATED SYNCHRONIZED
-			return max_keys;
-		}
 
 		/**
-		 * Called only from
+		 * Instantiates a Node by loading a page from disk and sets its fields
+		 * by reading the relevant info from the page. Called only from
 		 * {@link #newNodeFromDiskOrBuffer(Transaction, DBLock, int)} where
 		 * there is a transaction (and locking) OR in the tree constructor where
 		 * no locking is needed. So we do not request locks here.
 		 */
-		private Node(int id) throws IOException, InterruptedException {
-			super((Page<T>) buf.allocFrame(id, file), ser, HEADER_SIZE);
+		private Node(int id, Serializer<V> ser) throws IOException,
+				InterruptedException {
+			super(buf.allocFrame(id, file), serKey, ser, HEADER_SIZE);
 			isLeaf = readByte(LEAF_OFFSET) == 1;
 			numOfKeys = readShort(NUM_KEYS_OFFSET);
 		}
 
 		/** Allocates a Node IN MEMORY */
-		private Node(Transaction tr, boolean leaf) throws InterruptedException {
-			super((Page<T>) buf.allocFrameForNewPage(nodeId.decrementAndGet()),
+		private Node(Transaction tr, boolean leaf, Serializer<V> ser)
+				throws InterruptedException {
+			super(buf.allocFrameForNewPage(nodeId.decrementAndGet()), serKey,
 					ser, HEADER_SIZE);
 			if (tr != null) { // if null we are creating the first root !
-				final Integer id = getPageId().toInt();
+				final int id = getPageId();
 				if (tr.lock(id, DBLock.E)) { // should always return true //
 					// notice the lock is for WRITING !
 					buf.pinPage(id);
@@ -261,12 +250,13 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			writeByte(LEAF_OFFSET, (byte) ((leaf) ? 1 : 0));
 			numOfKeys = 0; // Unneeded
 			writeShort(NUM_KEYS_OFFSET, (short) 0);
-			buf.setPageDirty(getPageId().toInt());
+			buf.setPageDirty(getPageId());
 		}
 
-		Node newNodeFromDiskOrBuffer(Transaction tr, DBLock lock, int pageID)
-				throws IOException, InterruptedException {
-			Page<Integer> p;
+				Node<?>
+				newNodeFromDiskOrBuffer(Transaction tr, DBLock lock, int pageID)
+						throws IOException, InterruptedException {
+			Page p;
 			if (tr.lock(pageID, lock)) {
 				p = buf.allocFrame(pageID, file);
 				// FIXME - race in pin ??? - add boolean pin param in allocFrame
@@ -309,39 +299,43 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		// =====================================================================
 		// Node methods
 		// =====================================================================
-		boolean overflow() {
-			return numOfKeys == max_keys; // TODO ............ Test
+		final boolean overflow() { // TODO belongs to record page
+			return numOfKeys == getMax_keys(); // no more keys accepted
 		}
 
-		/** Returns true if removing from this node WILL result in underflow */
-		boolean willUnderflow() {
-			if (root.equals(this)) return numOfKeys == 1; // FIXME!!!!
-			return numOfKeys == max_keys / 2; // TODO ............ Test
+		/**
+		 * Returns true if removing from this node WILL result in underflow. For
+		 * nodes whose max keys number is even this will occur when the current
+		 * number of keys drops below max_keys/2 (no rounding). For nodes whose
+		 * max keys number is odd the current number of nodes must be
+		 * floor[max_keys/2] - the fanout is max_keys + 1 and the last pointer
+		 * is always present. Root will underflow if current fanout is 2 - and
+		 * since the "greaterOrEqual" node is always there this means
+		 * numOfNodes==1.
+		 */
+		final boolean willUnderflow() {
+			if (root.equals(this)) return numOfKeys == 1;
+			return numOfKeys == getMax_keys() / 2;
 		}
 
-		boolean isLeaf() {
+		final boolean isLeaf() {
 			return isLeaf;
 		}
 
-		T greaterOrEqual() { // FIXME grOrEqual needs casts readVal(offset?)
-			return (T) (Integer) readInt(Engine.PAGE_SIZE - getKeySize());
+		final int greaterOrEqual() { // 4 for int - grOrE is always a page Id
+			return readInt(Engine.PAGE_SIZE - 4);
 		}
 
-		void setGreaterOrEqual(T v) { // FIXME grOrEqual needs casts - ?
-			writeInt(Engine.PAGE_SIZE - getKeySize(), (Integer) v);
-			buf.setPageDirty(getPageId().toInt());
-		}
-
-		@Override
-		public String toString() {
-			return "@" + getPageId().getId();
+		final void setGreaterOrEqual(int integer) {
+			writeInt(Engine.PAGE_SIZE - 4, integer);
+			buf.setPageDirty(getPageId());
 		}
 
 		// =====================================================================
 		// Methods that go to a Page subclass for Sorted Data files TODO
 		// =====================================================================
 		// final int MEDIAN_KEY_INDEX = (numOfKeys) / 2;
-		void _put(Record<K, T> record) {
+		void _put(Record<K, V> record) {
 			_put(record.getKey(), record.getValue());
 		}
 
@@ -359,7 +353,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			} // if key not found return false
 			--numOfKeys;
 			writeShort(NUM_KEYS_OFFSET, numOfKeys);
-			buf.setPageDirty(getPageId().toInt());
+			buf.setPageDirty(getPageId());
 		}
 
 		/**
@@ -368,10 +362,10 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		 * must ensure that space exists in the page or an
 		 * IndexOutOfBoundsException is thrown.
 		 */
-		void _put(K k, T v) {
+		void _put(K k, V v) {
 			for (short i = 0; i < numOfKeys; ++i) {
 				K tmpKey = readKey(i);
-				T tmpValue = readValue(i);
+				V tmpValue = readValue(i);
 				if (k.compareTo(tmpKey) < 0) {
 					writeKey(i, k);
 					writeValue(i, v);
@@ -379,7 +373,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 					v = tmpValue;
 				} else if (k.compareTo(tmpKey) == 0) {
 					writeValue(i, v);
-					buf.setPageDirty(getPageId().toInt());
+					buf.setPageDirty(getPageId());
 					return; // replace the value and do NOT ++numOfKeys
 				}
 			}
@@ -387,14 +381,14 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			writeValue(numOfKeys, v);
 			++numOfKeys;
 			writeShort(NUM_KEYS_OFFSET, numOfKeys);
-			buf.setPageDirty(getPageId().toInt());
+			buf.setPageDirty(getPageId());
 		}
 
 		/**
 		 * Returns the value with key {@code key} or {@code null} if no such key
 		 * exists.
 		 */
-		T _get(K k) {
+		V _get(K k) {
 			for (short i = 0; i < numOfKeys; ++i) {
 				if (k.compareTo(readKey(i)) == 0) return readValue(i);
 			}
@@ -409,12 +403,12 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			return readKey(0);
 		}
 
-		Record<K, T> _lastPair() {
+		Record<K, V> _lastPair() {
 			return new Record<>(readKey(numOfKeys - 1),
 				readValue(numOfKeys - 1));
 		}
 
-		Record<K, T> _firstPair() {
+		Record<K, V> _firstPair() {
 			return new Record<>(readKey(0), readValue(0));
 		}
 
@@ -427,11 +421,12 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			}
 			numOfKeys -= removals;
 			writeShort(NUM_KEYS_OFFSET, numOfKeys);
-			buf.setPageDirty(getPageId().toInt());
+			buf.setPageDirty(getPageId());
 		}
 
-		// TODO assert this.parent == parent
-		Node _rightSiblingSameParent(Transaction tr, DBLock lock,
+		// TODO assert this.parent == parent - Move to subclasses node so they
+		// return a subclass
+		Node<?> _rightSiblingSameParent(Transaction tr, DBLock lock,
 				InternalNode parent) throws IOException, InterruptedException {
 			if (parent == null)
 				throw new NullPointerException("Root siblings ?");
@@ -443,16 +438,16 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			i < parent.numOfKeys - 1; ++i) {
 				K parKey = parent.readKey(i);
 				if (lastKey.compareTo(parKey) < 0)
-					return newNodeFromDiskOrBuffer(tr, lock, // FIXME cast
-						new PageId<>(parent.readValue(i + 1)).toInt());
+					return newNodeFromDiskOrBuffer(tr, lock,
+						parent.readValue(i + 1));
 			}
 			// this is the last key so return the "greater or equal"
-			return newNodeFromDiskOrBuffer(tr, lock, // FIXME cast
-				new PageId<>(parent.greaterOrEqual()).toInt());
+			return newNodeFromDiskOrBuffer(tr, lock, parent.greaterOrEqual());
 		}
 
-		// TODO assert this.parent == parent
-		Node _leftSiblingSameParent(Transaction tr, DBLock lock,
+		// TODO assert this.parent == parent - Move to subclasses node so they
+		// return a subclass
+		Node<?> _leftSiblingSameParent(Transaction tr, DBLock lock,
 				InternalNode parent) throws IOException, InterruptedException {
 			if (parent == null)
 				throw new NullPointerException("Root siblings ?");
@@ -462,27 +457,27 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			for (short i = 1; i < parent.numOfKeys; ++i) {
 				K readKey = parent.readKey(i);
 				if (_lastKey.compareTo(readKey) < 0)
-					return newNodeFromDiskOrBuffer(tr, lock, // FIXME cast
-						new PageId<>(parent.readValue(i - 1)).toInt());
+					return newNodeFromDiskOrBuffer(tr, lock,
+						parent.readValue(i - 1));
 			}
-			return newNodeFromDiskOrBuffer(tr, lock, // FIXME cast
-				new PageId<>(parent._lastPair().getValue()).toInt());
+			return newNodeFromDiskOrBuffer(tr, lock, parent._lastPair()
+				.getValue());
 		}
 	}
 
 	@SuppressWarnings("synthetic-access")
-	final class InternalNode extends Node {
+	final class InternalNode extends Node<Integer> {
 
 		/**
 		 * Used in {@link #split(Record)} and when the tree grows (the root
 		 * splits, {@link BPlusDisk#insertInternal(Node, Record)}).
 		 */
 		InternalNode(Transaction tr) throws InterruptedException {
-			super(tr, false);
+			super(tr, false, IntegerSerializer.INSTANCE);
 		}
 
 		InternalNode(int id) throws IOException, InterruptedException {
-			super(id);
+			super(id, IntegerSerializer.INSTANCE);
 		}
 
 		// =====================================================================
@@ -491,10 +486,10 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		@Override
 		InternalNode parent(Transaction tr, DBLock lock, InternalNode root1)
 				throws IOException, InterruptedException {
-			final T id = getPageId().getId();
-			if (id.equals(root1.greaterOrEqual())) return root1;
+			final int id = getPageId();
+			if (id == root1.greaterOrEqual()) return root1;
 			for (short i = 0; i < root1.numOfKeys; ++i) {
-				if (id.equals(root1.readValue(i))) return root1;
+				if (id == root1.readValue(i)) return root1;
 			}
 			return parent(tr, lock,
 				(InternalNode) root1._lookup(tr, lock, this)); // the CCE
@@ -509,34 +504,31 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		@Override
 		Collection<Node> print(Transaction tr, DBLock lock) throws IOException,
 				InterruptedException {
-			System.out.print(getPageId().getId() + "::");
+			System.out.print(getPageId() + "::");
 			Collection<Node> values = new ArrayList<>();
 			for (short i = 0; i < numOfKeys; ++i) {
 				K key = readKey(i);
-				T val = readValue(i); // FIXME cast BELOW
-				values.add(newNodeFromDiskOrBuffer(tr, lock, (Integer) val));
+				int val = readValue(i);
+				values.add(newNodeFromDiskOrBuffer(tr, lock, val));
 				System.out.print(key + ";" + val + ",");
 			}
 			System.out.print(greaterOrEqual() + "\t");
-			values.add(newNodeFromDiskOrBuffer(tr, lock,
-				(Integer) greaterOrEqual())); // FIXME cast
+			values.add(newNodeFromDiskOrBuffer(tr, lock, greaterOrEqual()));
 			return values;
 		}
 
 		// =====================================================================
 		// Class Methods
 		// =====================================================================
-		Node _lookup(Transaction tr, DBLock lock, final K key)
+		Node<?> _lookup(Transaction tr, DBLock lock, final K key)
 				throws IOException, InterruptedException {
 			if (key.compareTo(_lastKey()) >= 0)
-				return newNodeFromDiskOrBuffer(tr, lock,
-					(Integer) greaterOrEqual());
+				return newNodeFromDiskOrBuffer(tr, lock, greaterOrEqual());
 			// tailMap contains at least children.lastKey()
 			for (short i = 0; i < numOfKeys; ++i) {
 				K readKey = readKey(i);
 				if (key.compareTo(readKey) < 0)
-					return newNodeFromDiskOrBuffer(tr, lock, // FIXME cast
-						(Integer) readValue(i));
+					return newNodeFromDiskOrBuffer(tr, lock, readValue(i));
 			}
 			throw new RuntimeException("key " + key + " not found"); // TODO
 																		// keep?
@@ -546,7 +538,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		 * Wrappers around _lookup(K k) - look a node up means look its lastKey
 		 * up
 		 */
-		private Node _lookup(Transaction tr, DBLock lock,
+		private Node<?> _lookup(Transaction tr, DBLock lock,
 				InternalNode internalNode) throws IOException,
 				InterruptedException {
 			return _lookup(tr, lock, internalNode._lastKey());
@@ -556,11 +548,11 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		 * Returns the key for this node or null if this node is the
 		 * "greater or equal" child or not a child
 		 */
-		private K _keyWithValue(Node anchor) {
-			final T id = anchor.getPageId().getId();
+		private K _keyWithValue(Node<?> anchor) {
+			final int id = anchor.getPageId();
 			for (short i = 0; i < numOfKeys; ++i) {
-				T readVal = readValue(i);
-				if (id.equals(readVal)) return readKey(i);
+				int readVal = readValue(i);
+				if (id == readVal) return readKey(i);
 			}
 			/* if (greaterOrEqual().equals(id)) */return null; // No key for
 			// this node TODO make _child method
@@ -576,7 +568,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			final K keyToInsert = insert.getKey();
 			// splitting an internal node means we need to point to the
 			// node that was just split - the new node is already inserted !
-			final Node justSplit = insert.getValue();
+			final Node<?> justSplit = insert.getValue();
 			final InternalNode sibling = new InternalNode(tr);
 			sibling.setGreaterOrEqual(greaterOrEqual()); // sure
 			_copyTailAndRemoveIt(sibling, (numOfKeys + 1) / 2); // do NOT copy
@@ -584,45 +576,45 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			// numOfKeys = (short) ((numOfKeys - 1) / 2 + 1); // draw 2 pictures
 			// - for max_keys == odd and max_keys == even
 			if (keyToInsert.compareTo(_lastKey()) < 0) {
-				_put(keyToInsert, justSplit.getPageId().getId());
+				_put(keyToInsert, justSplit.getPageId());
 				// insert it and move last key to the sibling
 				sibling._put(_lastPair());
 				--numOfKeys;
 			} else {
-				sibling._put(new Record<>(keyToInsert, justSplit.getPageId()
-					.getId()));
+				sibling._put(new Record<>(keyToInsert, justSplit.getPageId()));
 			}
-			Record<K, T> _lastPair = _lastPair();
+			Record<K, Integer> _lastPair = _lastPair();
 			writeShort(NUM_KEYS_OFFSET, --numOfKeys); // discard _lastPair
-			buf.setPageDirty(getPageId().toInt());
+			buf.setPageDirty(getPageId());
 			setGreaterOrEqual(_lastPair.getValue());
 			return new Record<K, Node>(_lastPair.getKey(), sibling);
 		}
 
 		Record<K, Node> insertInternal(Transaction tr, Node justSplit,
 				Record<K, Node> insert) throws InterruptedException {
-			final Node newNode = insert.getValue();
+			final Node<?> newNode = insert.getValue();
 			K _keyOfAnchor = _keyWithValue(justSplit);
 			if (_keyOfAnchor != null) {
-				_put(_keyOfAnchor, newNode.getPageId().getId());
+				_put(_keyOfAnchor, newNode.getPageId());
 			} else {
 				// _keyOfAnchor == null - anchor used to be for keys greater or
 				// equal to lastKey
-				setGreaterOrEqual(newNode.getPageId().getId());
+				setGreaterOrEqual(newNode.getPageId());
 			}
 			if (overflow()) {// split
 				return split(tr, new Record<>(insert.getKey(), justSplit));
 			}
-			_put(insert.getKey(), justSplit.getPageId().getId());
+			_put(insert.getKey(), justSplit.getPageId());
 			return null;
 		}
 
-		public Record<K, Node> removeInternal(Transaction tr, Node merged,
-				Record<K, Node> merge) throws IOException, InterruptedException {
+		public <L extends Node<?>> Record<K, InternalNode> removeInternal(
+				Transaction tr, Node<?> merged, Record<K, L> merge)
+				throws IOException, InterruptedException {
 			K newKey = merge.getKey();
 			if (newKey != null) {
 				// no merging took place but we need to update the keys
-				final Node reKeyed = merge.getValue();
+				final Node<?> reKeyed = merge.getValue();
 				K rekeyedNodeKey = _keyWithValue(reKeyed);
 				if (rekeyedNodeKey == null) { // the rekeyed node was the grOrEq
 					// we need to point from the key given to the merged
@@ -630,15 +622,15 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 					// a right sibling (see LeafNode#merge)
 					K key3 = _keyWithValue(merged);
 					_remove(key3);
-					_put(newKey, merged.getPageId().getId());
+					_put(newKey, merged.getPageId());
 					return null;
 				}
 				_remove(rekeyedNodeKey);
-				_put(newKey, reKeyed.getPageId().getId());
+				_put(newKey, reKeyed.getPageId());
 				return null;
 			}
 			// newKey == null - a node was actually deleted
-			final Node deleted = merge.getValue();
+			final Node<?> deleted = merge.getValue();
 			K keyDeleted = _keyWithValue(deleted); // will be finally deleted
 			final K keyMergedNode = _keyWithValue(merged);
 			if (keyDeleted == null) { // we must replace the greaterOrEqual with
@@ -647,11 +639,11 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				// IF IT WAS RIGHTMOST and it happened to be the greaterOrEqual
 				// of its parent (this) - sooo:
 				if (merged.equals(deleted)) {
-					Record<K, T> _lastPair = _lastPair();
+					Record<K, Integer> _lastPair = _lastPair();
 					this.setGreaterOrEqual(_lastPair.getValue());
 					keyDeleted = _lastPair.getKey();
 				} else {
-					this.setGreaterOrEqual(merged.getPageId().getId());
+					this.setGreaterOrEqual(merged.getPageId());
 					// then we must remove the key that pointed to us (exists)
 					keyDeleted = keyMergedNode;
 				}
@@ -667,7 +659,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 						}
 					}
 				} else {
-					_put(keyDeleted, merged.getPageId().getId());
+					_put(keyDeleted, merged.getPageId());
 					keyDeleted = keyMergedNode;
 				}
 			}
@@ -681,18 +673,20 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			return null;
 		}
 
-		private Record<K, Node> merge(Transaction tr) throws IOException,
-				InterruptedException {
+		private Record<K, InternalNode> merge(Transaction tr)
+				throws IOException, InterruptedException {
 			if (root.equals(this))
 				throw new RuntimeException("Called merge on root");
 			System.out.println("------------------> IN MERGE INTERNAL NODE");
 			@SuppressWarnings("unchecked")
 			// if this is not the root then the root must be internal node
 			InternalNode parent = parent(tr, DBLock.E, (InternalNode) root);
-			Node right_sibling = _rightSiblingSameParent(tr, DBLock.E, parent);
-			Node left_sibling = _leftSiblingSameParent(tr, DBLock.E, parent);
+			InternalNode right_sibling = (InternalNode) _rightSiblingSameParent(
+				tr, DBLock.E, parent);
+			InternalNode left_sibling = (InternalNode) _leftSiblingSameParent(
+				tr, DBLock.E, parent);
 			// DIFFERENCE WITH LEAF NODES - grOrEq changes !!!
-			final Node DAS = this;
+			final InternalNode DAS = this;
 			if ((left_sibling == null || left_sibling.willUnderflow())
 				&& (right_sibling == null || right_sibling.willUnderflow())) {
 				System.out.println("------------------> MERGING INTERNAL NODE");
@@ -703,7 +697,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				// if matters FIXME - UPDATE THE INDEX ON THE LEFT SIBLING
 				if (right_sibling != null) {
 					// delete it
-					T greaterOrEqual = greaterOrEqual();
+					int greaterOrEqual = greaterOrEqual();
 					K thisKey = parent._keyWithValue(this);// this not rightmost
 					_put(thisKey, greaterOrEqual);
 					right_sibling._copyTailAndRemoveIt(DAS, 0);
@@ -714,7 +708,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				// DELETE OURSELVES so we don't have to update "next" pointer of
 				// our left left sibling
 				// WE ARE RIGHTMOST (right_sibling == null)
-				T thisGreater = left_sibling.greaterOrEqual();
+				int thisGreater = left_sibling.greaterOrEqual();
 				K leftKey = parent._keyWithValue(left_sibling); // exists
 				left_sibling._put(leftKey, thisGreater);
 				this._copyTailAndRemoveIt(left_sibling, 0);
@@ -727,8 +721,8 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			if (left_sibling != null && !left_sibling.willUnderflow()) {
 				// just prevent the underflow - copy ONE node FIXME ALGORITHM
 				// DIFFERENCE WITH LEAF NODES - grOrEq changes !!!
-				Record<K, T> lastPair = left_sibling._lastPair();
-				T greaterOrEqual = left_sibling.greaterOrEqual();
+				Record<K, Integer> lastPair = left_sibling._lastPair();
+				int greaterOrEqual = left_sibling.greaterOrEqual();
 				left_sibling.setGreaterOrEqual(lastPair.getValue());
 				// left sibling - not gOrEq // Common parent !
 				K siblingKeyInParent = parent._keyWithValue(left_sibling);
@@ -740,8 +734,8 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				return new Record<>(key, left_sibling);
 			}
 			// just prevent the underflow - copy ONE node FIXME ALGORITHM
-			Record<K, T> firstPair = right_sibling._firstPair();
-			T greaterOrEqual = DAS.greaterOrEqual();
+			Record<K, Integer> firstPair = right_sibling._firstPair();
+			int greaterOrEqual = DAS.greaterOrEqual();
 			DAS.setGreaterOrEqual(firstPair.getValue());
 			// WE ARE left sibling - not gOrEq // Common parent !
 			K thisKeyInParent = parent._keyWithValue(DAS);
@@ -755,7 +749,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 	}
 
 	@SuppressWarnings("synthetic-access")
-	final class LeafNode extends Node {
+	final class LeafNode extends Node<T> {
 
 		/**
 		 * Used in {@link #split(Record)} and in creating the tree for the first
@@ -763,11 +757,11 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		 * In the latter case the transaction must be null.
 		 */
 		LeafNode(Transaction tr) throws InterruptedException {
-			super(tr, true);
+			super(tr, true, serVal);
 		}
 
 		LeafNode(int id) throws InterruptedException, IOException {
-			super(id);
+			super(id, serVal);
 		}
 
 		// =========================================================================
@@ -776,9 +770,9 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		@Override
 		InternalNode parent(Transaction tr, DBLock lock, InternalNode root1)
 				throws IOException, InterruptedException {
-			final T id = getPageId().getId();
+			final int id = getPageId();
 			if (root1._keyWithValue(this) != null
-				|| id.equals(root1.greaterOrEqual())) return root1;
+				|| id == root1.greaterOrEqual()) return root1;
 			return parent(tr, lock, // the CCE will be thrown from this cast
 				(InternalNode) root1._lookup(tr, lock, _firstPair().getKey()));
 		}
@@ -790,7 +784,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 
 		@Override
 		Collection<Node> print(Transaction tr, DBLock lock) {
-			System.out.print(getPageId().getId() + ":"/* + numOfKeys */+ ":");
+			System.out.print(getPageId() + ":"/* + numOfKeys */+ ":");
 			for (short i = 0; i < numOfKeys; ++i) {
 				K key = readKey(i);
 				T val = readValue(i);
@@ -810,7 +804,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			return null;
 		}
 
-		Record<K, Node> deleteInLeaf(Transaction tr, K rec)
+		Record<K, LeafNode> deleteInLeaf(Transaction tr, K rec)
 				throws InterruptedException, IOException { // TODO why IO
 			// we are in leaf - if the leaf is root then it is the only node
 			if (root.equals(this)) {
@@ -827,7 +821,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		}
 
 		/** Must not be called on the root (if the root is leaf) */
-		Record<K, Node> merge(Transaction tr) throws InterruptedException,
+		Record<K, LeafNode> merge(Transaction tr) throws InterruptedException,
 				IOException {
 			if (root.equals(this))
 				throw new RuntimeException("Called merge on root");
@@ -836,9 +830,11 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			@SuppressWarnings("unchecked")
 			// if this is not the root then the root must be internal node
 			InternalNode parent = parent(tr, DBLock.E, (InternalNode) root);
-			Node right_sibling = _rightSiblingSameParent(tr, DBLock.E, parent);
-			Node left_sibling = _leftSiblingSameParent(tr, DBLock.E, parent);
-			final Node DAS = this;
+			LeafNode right_sibling = (LeafNode) _rightSiblingSameParent(tr,
+				DBLock.E, parent);
+			LeafNode left_sibling = (LeafNode) _leftSiblingSameParent(tr,
+				DBLock.E, parent);
+			final LeafNode DAS = this;
 			if ((left_sibling == null || left_sibling.willUnderflow())
 				&& (right_sibling == null || right_sibling.willUnderflow())) {
 				// I HAVE TO MERGE - return a record with the deleted node
@@ -897,7 +893,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			System.out.println("------------------> SPLIT LEAFNODE");
 			LeafNode sibling = new LeafNode(tr);
 			sibling.setGreaterOrEqual(greaterOrEqual());
-			setGreaterOrEqual(sibling.getPageId().getId());
+			setGreaterOrEqual(sibling.getPageId());
 			// FIXME ALGORITHM
 			// move median and up to sibling
 			_copyTailAndRemoveIt(sibling, numOfKeys / 2); // ...
@@ -910,7 +906,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				sibling._put(rec.getKey(), rec.getValue());
 			}
 			writeShort(NUM_KEYS_OFFSET, numOfKeys);
-			buf.setPageDirty(getPageId().toInt());
+			buf.setPageDirty(getPageId());
 			return new Record<K, Node>(sibling._firstPair().getKey(), sibling);
 		}
 	}
@@ -918,13 +914,13 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 	// =========================================================================
 	// Helpers
 	// =========================================================================
-	private void insertInternal(Transaction tr, Node justSplit,
+	private void insertInternal(Transaction tr, Node<?> justSplit,
 			Record<K, Node> insert) throws InterruptedException, IOException {
 		if (root.equals(justSplit)) { // root must split (leaf or not)
 			System.out.println("------------------> SPLIT ROOT");
 			InternalNode newRoot = new InternalNode(tr);
-			newRoot._put(insert.getKey(), justSplit.getPageId().getId());
-			newRoot.setGreaterOrEqual(insert.getValue().getPageId().getId());
+			newRoot._put(insert.getKey(), justSplit.getPageId());
+			newRoot.setGreaterOrEqual(insert.getValue().getPageId());
 			setRoot(newRoot);
 			return;
 		}
@@ -969,7 +965,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			throws IllegalArgumentException, InterruptedException, IOException {
 		if (leafNode._get(key) == null)
 			throw new IllegalArgumentException("Key " + key + " does not exist");
-		Record<K, Node> merge = leafNode.deleteInLeaf(tr, key);
+		Record<K, LeafNode> merge = leafNode.deleteInLeaf(tr, key);
 		if (merge != null) { // leafNode split
 			fixInternal(tr, leafNode, merge); // all parents are NOT locked
 			// (SEE FIXME in merge())
@@ -977,9 +973,9 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 	}
 
 	@SuppressWarnings("synthetic-access")
-	private void
-			fixInternal(Transaction tr, Node merged, Record<K, Node> merge)
-					throws IOException, InterruptedException {
+	private <L extends Node<?>> void fixInternal(Transaction tr,
+			Node<?> merged, Record<K, L> merge) throws IOException,
+			InterruptedException {
 		@SuppressWarnings("unchecked")
 		// SW: if root were leaf it would be the only node so delete in leaf
 		// would have not ever called fixInternal
@@ -994,31 +990,31 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			System.out.println("------------------> FIX ROOT");
 			if (newKey != null) {
 				// no merging took place but we need to update the keys
-				final Node reKeyed = merge.getValue();
+				final Node<?> reKeyed = merge.getValue();
 				K rekeyedNodeKey = (das_root)._keyWithValue(reKeyed);
 				if (rekeyedNodeKey == null) { // the rekeyed node was the grOrEq
 					// we need to point from the key given to the merged
 					K key3 = (das_root)._keyWithValue(merged);
 					root._remove(key3);
-					root._put(newKey, merged.getPageId().getId());
+					das_root._put(newKey, merged.getPageId());
 					return; // TODO test this path
 				}
 				root._remove(rekeyedNodeKey);
-				root._put(newKey, reKeyed.getPageId().getId());
+				das_root._put(newKey, reKeyed.getPageId());
 				return;
 			}
 			// newKey == null - a node was actually deleted
-			final Node deleted = merge.getValue();
+			final Node<?> deleted = merge.getValue();
 			K key = (das_root)._keyWithValue(deleted);
 			final K keyMergedNode = das_root._keyWithValue(merged);
 			if (key == null) {
 				if (merged.equals(deleted)) {
 					// keyMergedNode == key == null
-					Record<K, T> _lastPair = root._lastPair();
+					Record<K, Integer> _lastPair = das_root._lastPair();
 					root.setGreaterOrEqual(_lastPair.getValue());
 					key = _lastPair.getKey();
 				} else {
-					root.setGreaterOrEqual(merged.getPageId().getId());
+					root.setGreaterOrEqual(merged.getPageId());
 					// then we must remove the key that pointed to us (exists)
 					key = keyMergedNode;
 				}
@@ -1027,29 +1023,28 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 					for (short i = 1; i < root.numOfKeys; ++i) {
 						K readKey = root.readKey(i);
 						if (key.compareTo(readKey) < 0) {
-							root._put(key, root.readValue(i - 1));
+							das_root._put(key, das_root.readValue(i - 1));
 							break;
 						}
 					}
 				} else {
-					root._put(key, merged.getPageId().getId());
+					das_root._put(key, merged.getPageId());
 					key = keyMergedNode;
 				}
 			}
 			if (root.numOfKeys == 1) {
 				System.out.println("------------------> DELETE ROOT");
-				T _get = root._get(key);
+				int _get = das_root._get(key);
 				root._remove(key); // to mark it --numOfKeys
-				setRoot(root.newNodeFromDiskOrBuffer(tr, DBLock.E,
-					(Integer) _get));
+				setRoot(root.newNodeFromDiskOrBuffer(tr, DBLock.E, _get));
 				return;
 			}
 			root._remove(key);
 			return;
 		}
 		// *********** parent is not root
-		Record<K, Node> newInternalNode = parent.removeInternal(tr, merged,
-			merge);
+		Record<K, InternalNode> newInternalNode = parent.removeInternal(tr,
+			merged, merge);
 		if (newInternalNode != null) // RECURSION
 			fixInternal(tr, parent, newInternalNode);
 	}

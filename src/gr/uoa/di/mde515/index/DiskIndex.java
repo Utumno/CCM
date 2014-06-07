@@ -11,13 +11,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class DiskIndex<K extends Comparable<K>, T> implements Index<K, T> {
+public final class DiskIndex<K extends Comparable<K>, T> implements Index<K, T> {
 
 	private final BPlusDisk<K, T> bplus;
 
-	public DiskIndex(IndexDiskFile file, Serializer<K, T> ser)
-			throws IOException, InterruptedException {
-		bplus = new BPlusDisk<>(file, ser);
+	public DiskIndex(IndexDiskFile file, Serializer<K> serKey,
+			Serializer<T> serVal) throws IOException, InterruptedException {
+		bplus = new BPlusDisk<>(file, serKey, serVal);
 	}
 
 	/**
@@ -44,7 +44,7 @@ public class DiskIndex<K extends Comparable<K>, T> implements Index<K, T> {
 	}
 
 	@Override
-	public void flush(List<PageId<Integer>> list) throws IOException {
+	public void flush(List<Integer> list) throws IOException {
 		bplus.flush(list);
 	}
 
@@ -55,7 +55,7 @@ public class DiskIndex<K extends Comparable<K>, T> implements Index<K, T> {
 	}
 
 	@Override
-	public void abort(List<PageId<Integer>> list) throws IOException {
+	public void abort(List<Integer> list) throws IOException {
 		bplus.abort(list);
 	}
 

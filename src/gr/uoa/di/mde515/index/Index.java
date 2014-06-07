@@ -26,12 +26,12 @@ public interface Index<K extends Comparable<K>, T> {
 	T lookupLocked(Transaction tr, K key, DBLock el) throws IOException,
 			InterruptedException;
 
-	void flush(List<PageId<Integer>> list) throws IOException;
+	void flush(List<Integer> list) throws IOException;
 
 	void insert(Transaction tr, Record<K, T> rec) throws IOException,
 			InterruptedException;
 
 	void delete(Transaction tr, K key) throws IOException, InterruptedException;
 
-	void abort(List<PageId<Integer>> list) throws IOException;
+	void abort(List<Integer> list) throws IOException;
 }

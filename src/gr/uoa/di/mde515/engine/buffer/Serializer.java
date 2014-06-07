@@ -3,20 +3,21 @@ package gr.uoa.di.mde515.engine.buffer;
 import java.nio.ByteBuffer;
 
 /**
- * WIP - had to change the signature to int from short cause of <a
- * href="http://stackoverflow.com/a/477776/281545">this</a>
+ * Interface exporting an API for serializing and deserializing an arbitrary
+ * type to a ByteBuffer. It is meant to be implemented by stateless, one element
+ * enums - so its implementations are immutable. Maybe should create/consume
+ * byte[] ? <br/>
+ * Implementation note: offsets ideally would be shorts but are ints (see <a
+ * href="http://stackoverflow.com/a/477776/281545">this</a>).
+ *
+ * @param <V>
+ *            the type to be serialized and deserialized
  */
-public interface Serializer<K extends Comparable<K>, V> {
+public interface Serializer<V> {
 
-	K readKey(ByteBuffer dat, int slot, short header_size);
+	V readValue(ByteBuffer dat, int offset);
 
-	V readValue(ByteBuffer dat, int slot, short header_size);
+	void writeValue(ByteBuffer dat, int offset, V value);
 
-	void writeKey(ByteBuffer dat, int slot, K key, short header_size);
-
-	void writeValue(ByteBuffer dat, int slot, V value, short header_size);
-
-	short getKeySize(); // FIXME bin
-
-	short getRecordSize(); // FIXME bin
+	short getTypeSize(); // FIXME bin ?
 }
