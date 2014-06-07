@@ -2,9 +2,13 @@ package gr.uoa.di.mde515.engine.buffer;
 
 import java.nio.ByteBuffer;
 
-// TODO is autoboxing here a performance nono ?
-public class IntegerSerializer implements Serializer<Integer> {
-
+/**
+ * Enum to read and write Integers to/from a byte buffer. Immutable - should be
+ * an enum - TODO. Is autoboxing here a performance nono ?
+ *
+ */
+public enum IntegerSerializer implements Serializer<Integer> {
+	INSTANCE;
 	private static final short type_size = 4;
 
 	@Override

@@ -20,7 +20,7 @@ public class Main {
 	public static void main(String[] args) throws InterruptedException,
 			IOException, ExecutionException {
 		final Engine<Integer, Integer, Integer> eng = (Engine<Integer, Integer, Integer>) Engine
-			.newInstance(new IntegerSerializer(), new IntegerSerializer());// FIXME
+			.newInstance(IntegerSerializer.INSTANCE, IntegerSerializer.INSTANCE);// FIXME
 																			// unchecked
 																			// and
 															// ugly

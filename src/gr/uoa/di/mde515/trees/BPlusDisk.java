@@ -472,11 +472,11 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		 * splits, {@link BPlusDisk#insertInternal(Node, Record)}).
 		 */
 		InternalNode(Transaction tr) throws InterruptedException {
-			super(tr, false, new IntegerSerializer());
+			super(tr, false, IntegerSerializer.INSTANCE);
 		}
 
 		InternalNode(int id) throws IOException, InterruptedException {
-			super(id, new IntegerSerializer());
+			super(id, IntegerSerializer.INSTANCE);
 		}
 
 		// =====================================================================

@@ -225,7 +225,7 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 			dataFile = DataFile.init(opening, RECORD_SIZE);
 			opening = INDEX_FILE;
 			index = new DiskIndex<>(new IndexDiskFile(opening), serKey,
-				new IntegerSerializer());
+				IntegerSerializer.INSTANCE);
 			System.out.println("ENGINE INITIALIZED");
 		} catch (IOException | InterruptedException e) {
 			throw new RuntimeException("Can't open " + opening + " file", e);
