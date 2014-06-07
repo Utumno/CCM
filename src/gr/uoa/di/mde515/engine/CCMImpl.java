@@ -60,14 +60,24 @@ enum CCMImpl implements CCM {
 				try {
 					return to.execute();
 				} catch (/* any old */Exception e) {
-					to.abort();
+					try {
+						to.abort();
+					} catch (Exception e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
 					ex = e;
 					throw e;
 				} finally {
-					if (ex != null) try {
+					if (ex == null) try {
 						to.commit();
 					} catch (/* any old */Exception e) {
-						to.abort();
+						try {
+							to.abort();
+						} catch (Exception e1) {
+							// TODO Auto-generated catch block
+							e1.printStackTrace();
+						}
 						throw e;
 					} finally {
 						to.endTransaction();

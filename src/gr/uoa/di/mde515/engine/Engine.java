@@ -1,5 +1,6 @@
 package gr.uoa.di.mde515.engine;
 
+import gr.uoa.di.mde515.engine.buffer.IntegerSerializer;
 import gr.uoa.di.mde515.engine.buffer.Serializer;
 import gr.uoa.di.mde515.files.DataFile;
 import gr.uoa.di.mde515.files.IndexDiskFile;
@@ -75,9 +76,10 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 
 	// TODO: proper factory
 	public static <K extends Comparable<K>, V, T> Engine<?, ?, ?> newInstance(
-			Serializer<K, T> ser) {
+			Serializer<K> serKey, Serializer<V> serVal) {
 		if (instance == null) synchronized (HACK) {
-			if (instance == null) instance = new EngineImpl<K, V, T>(ser);
+				if (instance == null)
+					instance = new EngineImpl<K, V, T>(serKey, serVal);
 		}
 		return instance;
 	}
@@ -123,7 +125,7 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 		}
 
 		/** ONLY FOR DEBUG */
-		protected final void insertIndex(Record<K, T> rec)
+		protected final void insertIndex(Record<K, Integer> rec)
 				throws TransactionFailedException {
 			try {
 				Engine.this.insertIndex(trans, rec);
@@ -199,7 +201,7 @@ public abstract class Engine<K extends Comparable<K>, V, T> {
 	public abstract void print();
 
 	/** ONLY FOR DEBUG */
-	public abstract void insertIndex(Transaction tr, Record<K, T> rec)
+	public abstract void insertIndex(Transaction tr, Record<K, Integer> rec)
 			throws IOException, InterruptedException;
 
 	/** ONLY FOR DEBUG _ WILL LOCK THE WHOLE TREE */
@@ -214,15 +216,16 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 	private static final short RECORD_SIZE = 8; // TODO bin
 	private final CCM ccm;
 	private final DataFile<K, V> dataFile;
-	private final Index<K, T> index;
+	private final Index<K, Integer> index;
 
-	EngineImpl(Serializer<K, T> ser) {
+	EngineImpl(Serializer<K> serKey, Serializer<V> serVal/* TODO in heap */) {
 		this.ccm = CCMImpl.instance();
 		String opening = DB_FILE;
 		try {
 			dataFile = DataFile.init(opening, RECORD_SIZE);
 			opening = INDEX_FILE;
-			index = new DiskIndex<>(new IndexDiskFile(opening), ser);
+			index = new DiskIndex<>(new IndexDiskFile(opening), serKey,
+				new IntegerSerializer());
 			System.out.println("ENGINE INITIALIZED");
 		} catch (IOException | InterruptedException e) {
 			throw new RuntimeException("Can't open " + opening + " file", e);
@@ -308,7 +311,7 @@ final class EngineImpl<K extends Comparable<K>, V, T> extends Engine<K, V, T> {
 	}
 
 	@Override
-	public void insertIndex(Transaction tr, Record<K, T> rec)
+	public void insertIndex(Transaction tr, Record<K, Integer> rec)
 			throws IOException, InterruptedException {
 		index.insert(tr, rec);
 	}

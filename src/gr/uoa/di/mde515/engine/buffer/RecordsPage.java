@@ -19,49 +19,56 @@ public class RecordsPage<K extends Comparable<K>, V, T> extends Page {
 	// private static final BufferManager<Integer> buff = BufferManager
 	// .getInstance();
 	// FIXME immutable ?
-	private final Serializer<K, V> ser;
+	private final Serializer<K> serKey;
+	private final Serializer<V> serVal;
 	private final short header_size;
+	private final int record_size;
 
-	public RecordsPage(int pageid, ByteBuffer dat, Serializer<K, V> ser,
-			short header_size) {
+	public RecordsPage(int pageid, ByteBuffer dat, Serializer<K> serKey,
+			Serializer<V> serVal, short header_size) {
 		super(pageid, dat);
-		this.ser = ser;
+		this.serKey = serKey;
+		this.serVal = serVal;
 		this.header_size = header_size;
+		record_size = serKey.getTypeSize() + serVal.getTypeSize();
 	}
 
-	public RecordsPage(Page page, Serializer<K, V> ser, short header_size) {
+	public RecordsPage(Page page, Serializer<K> serKey, Serializer<V> serVal,
+			short header_size) {
 		super(page);
-		this.ser = ser;
+		this.serKey = serKey;
+		this.serVal = serVal;
 		this.header_size = header_size;
+		record_size = serKey.getTypeSize() + serVal.getTypeSize();
 	}
 
 	// =========================================================================
 	// Read/Write
 	// =========================================================================
 	public K readKey(int slot) { // TODO protected
-		return ser.readKey(getDat(), slot, header_size);// TODO move
-														// ser
-														// up(avoid
-														// getDat())
+		return serKey.readValue(getDat(), header_size + slot * record_size);
+		// TODO move ser up(avoid getDat())
 	}
 
 	public V readValue(int slot) { // TODO protected
-		return ser.readValue(getDat(), slot, header_size);
+		return serVal.readValue(getDat(), header_size + slot * record_size
+			+ serKey.getTypeSize());
 	}
 
 	protected void writeKey(int slot, K key) {
-		ser.writeKey(getDat(), slot, key, header_size);
+		serKey.writeValue(getDat(), header_size + slot * record_size, key);
 	}
 
 	protected void writeValue(int slot, V value) {
-		ser.writeValue(getDat(), slot, value, header_size);
+		serVal.writeValue(getDat(),
+			header_size + slot * record_size + serKey.getTypeSize(), value);
 	}
 
 	protected short getKeySize() {
-		return ser.getKeySize();
+		return serKey.getTypeSize();
 	}
 
-	protected short getRecordSize() {
-		return ser.getRecordSize();
+	protected final int getRecordSize() {
+		return record_size;
 	}
 }

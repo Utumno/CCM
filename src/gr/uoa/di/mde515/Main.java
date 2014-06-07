@@ -2,7 +2,7 @@ package gr.uoa.di.mde515;
 
 import gr.uoa.di.mde515.engine.Engine;
 import gr.uoa.di.mde515.engine.Engine.TransactionFailedException;
-import gr.uoa.di.mde515.engine.buffer.IntegerIntegerSerializer;
+import gr.uoa.di.mde515.engine.buffer.IntegerSerializer;
 import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.locks.DBLock;
 
@@ -20,7 +20,9 @@ public class Main {
 	public static void main(String[] args) throws InterruptedException,
 			IOException, ExecutionException {
 		final Engine<Integer, Integer, Integer> eng = (Engine<Integer, Integer, Integer>) Engine
-			.newInstance(new IntegerIntegerSerializer());// FIXME unchecked and
+			.newInstance(new IntegerSerializer(), new IntegerSerializer());// FIXME
+																			// unchecked
+																			// and
 															// ugly
 		try {
 			// I need to call get so the thread blocks - otherwise execution

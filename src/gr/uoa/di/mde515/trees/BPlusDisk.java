@@ -3,6 +3,7 @@ package gr.uoa.di.mde515.trees;
 import gr.uoa.di.mde515.engine.Engine;
 import gr.uoa.di.mde515.engine.Transaction;
 import gr.uoa.di.mde515.engine.buffer.BufferManager;
+import gr.uoa.di.mde515.engine.buffer.IntegerSerializer;
 import gr.uoa.di.mde515.engine.buffer.Page;
 import gr.uoa.di.mde515.engine.buffer.RecordsPage;
 import gr.uoa.di.mde515.engine.buffer.Serializer;
@@ -58,8 +59,9 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 	// fields - TODO private lock + thread safety
 	private volatile Node<?> root;
 	private AtomicInteger nodeId = new AtomicInteger(0);
-	/** Used to write K and T to disc and read them back */
-	private final Serializer<K, T> ser;
+	// Used to write K and T to disc and read them back
+	private final Serializer<K> serKey;
+	private final Serializer<T> serVal;
 
 	/**
 	 * The BPlus writes the last nodeId and root node id to files and reads them
@@ -94,9 +96,10 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		}
 	}
 
-	public BPlusDisk(IndexDiskFile file, Serializer<K, T> ser)
-			throws IOException, InterruptedException {
-		this.ser = ser;
+	public BPlusDisk(IndexDiskFile file, Serializer<K> serKey,
+			Serializer<T> serVal) throws IOException, InterruptedException {
+		this.serKey = serKey;
+		this.serVal = serVal;
 		this.file = file;
 		if (file.read() != -1) {
 			System.out.println(file + " already exists");
@@ -237,15 +240,17 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		 * there is a transaction (and locking) OR in the tree constructor where
 		 * no locking is needed. So we do not request locks here.
 		 */
-		private Node(int id) throws IOException, InterruptedException {
-			super((Page<T>) buf.allocFrame(id, file), ser, HEADER_SIZE);
+		private Node(int id, Serializer<V> ser) throws IOException,
+				InterruptedException {
+			super(buf.allocFrame(id, file), serKey, ser, HEADER_SIZE);
 			isLeaf = readByte(LEAF_OFFSET) == 1;
 			numOfKeys = readShort(NUM_KEYS_OFFSET);
 		}
 
 		/** Allocates a Node IN MEMORY */
-		private Node(Transaction tr, boolean leaf) throws InterruptedException {
-			super((Page<T>) buf.allocFrameForNewPage(nodeId.decrementAndGet()),
+		private Node(Transaction tr, boolean leaf, Serializer<V> ser)
+				throws InterruptedException {
+			super(buf.allocFrameForNewPage(nodeId.decrementAndGet()), serKey,
 					ser, HEADER_SIZE);
 			if (tr != null) { // if null we are creating the first root !
 				final int id = getPageId();
@@ -475,11 +480,11 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		 * splits, {@link BPlusDisk#insertInternal(Node, Record)}).
 		 */
 		InternalNode(Transaction tr) throws InterruptedException {
-			super(tr, false);
+			super(tr, false, new IntegerSerializer());
 		}
 
 		InternalNode(int id) throws IOException, InterruptedException {
-			super(id);
+			super(id, new IntegerSerializer());
 		}
 
 		// =====================================================================
@@ -760,11 +765,11 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		 * In the latter case the transaction must be null.
 		 */
 		LeafNode(Transaction tr) throws InterruptedException {
-			super(tr, true);
+			super(tr, true, serVal);
 		}
 
 		LeafNode(int id) throws InterruptedException, IOException {
-			super(id);
+			super(id, serVal);
 		}
 
 		// =========================================================================
