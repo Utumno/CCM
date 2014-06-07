@@ -14,8 +14,7 @@ import java.util.List;
 
 public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 
-	private static final BufferManager buf = BufferManager
-		.getInstance();
+	private static final BufferManager buf = BufferManager.getInstance();
 	// storage layer
 	private final DiskFile file;
 	private final Header head;
@@ -57,14 +56,13 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		private static final int OFFSET_RECORD_SIZE = 12;
 		private static final int OFFSET_NUM_OF_PAGES = 14;
 		// BufferManager
-		private static final BufferManager buff = BufferManager
-			.getInstance();
+		private static final BufferManager buff = BufferManager.getInstance();
 		private final Page header_page;
 
 		Header(DiskFile file, short recordSize) throws IOException,
 				InterruptedException {
 			if (file.read() != -1) {
-				System.out.println("File already exists"); // FIXME read header
+				System.out.println("File already exists");
 				header_page = buff.allocPermanentPage(0, file);
 				freeList = header_page.readInt(OFFSET_FREE_LIST);
 				fullList = header_page.readInt(OFFSET_FULL_LIST);

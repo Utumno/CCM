@@ -42,15 +42,12 @@ import java.util.concurrent.atomic.AtomicInteger;
  * i34 j56 -> i346
  * </pre>
  *
- * FOR NOW stores Integers as PAGE_IDs. FIXME - follow the casts to Integers
- * (basically change BufferManager<Integer> to BufferManager<T>).
- *
  * @param <K>
  *            the type of the key of the one and only file
  * @param <T>
  *            the type of the value of the records to be stored in the leaf
  *            nodes - when the tree is used as an Index this corresponds to the
- *            page id of the data file the key is located
+ *            page id of the page (of the data file) the key is located
  */
 public final class BPlusDisk<K extends Comparable<K>, T> {
 
@@ -304,33 +301,34 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		// =====================================================================
 		// Node methods
 		// =====================================================================
-		boolean overflow() { // TODO belongs to record page
+		final boolean overflow() { // TODO belongs to record page
 			return numOfKeys == getMax_keys(); // no more keys accepted
 		}
 
 		/**
 		 * Returns true if removing from this node WILL result in underflow. For
 		 * nodes whose max keys number is even this will occur when the current
-		 * number of keys drops below max_keys/2. For nodes whose max keys
-		 * number is odd the current number of nodes must be floor[max_keys/2] -
-		 * the fanout is max_keys + 1 and the last pointer is always present.
-		 * Root will underflow if current fanout is 2 - and since the
-		 * "greaterOrEqual" node is always there this means numOfNodes==1.
+		 * number of keys drops below max_keys/2 (no rounding). For nodes whose
+		 * max keys number is odd the current number of nodes must be
+		 * floor[max_keys/2] - the fanout is max_keys + 1 and the last pointer
+		 * is always present. Root will underflow if current fanout is 2 - and
+		 * since the "greaterOrEqual" node is always there this means
+		 * numOfNodes==1.
 		 */
-		boolean willUnderflow() {
+		final boolean willUnderflow() {
 			if (root.equals(this)) return numOfKeys == 1;
 			return numOfKeys == getMax_keys() / 2;
 		}
 
-		boolean isLeaf() {
+		final boolean isLeaf() {
 			return isLeaf;
 		}
 
-		int greaterOrEqual() { // 4 for int - grOrE is always a page Id
+		final int greaterOrEqual() { // 4 for int - grOrE is always a page Id
 			return readInt(Engine.PAGE_SIZE - 4);
 		}
 
-		void setGreaterOrEqual(int integer) {
+		final void setGreaterOrEqual(int integer) {
 			writeInt(Engine.PAGE_SIZE - 4, integer);
 			buf.setPageDirty(getPageId());
 		}
@@ -428,7 +426,8 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			buf.setPageDirty(getPageId());
 		}
 
-		// TODO assert this.parent == parent
+		// TODO assert this.parent == parent - Move to subclasses node so they
+		// return a subclass
 		Node<?> _rightSiblingSameParent(Transaction tr, DBLock lock,
 				InternalNode parent) throws IOException, InterruptedException {
 			if (parent == null)
@@ -448,7 +447,8 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			return newNodeFromDiskOrBuffer(tr, lock, parent.greaterOrEqual());
 		}
 
-		// TODO assert this.parent == parent
+		// TODO assert this.parent == parent - Move to subclasses node so they
+		// return a subclass
 		Node<?> _leftSiblingSameParent(Transaction tr, DBLock lock,
 				InternalNode parent) throws IOException, InterruptedException {
 			if (parent == null)

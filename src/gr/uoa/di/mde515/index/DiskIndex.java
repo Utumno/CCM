@@ -11,7 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class DiskIndex<K extends Comparable<K>, T> implements Index<K, T> {
+public final class DiskIndex<K extends Comparable<K>, T> implements Index<K, T> {
 
 	private final BPlusDisk<K, T> bplus;
 

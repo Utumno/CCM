@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
  */
 public enum IntegerSerializer implements Serializer<Integer> {
 	INSTANCE;
+
 	private static final short type_size = 4;
 
 	@Override
