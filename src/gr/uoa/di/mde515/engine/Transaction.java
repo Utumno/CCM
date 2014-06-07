@@ -2,7 +2,6 @@ package gr.uoa.di.mde515.engine;
 
 import gr.uoa.di.mde515.files.DataFile;
 import gr.uoa.di.mde515.index.Index;
-import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.locks.DBLock;
 import gr.uoa.di.mde515.locks.LockManager;
 
@@ -20,9 +19,9 @@ public final class Transaction {
 	private final long threadId; // not really needed FIXME
 	private final String threadName;
 	// TODO merge below two maps
-	private final EnumMap<DBLock, List<PageId<Integer>>> lockedDataPages = new EnumMap<>(
+	private final EnumMap<DBLock, List<Integer>> lockedDataPages = new EnumMap<>(
 		DBLock.class);
-	private final EnumMap<DBLock, List<PageId<Integer>>> lockedIndexPages = new EnumMap<>(
+	private final EnumMap<DBLock, List<Integer>> lockedIndexPages = new EnumMap<>(
 		DBLock.class);
 	private final long transId; // TODO Random unique trans identifier? see:
 	// http://www.javapractices.com/topic/TopicAction.do?Id=56
@@ -38,10 +37,10 @@ public final class Transaction {
 		threadId = Thread.currentThread().getId();
 		threadName = "Thread [" + threadId + "] for transaction " + transId;
 		Thread.currentThread().setName(threadName);
-		lockedDataPages.put(DBLock.E, new ArrayList<PageId<Integer>>());
-		lockedDataPages.put(DBLock.S, new ArrayList<PageId<Integer>>());
-		lockedIndexPages.put(DBLock.E, new ArrayList<PageId<Integer>>());
-		lockedIndexPages.put(DBLock.S, new ArrayList<PageId<Integer>>());
+		lockedDataPages.put(DBLock.E, new ArrayList<Integer>());
+		lockedDataPages.put(DBLock.S, new ArrayList<Integer>());
+		lockedIndexPages.put(DBLock.E, new ArrayList<Integer>());
+		lockedIndexPages.put(DBLock.S, new ArrayList<Integer>());
 		state = State.ACTIVE;
 		System.out.println(this + " INITIALIZED");
 	}
@@ -63,25 +62,22 @@ public final class Transaction {
 	 */
 	public boolean lock(int pageID, DBLock lock) {
 		state = state.transition(State.ACTIVE);
-		final PageId<Integer> pid = new PageId<>(pageID);
-		for (Entry<DBLock, List<PageId<Integer>>> entries : lockedDataPages
-			.entrySet()) {
-			if (entries.getKey() != lock && entries.getValue().contains(pid))
+		for (Entry<DBLock, List<Integer>> entries : lockedDataPages.entrySet()) {
+			if (entries.getKey() != lock && entries.getValue().contains(pageID))
 				throw new IllegalStateException("You already hold a "
 					+ entries.getKey() + " lock for page " + pageID
 					+ ". You can't acquire a " + lock + " lock.");
 		}
-		for (Entry<DBLock, List<PageId<Integer>>> entries : lockedIndexPages
-			.entrySet()) {
-			if (entries.getKey() != lock && entries.getValue().contains(pid))
+		for (Entry<DBLock, List<Integer>> entries : lockedIndexPages.entrySet()) {
+			if (entries.getKey() != lock && entries.getValue().contains(pageID))
 				throw new IllegalStateException("You already hold a "
 					+ entries.getKey() + " lock for page " + pageID
 					+ ". You can't acquire a " + lock + " lock.");
 		}
-		if (!lockedDataPages.get(lock).contains(pid)
-			&& !lockedIndexPages.get(lock).contains(pid)) {
-			lm.requestLock(new LockManager.Request(pid, this, lock));
-			addLockedDataPage(pid, lock);
+		if (!lockedDataPages.get(lock).contains(pageID)
+			&& !lockedIndexPages.get(lock).contains(pageID)) {
+			lm.requestLock(new LockManager.Request(pageID, this, lock));
+			addLockedDataPage(pageID, lock);
 			return true;
 		}
 		return false;
@@ -104,9 +100,9 @@ public final class Transaction {
 		System.out.println(this + " flushing " + lockedDataPages
 			+ lockedIndexPages);
 		state = state.transition(State.COMMITING);
-		for (List<PageId<Integer>> list : lockedDataPages.values())
+		for (List<Integer> list : lockedDataPages.values())
 			dataFile.flush(list);
-		for (List<PageId<Integer>> list : lockedIndexPages.values())
+		for (List<Integer> list : lockedIndexPages.values())
 			index.flush(list);
 	}
 
@@ -115,23 +111,21 @@ public final class Transaction {
 		System.out.println(this + " aborting " + lockedDataPages
 			+ lockedIndexPages);
 		state = state.transition(State.ABORTING);
-		for (List<PageId<Integer>> list : lockedDataPages.values())
+		for (List<Integer> list : lockedDataPages.values())
 			dataFile.abort(list);
-		for (List<PageId<Integer>> list : lockedIndexPages.values())
+		for (List<Integer> list : lockedIndexPages.values())
 			index.abort(list);
 	}
 
 	void end() {
 		state = state.transition(State.ENDING);
-		for (Entry<DBLock, List<PageId<Integer>>> entries : lockedDataPages
-			.entrySet()) {
-			for (PageId<Integer> pid : entries.getValue()) {
+		for (Entry<DBLock, List<Integer>> entries : lockedDataPages.entrySet()) {
+			for (int pid : entries.getValue()) {
 				lm.unlock(this, pid);
 			}
 		}
-		for (Entry<DBLock, List<PageId<Integer>>> entries : lockedIndexPages
-			.entrySet()) {
-			for (PageId<Integer> pid : entries.getValue()) {
+		for (Entry<DBLock, List<Integer>> entries : lockedIndexPages.entrySet()) {
+			for (int pid : entries.getValue()) {
 				lm.unlock(this, pid);
 			}
 		}
@@ -140,12 +134,11 @@ public final class Transaction {
 	// =========================================================================
 	// Helpers
 	// =========================================================================
-	private void addLockedDataPage(PageId<Integer> pageId, DBLock lock) {
+	private void addLockedDataPage(int pageId, DBLock lock) {
 		// if (!(pageId.getId() instanceof Integer)) return; // FIXME horrible
 		// hack - actually the pageId may wrap a node at this stage
-		final Integer id = pageId.getId();
 		// System.out.println("ADDED " + id);
-		if (id >= 0) lockedDataPages.get(lock).add(pageId); // FIXME hack2
+		if (pageId >= 0) lockedDataPages.get(lock).add(pageId); // FIXME hack2
 		// I should have one map for each file and pass it as param to add
 		else lockedIndexPages.get(lock).add(pageId);
 	}

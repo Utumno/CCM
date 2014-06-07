@@ -44,7 +44,7 @@ public final class DiskIndex<K extends Comparable<K>, T> implements Index<K, T> 
 	}
 
 	@Override
-	public void flush(List<PageId<Integer>> list) throws IOException {
+	public void flush(List<Integer> list) throws IOException {
 		bplus.flush(list);
 	}
 
@@ -55,7 +55,7 @@ public final class DiskIndex<K extends Comparable<K>, T> implements Index<K, T> 
 	}
 
 	@Override
-	public void abort(List<PageId<Integer>> list) throws IOException {
+	public void abort(List<Integer> list) throws IOException {
 		bplus.abort(list);
 	}
 

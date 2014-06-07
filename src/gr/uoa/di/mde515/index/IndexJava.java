@@ -36,7 +36,7 @@ public class IndexJava<K extends Comparable<K>, T> implements Index<K, T> {
 	}
 
 	@Override
-	public void flush(List<PageId<Integer>> list) throws IOException {
+	public void flush(List<Integer> list) throws IOException {
 		throw new UnsupportedOperationException("Not implemented"); // TODO
 	}
 
@@ -53,7 +53,7 @@ public class IndexJava<K extends Comparable<K>, T> implements Index<K, T> {
 	}
 
 	@Override
-	public void abort(List<PageId<Integer>> list) throws IOException {
+	public void abort(List<Integer> list) throws IOException {
 		throw new UnsupportedOperationException("Not implemented"); // TODO
 	}
 }

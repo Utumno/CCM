@@ -8,7 +8,6 @@ import gr.uoa.di.mde515.engine.buffer.Page;
 import gr.uoa.di.mde515.engine.buffer.RecordsPage;
 import gr.uoa.di.mde515.engine.buffer.Serializer;
 import gr.uoa.di.mde515.files.IndexDiskFile;
-import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.locks.DBLock;
 
@@ -117,12 +116,11 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 	// =========================================================================
 	// API
 	// =========================================================================
-	public void flush(List<PageId<Integer>> pageIds) throws IOException {
-		for (PageId<Integer> pageID : pageIds) {
-			final Integer pid = pageID.getId();
-			buf.flushPage(pid, file);
-			System.out.println("PID " + pid);
-			buf.unpinPage(pid);
+	public void flush(List<Integer> pageIds) throws IOException {
+		for (int pageID : pageIds) {
+			buf.flushPage(pageID, file);
+			System.out.println("PID " + pageID);
+			buf.unpinPage(pageID);
 		}
 		Root.rootToFile(root.getPageId());
 		Root.nodesToFile(nodeId.get());
@@ -143,9 +141,9 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		_deleteInLeaf(tr, key, leafNode);
 	}
 
-	public void abort(List<PageId<Integer>> pageIds) throws IOException {
-		for (PageId<Integer> pageID : pageIds) {
-			buf.killPage(pageID.getId(), file);
+	public void abort(List<Integer> pageIds) throws IOException {
+		for (int pageID : pageIds) {
+			buf.killPage(pageID, file);
 		}
 	}
 
@@ -183,7 +181,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 	 * @throws InterruptedException
 	 * @throws IOException
 	 */
-	private Integer getNextPageIdToLock(Integer toLock, K key, Map<K, T> m,
+	private Integer getNextPageIdToLock(int toLock, K key, Map<K, T> m,
 			Transaction tr, DBLock lock) throws IOException,
 			InterruptedException {
 		Node<?> node = root.newNodeFromDiskOrBuffer(tr, lock, toLock);
@@ -510,7 +508,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			Collection<Node> values = new ArrayList<>();
 			for (short i = 0; i < numOfKeys; ++i) {
 				K key = readKey(i);
-				Integer val = readValue(i);
+				int val = readValue(i);
 				values.add(newNodeFromDiskOrBuffer(tr, lock, val));
 				System.out.print(key + ";" + val + ",");
 			}

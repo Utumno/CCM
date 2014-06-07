@@ -1,7 +1,6 @@
 package gr.uoa.di.mde515.locks;
 
 import gr.uoa.di.mde515.engine.Transaction;
-import gr.uoa.di.mde515.index.PageId;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -18,11 +17,11 @@ public class LockManager {
 
 	public final static class Request {
 
-		private final PageId<?> pageId;
+		private final int pageId;
 		private final Transaction tr;
 		private final DBLock lock;
 
-		public Request(PageId<?> pageId, Transaction tr, DBLock lock) {
+		public Request(int pageId, Transaction tr, DBLock lock) {
 			this.pageId = pageId;
 			this.tr = tr;
 			this.lock = lock;
@@ -42,7 +41,7 @@ public class LockManager {
 		}
 	}
 
-	private static final ConcurrentMap<PageId<?>, LockStructure> locks = new ConcurrentHashMap<>();
+	private static final ConcurrentMap<Integer, LockStructure> locks = new ConcurrentHashMap<>();
 	private static final LockManager instance = new LockManager();
 
 	public static LockManager getInstance() {
@@ -65,12 +64,12 @@ public class LockManager {
 		// out of the synchronized block
 	}
 
-	public void unlock(Transaction tr, PageId<Integer> pid) {
+	public void unlock(Transaction tr, int pid) {
 		synchronized (locks) {
 			LockStructure lockStruct = locks.get(pid);
 			if (lockStruct == null) {
 				throw new RuntimeException(
-					"Requesting unlock for non locked page " + pid.getId()
+					"Requesting unlock for non locked page " + pid
 						+ " on behalf of transaction " + tr);
 			}
 			if (lockStruct.unlock(tr)) locks.remove(pid);
@@ -96,7 +95,7 @@ public class LockManager {
 			final DBLock lock = req.lock;
 			final Transaction trans = req.tr;
 			final Request grant = granted.get(trans);
-			if (grant != null && grant.pageId.equals(req.pageId)
+			if (grant != null && grant.pageId == req.pageId
 				&& grant.lock == lock) return; // maybe redundant checks ?
 			switch (lock) {
 			case E:

@@ -1,6 +1,5 @@
 package gr.uoa.di.mde515.trees;
 
-import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
 
 import java.util.ArrayList;
@@ -25,7 +24,8 @@ import java.util.TreeMap;
  *            the type of the value of the records to be stored in the leaf
  *            nodes (non key attributes)
  */
-public class BPlusJava<K extends Comparable<K>, V> implements BPlusTree<K, V> {
+public final class BPlusJava<K extends Comparable<K>, V> implements
+		BPlusTree<K, V> {
 
 	private Node<K, V> root = new LeafNode<>();
 	private static final int N = 1;
@@ -46,8 +46,8 @@ public class BPlusJava<K extends Comparable<K>, V> implements BPlusTree<K, V> {
 	}
 
 	/** Return a page id for the root node */
-	public PageId<Node<K, V>> getRootPageId() {
-		return new PageId<>(root);
+	public Node<K, V> getRootPageId() {
+		return root;
 	}
 
 	/**
@@ -57,21 +57,21 @@ public class BPlusJava<K extends Comparable<K>, V> implements BPlusTree<K, V> {
 	 * populating the sm output parameter with the map of keys and page ids in
 	 * the leaf node.
 	 */
-	public PageId<Node<K, V>> getNextPageId(PageId<Node<K, V>> grantedPage,
-			K key, SortedMap<K, V> sm) {
-		Node<K, V> node = grantedPage.getId();
+	public Node<K, V> getNextPageId(Node<K, V> grantedPage, K key,
+			SortedMap<K, V> sm) {
+		Node<K, V> node = grantedPage;
 		if (node instanceof LeafNode) {
 			sm.putAll(((LeafNode) node).records);
 			return null; // locked the path to the key
 		}
 		InternalNode<K, V> in = (InternalNode<K, V>) node;
 		final Node<K, V> nextNode = in._lookup(key);
-		return new PageId<>(nextNode);
+		return nextNode;
 	}
 
-	public <R extends Record<K, V>> PageId<Node<K, V>> getLeaf(
-			PageId<Node<K, V>> grantedPage, R rec) {
-		Node<K, V> node = grantedPage.getId();
+	public <R extends Record<K, V>> Node<K, V> getLeaf(Node<K, V> grantedPage,
+			R rec) {
+		Node<K, V> node = grantedPage;
 		final K key = rec.getKey();
 		if (node instanceof LeafNode) {
 			_insertInLeaf(rec, key, (LeafNode<K, V>) node); // all parents are
@@ -80,7 +80,7 @@ public class BPlusJava<K extends Comparable<K>, V> implements BPlusTree<K, V> {
 		}
 		InternalNode<K, V> in = (InternalNode<K, V>) node;
 		final Node<K, V> nextNode = in._lookup(key);
-		return new PageId<>(nextNode);
+		return nextNode;
 	}
 
 	@Override

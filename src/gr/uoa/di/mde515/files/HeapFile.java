@@ -4,7 +4,6 @@ import gr.uoa.di.mde515.engine.Engine;
 import gr.uoa.di.mde515.engine.Transaction;
 import gr.uoa.di.mde515.engine.buffer.BufferManager;
 import gr.uoa.di.mde515.engine.buffer.Page;
-import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.locks.DBLock;
 
@@ -148,8 +147,8 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	 * @throws InterruptedException
 	 */
 	@Override
-	public <T> PageId<T> insert(Transaction tr, Record<K, V> record)
-			throws IOException, InterruptedException {
+	public int insert(Transaction tr, Record<K, V> record) throws IOException,
+			InterruptedException {
 		int pageID = getFreeListPageId();
 		Page p;
 		if (tr.lock(pageID, DBLock.E)) { // locks for the first time
@@ -167,20 +166,20 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 			throw e;
 		}
 		checkReachLimitOfPage(p, tr);
-		return new PageId(pageID);
+		return pageID;
 	}
 
 	@Override
-	public <T> void delete(Transaction tr, PageId<T> p, K key)
-			throws IOException, InterruptedException {
+	public void delete(Transaction tr, int pid, K key) throws IOException,
+			InterruptedException {
 		int newFreeSlotposition = 0;
 		Page deleteFromPage;
-		if (tr.lock((Integer) p.getId(), DBLock.E)) {
-			deleteFromPage = buf.allocFrame((Integer) p.getId(), file);
+		if (tr.lock(pid, DBLock.E)) {
+			deleteFromPage = buf.allocFrame(pid, file);
 			// FIXME - race in pin ??? - add boolean pin param in allocFrame
-			buf.pinPage((Integer) p.getId());
+			buf.pinPage(pid);
 		} else {
-			deleteFromPage = buf.allocFrame((Integer) p.getId(), file);
+			deleteFromPage = buf.allocFrame(pid, file);
 		}
 		for (int i = PAGE_HEADER_LENGTH, j = 0; j < head.MAXIMUM_NUMBER_OF_SLOTS; i += head.RECORD_SIZE, ++j) {
 			if (key.compareTo((K) (Integer) deleteFromPage.readInt(i)) == 0) {
@@ -204,7 +203,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				deleteFromPage.writeInt(newFreeSlotposition + KEY_SIZE, 0);
 				deleteFromPage.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS,
 					used_slots - 1);
-				buf.setPageDirty((Integer) p.getId());
+				buf.setPageDirty(pid);
 			} else {
 				deleteFromPage.writeInt(newFreeSlotposition, UNDEFINED);
 				deleteFromPage.writeInt(newFreeSlotposition + KEY_SIZE,
@@ -214,7 +213,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 					newFreeSlotposition);
 				deleteFromPage.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS,
 					used_slots - 1);
-				buf.setPageDirty((Integer) p.getId());
+				buf.setPageDirty(pid);
 			}
 		} else {
 			deleteFromPage.writeInt(newFreeSlotposition, UNDEFINED);
@@ -223,7 +222,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 			deleteFromPage.writeInt(OFFSET_NEXT_FREE_SLOT, newFreeSlotposition);
 			deleteFromPage.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS,
 				used_slots - 1);
-			buf.setPageDirty((Integer) p.getId());
+			buf.setPageDirty(pid);
 			// update the file header
 			if (head.getFreeList() != UNDEFINED) {
 				// get next free page
@@ -259,11 +258,11 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	}
 
 	@Override
-	public <T> V get(Transaction tr, PageId<T> p, K key) throws IOException,
+	public V get(Transaction tr, int pid, K key) throws IOException,
 			InterruptedException {
 		if (key == null)
 			throw new NullPointerException("Trying to get a null key");
-		Page allocFrame = buf.allocFrame((Integer) p.getId(), file);
+		Page allocFrame = buf.allocFrame(pid, file);
 		for (int i = PAGE_HEADER_LENGTH, j = 0; j < head.MAXIMUM_NUMBER_OF_SLOTS; i += head.RECORD_SIZE, ++j) {
 			if (key.compareTo((K) (Integer) allocFrame.readInt(i)) == 0)
 				return (V) (Integer) allocFrame.readInt(i + KEY_SIZE);
@@ -272,20 +271,19 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	}
 
 	@Override
-	public void abort(List<PageId<Integer>> pageIds) throws IOException {
-		for (PageId<Integer> pageID : pageIds) {
-			buf.killPage(pageID.getId(), file);
+	public void abort(List<Integer> pageIds) throws IOException {
+		for (int pageID : pageIds) {
+			buf.killPage(pageID, file);
 		}
 	}
 
 	@Override
-	public void flush(List<PageId<Integer>> pageIds) throws IOException {
+	public void flush(List<Integer> pageIds) throws IOException {
 		head.pageWrite();
-		for (PageId<Integer> pageID : pageIds) {
-			final Integer pid = pageID.getId();
-			buf.flushPage(pid, file);
-			System.out.println("PID " + pid);
-			buf.unpinPage(pid);
+		for (int pageID : pageIds) {
+			buf.flushPage(pageID, file);
+			System.out.println("PID " + pageID);
+			buf.unpinPage(pageID);
 		}
 	}
 

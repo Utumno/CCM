@@ -24,16 +24,16 @@ interface CCM {
 
 	Transaction beginTransaction();
 
-	<K extends Comparable<K>, V, T> Record<K, V> insert(Transaction tr,
-			Record<K, V> record, DataFile<K, V> file, final Index<K, T> index)
+	<K extends Comparable<K>, V> Record<K, V> insert(Transaction tr,
+			Record<K, V> record, DataFile<K, V> file,
+			final Index<K, Integer> index) throws TransactionFailedException;
+
+	<K extends Comparable<K>, V> void delete(Transaction tr, K key, DBLock el,
+			DataFile<K, V> file, final Index<K, Integer> index)
 			throws TransactionFailedException;
 
-	<K extends Comparable<K>, V, T> void delete(Transaction tr, K key,
-			DBLock el, DataFile<K, V> file, final Index<K, T> index)
-			throws TransactionFailedException;
-
-	<K extends Comparable<K>, V, T> Record<K, V> lookup(Transaction tr, K key,
-			DBLock el, DataFile<K, V> dataFile, Index<K, T> index)
+	<K extends Comparable<K>, V> Record<K, V> lookup(Transaction tr, K key,
+			DBLock el, DataFile<K, V> dataFile, Index<K, Integer> index)
 			throws TransactionFailedException;
 
 	boolean waitTransaction(Transaction tr, long t);
@@ -50,10 +50,10 @@ interface CCM {
 
 	void shutdown() throws InterruptedException;
 
-	<K extends Comparable<K>, V, T, L> Future<L> submit(
+	<K extends Comparable<K>, V, L> Future<L> submit(
 			Engine<K, V>.TransactionalOperation to);
 
-	<K extends Comparable<K>, V, T, L> List<Future<L>> submitAll(
+	<K extends Comparable<K>, V, L> List<Future<L>> submitAll(
 			Collection<Engine<K, V>.TransactionalOperation> to)
 			throws InterruptedException;
 

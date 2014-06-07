@@ -5,7 +5,6 @@ import gr.uoa.di.mde515.files.DataFile;
 import gr.uoa.di.mde515.index.Index;
 import gr.uoa.di.mde515.index.KeyDoesntExistException;
 import gr.uoa.di.mde515.index.KeyExistsException;
-import gr.uoa.di.mde515.index.PageId;
 import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.locks.DBLock;
 
@@ -49,7 +48,7 @@ enum CCMImpl implements CCM {
 	// TransactionalOperation submit API
 	// =========================================================================
 	@Override
-	public <K extends Comparable<K>, V, T, L> Future<L> submit(
+	public <K extends Comparable<K>, V, L> Future<L> submit(
 			final Engine<K, V>.TransactionalOperation to) {
 		return exec.submit(new Callable<L>() {
 
@@ -88,7 +87,7 @@ enum CCMImpl implements CCM {
 	}
 
 	@Override
-	public <K extends Comparable<K>, V, T, L> List<Future<L>> submitAll(
+	public <K extends Comparable<K>, V, L> List<Future<L>> submitAll(
 			final Collection<Engine<K, V>.TransactionalOperation> tos)
 			throws InterruptedException {
 		Collection<Callable<L>> callables = new ArrayList<>();
@@ -149,19 +148,20 @@ enum CCMImpl implements CCM {
 	}
 
 	@Override
-	public <K extends Comparable<K>, V, T> Record<K, V> insert(
+	public <K extends Comparable<K>, V> Record<K, V> insert(
 			final Transaction tr, final Record<K, V> record,
-			final DataFile<K, V> dataFile, final Index<K, T> index)
+			final DataFile<K, V> dataFile, final Index<K, Integer> index)
 			throws TransactionFailedException {
 		if (record == null) throw new NullPointerException();
 		_validate(tr);
 		try {
-			T lookupLocked = index.lookupLocked(tr, record.getKey(), DBLock.E);
+			Integer lookupLocked = index.lookupLocked(tr, record.getKey(),
+				DBLock.E);
 			if (lookupLocked != null)
 				throw new KeyExistsException("" + record.getKey());
 			dataFile.lockHeader(tr, DBLock.E);
-			PageId<T> pageID = dataFile.insert(tr, record);
-			index.insert(tr, new Record<>(record.getKey(), pageID.getId()));
+			int pageID = dataFile.insert(tr, record);
+			index.insert(tr, new Record<>(record.getKey(), pageID));
 			return record; // NOOP
 		} catch (IOException | InterruptedException | KeyExistsException e) {
 			throw new TransactionFailedException(e);
@@ -169,33 +169,33 @@ enum CCMImpl implements CCM {
 	}
 
 	@Override
-	public <K extends Comparable<K>, V, T> Record<K, V> lookup(
+	public <K extends Comparable<K>, V> Record<K, V> lookup(
 			final Transaction tr, final K key, final DBLock el,
-			DataFile<K, V> dataFile, Index<K, T> index)
+			DataFile<K, V> dataFile, Index<K, Integer> index)
 			throws TransactionFailedException {
 		if (key == null) throw new NullPointerException();
 		_validate(tr);
 		try {
-			T id = index.lookupLocked(tr, key, el);
+			Integer id = index.lookupLocked(tr, key, el);
 			if (id == null) return null;
-			return new Record<>(key, dataFile.get(tr, new PageId<>(id), key));
+			return new Record<>(key, dataFile.get(tr, id, key));
 		} catch (IOException | InterruptedException e) {
 			throw new TransactionFailedException(e);
 		}
 	}
 
 	@Override
-	public <K extends Comparable<K>, V, T> void delete(final Transaction tr,
+	public <K extends Comparable<K>, V> void delete(final Transaction tr,
 			final K key, DBLock el, final DataFile<K, V> file,
-			final Index<K, T> index) throws TransactionFailedException {
+			final Index<K, Integer> index) throws TransactionFailedException {
 		if (key == null) throw new NullPointerException();
 		_validate(tr);
 		try {
-			T lookupLocked = index.lookupLocked(tr, key, DBLock.E);
+			Integer lookupLocked = index.lookupLocked(tr, key, DBLock.E);
 			if (lookupLocked == null)
 				throw new KeyDoesntExistException("" + key);
 			file.lockHeader(tr, DBLock.E);
-			file.delete(tr, new PageId<>(lookupLocked), key);
+			file.delete(tr, lookupLocked, key);
 			index.delete(tr, key);
 		} catch (IOException | InterruptedException | KeyDoesntExistException e) {
 			throw new TransactionFailedException(e);

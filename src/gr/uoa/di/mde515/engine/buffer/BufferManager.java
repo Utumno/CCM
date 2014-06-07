@@ -1,7 +1,6 @@
 package gr.uoa.di.mde515.engine.buffer;
 
 import gr.uoa.di.mde515.files.DiskFile;
-import gr.uoa.di.mde515.index.PageId;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -27,8 +26,7 @@ public final class BufferManager {
 	private final List<Integer> freeList = new ArrayList<>();
 	/** Contains the frames that need to remain pinned in memory */
 	private final Set<Integer> pinPerm = new HashSet<>();
-	private static final BufferManager instance = new BufferManager(
-		NUM_BUFFERS);
+	private static final BufferManager instance = new BufferManager(NUM_BUFFERS);
 	/**
 	 * All actions on the state fields must be performed holding this lock. Also
 	 * all writes to byte buffers must be performed holding this lock (TODO
@@ -140,8 +138,7 @@ public final class BufferManager {
 		synchronized (POOL_LOCK) {
 			int frameNumber = pageIdToFrameNumber.get(pageID);
 			final Frame frame = getFrame(frameNumber);
-			if (frame.isDirty())
-				disk.writePage(new PageId<>(pageID).toInt(), frame.getBuffer());
+			if (frame.isDirty()) disk.writePage(pageID, frame.getBuffer());
 			frame.setDirty(false);
 		}
 	}
@@ -276,8 +273,7 @@ public final class BufferManager {
 	private int decreasePinCount(int frameNumber, int pageID) {
 		final Frame frame = getFrame(frameNumber);
 		if ((!pinPerm.contains(frame)) // TODO move to replacement algorithm
-			&& (frame.decreasePincount()) == 0)
-			_free(pageID, frameNumber);
+			&& (frame.decreasePincount()) == 0) _free(pageID, frameNumber);
 		return frame.getPinCount().intValue();
 	}
 }
