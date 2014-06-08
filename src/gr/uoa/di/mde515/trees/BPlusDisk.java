@@ -605,14 +605,15 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				Transaction tr, Node<?> merged, Record<K, L> merge)
 				throws IOException, InterruptedException {
 			K newKey = merge.getKey();
+			// merged and deleted (if a deletion occurred) parent are the same
 			if (newKey != null) {
 				// no merging took place but we need to update the keys
 				final Node<?> reKeyed = merge.getValue();
 				K rekeyedNodeKey = _keyWithValue(reKeyed);
 				if (rekeyedNodeKey == null) { // the rekeyed node was the grOrEq
 					// we need to point from the key given to the merged
-					// UNTESTED IN MY SCENARIO reKeyed is left or me when I have
-					// a right sibling (see LeafNode#merge)
+					// UNTESTED IN MY SCENARIO (?) reKeyed is left or me when I
+					// have a right sibling (see LeafNode#merge)
 					K key3 = _keyWithValue(merged);
 					_remove(key3);
 					_put(newKey, merged.getPageId());
@@ -632,6 +633,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				// IF IT WAS RIGHTMOST and it happened to be the greaterOrEqual
 				// of its parent (this) - sooo:
 				if (merged.equals(deleted)) {
+					// keyMergedNode == key == null
 					Record<K, Integer> _lastPair = _lastPair();
 					this.setGreaterOrEqual(_lastPair.getValue());
 					keyDeleted = _lastPair.getKey();
@@ -647,7 +649,8 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 						K readKey = readKey(i);
 						if (keyDeleted.compareTo(readKey) < 0) {
 							_put(keyDeleted, readValue(i - 1));
-							keyDeleted = readKey(i - 1);
+							keyDeleted = readKey(i - 1); // TODO test this - it
+							// was missing from the code I had for the root
 							break;
 						}
 					}
@@ -656,9 +659,14 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 					keyDeleted = keyMergedNode;
 				}
 			}
-			// WE ARE NO ROOT - we are only called from fix internal which
-			// checks this
 			if (willUnderflow()) {
+				if (equals(root)) {
+					System.out.println("------------------> DELETE ROOT");
+					int _get = _get(keyDeleted);
+					_remove(keyDeleted); // to mark it --numOfKeys
+					setRoot(newNodeFromDiskOrBuffer(tr, DBLock.E, _get));
+					return null;
+				}
 				_remove(keyDeleted);
 				return merge(tr);
 			}
@@ -965,7 +973,6 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		}
 	}
 
-	@SuppressWarnings("synthetic-access")
 	private <L extends Node<?>> void fixInternal(Transaction tr,
 			Node<?> merged, Record<K, L> merge) throws IOException,
 			InterruptedException {
@@ -973,69 +980,11 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		// SW: if root were leaf it would be the only node so delete in leaf
 		// would have not ever called fixInternal
 		final InternalNode das_root = (InternalNode) root;
-		// *********** get our parent to see if it is root
-		K newKey = merge.getKey();
 		// merged and deleted (if a deletion occurred) parent should be the same
 		InternalNode parent = merged.parent(tr, DBLock.E, das_root);
-		// *********** if parent is root perform what's needed // TODO MOVE THIS
-		// in removeInternal()
 		if (root.equals(parent)) {
 			System.out.println("------------------> FIX ROOT");
-			if (newKey != null) {
-				// no merging took place but we need to update the keys
-				final Node<?> reKeyed = merge.getValue();
-				K rekeyedNodeKey = (das_root)._keyWithValue(reKeyed);
-				if (rekeyedNodeKey == null) { // the rekeyed node was the grOrEq
-					// we need to point from the key given to the merged
-					K key3 = (das_root)._keyWithValue(merged);
-					root._remove(key3);
-					das_root._put(newKey, merged.getPageId());
-					return; // TODO test this path
-				}
-				root._remove(rekeyedNodeKey);
-				das_root._put(newKey, reKeyed.getPageId());
-				return;
-			}
-			// newKey == null - a node was actually deleted
-			final Node<?> deleted = merge.getValue();
-			K key = (das_root)._keyWithValue(deleted);
-			final K keyMergedNode = das_root._keyWithValue(merged);
-			if (key == null) {
-				if (merged.equals(deleted)) {
-					// keyMergedNode == key == null
-					Record<K, Integer> _lastPair = das_root._lastPair();
-					root.setGreaterOrEqual(_lastPair.getValue());
-					key = _lastPair.getKey();
-				} else {
-					root.setGreaterOrEqual(merged.getPageId());
-					// then we must remove the key that pointed to us (exists)
-					key = keyMergedNode;
-				}
-			} else {
-				if (merged.equals(deleted)) {
-					for (short i = 1; i < root.numOfKeys; ++i) {
-						K readKey = root.readKey(i);
-						if (key.compareTo(readKey) < 0) {
-							das_root._put(key, das_root.readValue(i - 1));
-							break;
-						}
-					}
-				} else {
-					das_root._put(key, merged.getPageId());
-					key = keyMergedNode;
-				}
-			}
-			if (root.numOfKeys == 1) {
-				System.out.println("------------------> DELETE ROOT");
-				int _get = das_root._get(key);
-				root._remove(key); // to mark it --numOfKeys
-				setRoot(root.newNodeFromDiskOrBuffer(tr, DBLock.E, _get));
-				return;
-			}
-			root._remove(key);
-			return;
 		}
-		// *********** parent is not root
 		Record<K, InternalNode> newInternalNode = parent.removeInternal(tr,
 			merged, merge);
 		if (newInternalNode != null) // RECURSION

@@ -50,20 +50,20 @@ public class RecordsPage<K extends Comparable<K>, V> extends Page {
 	// =========================================================================
 	// Read/Write
 	// =========================================================================
-	public K readKey(int slot) { // TODO protected
+	protected final K readKey(int slot) {
 		return super.readType(header_size + slot * record_size, serKey);
 	}
 
-	public V readValue(int slot) { // TODO protected
+	protected final V readValue(int slot) {
 		return super.readType(
 			header_size + slot * record_size + serKey.getTypeSize(), serVal);
 	}
 
-	protected void writeKey(int slot, K key) {
+	protected final void writeKey(int slot, K key) {
 		super.writeType(header_size + slot * record_size, serKey, key);
 	}
 
-	protected void writeValue(int slot, V value) {
+	protected final void writeValue(int slot, V value) {
 		super.writeType(
 			header_size + slot * record_size + serKey.getTypeSize(), serVal,
 			value);
