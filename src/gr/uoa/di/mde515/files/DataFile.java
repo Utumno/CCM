@@ -1,6 +1,7 @@
 package gr.uoa.di.mde515.files;
 
 import gr.uoa.di.mde515.engine.Transaction;
+import gr.uoa.di.mde515.engine.buffer.Serializer;
 import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.locks.DBLock;
 
@@ -10,9 +11,9 @@ import java.util.List;
 public abstract class DataFile<K extends Comparable<K>, V> {
 
 	public static <L extends Comparable<L>, M> DataFile<L, M> init(
-			String filename, short recordSize) throws IOException,
-			InterruptedException {
-		return new HeapFile<>(filename, recordSize);
+			String filename, Serializer<L> serKey, Serializer<M> serVal)
+			throws IOException, InterruptedException {
+		return new HeapFile<>(filename, serKey, serVal);
 	}
 
 	public abstract int insert(Transaction tr, Record<K, V> rec)

@@ -210,7 +210,6 @@ final class EngineImpl<K extends Comparable<K>, V> extends Engine<K, V> {
 
 	private static final String DB_FILE = "db.db";
 	private static final String INDEX_FILE = "index.db";
-	private static final short RECORD_SIZE = 8; // TODO bin
 	private final CCM ccm;
 	private final DataFile<K, V> dataFile;
 	private final Index<K, Integer> index;
@@ -219,7 +218,7 @@ final class EngineImpl<K extends Comparable<K>, V> extends Engine<K, V> {
 		this.ccm = CCMImpl.instance();
 		String opening = DB_FILE;
 		try {
-			dataFile = DataFile.init(opening, RECORD_SIZE);
+			dataFile = DataFile.init(opening, serKey, serVal);
 			opening = INDEX_FILE;
 			index = new DiskIndex<>(new IndexDiskFile(opening), serKey,
 				IntegerSerializer.INSTANCE);

@@ -4,6 +4,7 @@ import gr.uoa.di.mde515.engine.Engine;
 import gr.uoa.di.mde515.engine.Transaction;
 import gr.uoa.di.mde515.engine.buffer.BufferManager;
 import gr.uoa.di.mde515.engine.buffer.Page;
+import gr.uoa.di.mde515.engine.buffer.Serializer;
 import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.locks.DBLock;
 
@@ -29,20 +30,25 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	private static final int OFFSET_CURRENT_NUMBER_OF_SLOTS = 8;
 	private static final int OFFSET_NEXT_PAGE = 12;
 	private static final int OFFSET_PREVIOUS_PAGE = 16;
+	// Used to write K and V to disc and read them back
+	private final Serializer<K> serKey;
+	private final Serializer<V> serVal;
 
-	public HeapFile(String filename, short recordSize) throws IOException,
-			InterruptedException {
+	public HeapFile(String filename, Serializer<K> serKey, Serializer<V> serVal)
+			throws IOException, InterruptedException {
+		this.serKey = serKey;
+		this.serVal = serVal;
 		try {
 			file = new DiskFile(filename);
-			head = new Header(file, recordSize);
+			head = new Header(file, serKey, serVal);
 		} catch (FileNotFoundException e) {
 			throw new RuntimeException("Can't access db file", e);
 		}
 	}
 
-	private final static class Header {
+	private final class Header {
 
-		final int RECORD_SIZE;
+		final short RECORD_SIZE;
 		final short MAXIMUM_NUMBER_OF_SLOTS;
 		// state fields
 		private int freeList = UNDEFINED;
@@ -55,29 +61,30 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		private static final int OFFSET_RECORD_SIZE = 12;
 		private static final int OFFSET_NUM_OF_PAGES = 14;
 		// BufferManager
-		private static final BufferManager buff = BufferManager.getInstance();
 		private final Page header_page;
 
-		Header(DiskFile file, short recordSize) throws IOException,
-				InterruptedException {
+		@SuppressWarnings("synthetic-access")
+		Header(DiskFile file, Serializer<K> serKey, Serializer<V> serVal)
+				throws IOException, InterruptedException {
 			if (file.read() != -1) {
 				System.out.println("File already exists");
-				header_page = buff.allocPermanentPage(0, file);
+				header_page = buf.allocPermanentPage(0, file);
 				freeList = header_page.readInt(OFFSET_FREE_LIST);
 				fullList = header_page.readInt(OFFSET_FULL_LIST);
 				RECORD_SIZE = header_page.readShort(OFFSET_RECORD_SIZE);
 				numOfPages = header_page.readInt(OFFSET_NUM_OF_PAGES);
 			} else { // FILE EMPTY - CREATE THE HEADER
 				System.out.println("Creating the file");
-				header_page = buff.allocPermanentPage(0, file);
+				RECORD_SIZE = (short) (serKey.getTypeSize() + serVal
+					.getTypeSize());
+				header_page = buf.allocPermanentPage(0, file);
 				header_page.writeInt(OFFSET_FREE_LIST, UNDEFINED);
 				header_page.writeInt(OFFSET_FULL_LIST, UNDEFINED);
 				header_page.writeInt(OFFSET_LAST_FREE_HEADER, UNDEFINED);
-				header_page.writeShort(OFFSET_RECORD_SIZE, recordSize);
+				header_page.writeShort(OFFSET_RECORD_SIZE, RECORD_SIZE);
 				header_page.writeInt(OFFSET_NUM_OF_PAGES, 0);
-				RECORD_SIZE = recordSize;
-				buff.setPageDirty(0);
-				buff.flushPage(0, file); // TODO - watch out: wild flush
+				buf.setPageDirty(0);
+				buf.flushPage(0, file); // TODO - watch out: wild flush
 			}
 			MAXIMUM_NUMBER_OF_SLOTS = (short) ((PAGE_SIZE - PAGE_HEADER_LENGTH) / RECORD_SIZE);
 			if (MAXIMUM_NUMBER_OF_SLOTS < 1)
@@ -87,7 +94,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		void pageWrite() {
 			pageWriteFreeList(freeList);
 			pageWriteNumOfPages(numOfPages);
-			buff.setPageDirty(0);
+			buf.setPageDirty(0);
 		}
 
 		@Override
@@ -363,29 +370,29 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		}
 	}
 
-	private void checkReachLimitOfPage(Page p, Transaction tr)
+	private void checkReachLimitOfPage(Page page, Transaction tr)
 			throws IOException, InterruptedException {
-		int current_number_of_slots = p.readInt(OFFSET_CURRENT_NUMBER_OF_SLOTS);
+		int current_number_of_slots = page.readInt(OFFSET_CURRENT_NUMBER_OF_SLOTS);
 		if (current_number_of_slots == head.MAXIMUM_NUMBER_OF_SLOTS) {
-			int next_page = p.readInt(OFFSET_NEXT_PAGE);
+			int next_page = page.readInt(OFFSET_NEXT_PAGE);
 			System.out.println("The next header is " + next_page);
-			p.writeInt(OFFSET_NEXT_PAGE, UNDEFINED);
-			p.writeInt(OFFSET_PREVIOUS_PAGE, 0);
+			page.writeInt(OFFSET_NEXT_PAGE, UNDEFINED);
+			page.writeInt(OFFSET_PREVIOUS_PAGE, 0);
 			head.setFreeList(next_page);
 			if (next_page != UNDEFINED) {
-				Page s;
 				System.out.println("The NEXT FRAME HERE");
+				Page p;
 				if (tr.lock(next_page, DBLock.E)) { // locks for the first time
-					s = buf.allocFrame(next_page, file);
+					p = buf.allocFrame(next_page, file);
 					// FIXME - race in pin ??? - add boolean pin param in
 					// allocFrame
 					buf.pinPage(next_page);
 				} else {
-					s = buf.allocFrame(next_page, file);
+					p = buf.allocFrame(next_page, file);
 				}
-				s = buf.allocFrame(next_page, file);
-				s.writeInt(OFFSET_PREVIOUS_PAGE, 0);
-				buf.setPageDirty(s.getPageId());
+				p = buf.allocFrame(next_page, file);
+				p.writeInt(OFFSET_PREVIOUS_PAGE, 0);
+				buf.setPageDirty(p.getPageId());
 				// buf.flushPage(next_page, file); // FIXME FLUSH ??
 			}
 		}
