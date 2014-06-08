@@ -23,7 +23,7 @@ public abstract class RecordsPage<K extends Comparable<K>, V> extends Page {
 	// mutable state (+ whatever inherited from Page !)
 	protected volatile short numOfKeys; // policy for numOfKeys == 0
 
-	protected abstract short getMax_keys();
+	protected abstract short getMaxKeys();
 
 	public RecordsPage(int pageid, ByteBuffer dat, Serializer<K> serKey,
 			Serializer<V> serVal, short header_size) {
@@ -58,7 +58,7 @@ public abstract class RecordsPage<K extends Comparable<K>, V> extends Page {
 	// Final protected methods for a page containing records and a header
 	// =========================================================================
 	protected final boolean overflow() {
-		return numOfKeys == getMax_keys(); // no more keys accepted
+		return numOfKeys == getMaxKeys(); // no more keys accepted
 	}
 
 	protected final K _lastKey() {

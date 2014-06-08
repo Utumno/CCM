@@ -266,7 +266,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		}
 
 		@Override
-		protected final short getMax_keys() {
+		protected final short getMaxKeys() {
 			return max_keys;
 		}
 
@@ -312,7 +312,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		 */
 		final boolean willUnderflow() {
 			if (root.equals(this)) return numOfKeys == 1;
-			return numOfKeys == getMax_keys() / 2;
+			return numOfKeys == getMaxKeys() / 2;
 		}
 
 		final boolean isLeaf() {
@@ -532,7 +532,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 
 		Record<K, Node> split(Transaction tr, Record<K, Node> insert)
 				throws InterruptedException {
-			if (numOfKeys != getMax_keys())
+			if (numOfKeys != getMaxKeys())
 				throw new RuntimeException("Splitting internal node - keys: "
 					+ numOfKeys);
 			System.out.println("------------------> SPLIT INTERNAL NODE");
@@ -867,7 +867,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 
 		Record<K, Node> split(Transaction tr, Record<K, T> rec)
 				throws InterruptedException {
-			if (numOfKeys != getMax_keys())
+			if (numOfKeys != getMaxKeys())
 				throw new RuntimeException("Splitting leaf - keys: "
 					+ numOfKeys);
 			System.out.println("------------------> SPLIT LEAFNODE");
