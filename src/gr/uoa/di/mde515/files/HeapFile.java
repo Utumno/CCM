@@ -40,13 +40,13 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		this.serVal = serVal;
 		try {
 			file = new DiskFile(filename);
-			head = new Header(file, serKey, serVal);
+			head = new Header();
 		} catch (FileNotFoundException e) {
 			throw new RuntimeException("Can't access db file", e);
 		}
 	}
 
-	private final class Header {
+	private final class Header extends Page {
 
 		final short RECORD_SIZE;
 		final short MAXIMUM_NUMBER_OF_SLOTS;
@@ -60,35 +60,31 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		private static final int OFFSET_LAST_FREE_HEADER = 8;
 		private static final int OFFSET_RECORD_SIZE = 12;
 		private static final int OFFSET_NUM_OF_PAGES = 14;
-		// BufferManager
-		private final Page header_page;
 
 		@SuppressWarnings("synthetic-access")
-		Header(DiskFile file, Serializer<K> serKey, Serializer<V> serVal)
-				throws IOException, InterruptedException {
+		Header() throws IOException, InterruptedException {
+			super(buf.allocPermanentPage(0, file));
 			if (file.read() != -1) {
 				System.out.println("File already exists");
-				header_page = buf.allocPermanentPage(0, file);
-				freeList = header_page.readInt(OFFSET_FREE_LIST);
-				fullList = header_page.readInt(OFFSET_FULL_LIST);
-				RECORD_SIZE = header_page.readShort(OFFSET_RECORD_SIZE);
-				numOfPages = header_page.readInt(OFFSET_NUM_OF_PAGES);
+				freeList = readInt(OFFSET_FREE_LIST);
+				fullList = readInt(OFFSET_FULL_LIST);
+				RECORD_SIZE = readShort(OFFSET_RECORD_SIZE);
+				numOfPages = readInt(OFFSET_NUM_OF_PAGES);
 			} else { // FILE EMPTY - CREATE THE HEADER
 				System.out.println("Creating the file");
 				RECORD_SIZE = (short) (serKey.getTypeSize() + serVal
 					.getTypeSize());
-				header_page = buf.allocPermanentPage(0, file);
-				header_page.writeInt(OFFSET_FREE_LIST, UNDEFINED);
-				header_page.writeInt(OFFSET_FULL_LIST, UNDEFINED);
-				header_page.writeInt(OFFSET_LAST_FREE_HEADER, UNDEFINED);
-				header_page.writeShort(OFFSET_RECORD_SIZE, RECORD_SIZE);
-				header_page.writeInt(OFFSET_NUM_OF_PAGES, 0);
+				writeInt(OFFSET_FREE_LIST, UNDEFINED);
+				writeInt(OFFSET_FULL_LIST, UNDEFINED);
+				writeInt(OFFSET_LAST_FREE_HEADER, UNDEFINED);
+				writeShort(OFFSET_RECORD_SIZE, RECORD_SIZE);
+				writeInt(OFFSET_NUM_OF_PAGES, 0);
 				buf.setPageDirty(0);
 				buf.flushPage(0, file); // TODO - watch out: wild flush
 			}
 			MAXIMUM_NUMBER_OF_SLOTS = (short) ((PAGE_SIZE - PAGE_HEADER_LENGTH) / RECORD_SIZE);
 			if (MAXIMUM_NUMBER_OF_SLOTS < 1)
-				throw new AssertionError("TODO error checking");
+				throw new AssertionError("Page too small");
 		}
 
 		@SuppressWarnings("synthetic-access")
@@ -96,15 +92,6 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 			pageWriteFreeList(freeList);
 			pageWriteNumOfPages(numOfPages);
 			buf.setPageDirty(0);
-		}
-
-		@Override
-		public String toString() {
-			StringBuilder builder = new StringBuilder();
-			builder.append("Header [freeList=");
-			builder.append(freeList);
-			builder.append("]");
-			return builder.toString();
 		}
 
 		// =====================================================================
@@ -131,11 +118,11 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		// Helpers
 		// =====================================================================
 		private void pageWriteNumOfPages(int numPages) {
-			header_page.writeInt(OFFSET_NUM_OF_PAGES, numPages);
+			writeInt(OFFSET_NUM_OF_PAGES, numPages);
 		}
 
 		private void pageWriteFreeList(int freelist) {
-			header_page.writeInt(OFFSET_FREE_LIST, freelist);
+			writeInt(OFFSET_FREE_LIST, freelist);
 		}
 	}
 
