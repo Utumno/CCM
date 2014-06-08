@@ -63,8 +63,7 @@ enum CCMImpl implements CCM {
 					try {
 						to.abort();
 					} catch (Exception e1) {
-						// TODO Auto-generated catch block
-						e1.printStackTrace();
+						e1.printStackTrace(); // TODO logger
 					}
 					ex = e;
 					throw e;
@@ -75,8 +74,7 @@ enum CCMImpl implements CCM {
 						try {
 							to.abort();
 						} catch (Exception e1) {
-							// TODO Auto-generated catch block
-							e1.printStackTrace();
+							e1.printStackTrace();// TODO logger
 						}
 						throw e;
 					} finally {
@@ -105,8 +103,7 @@ enum CCMImpl implements CCM {
 						try {
 							to.abort();
 						} catch (Exception e1) {
-							// TODO Auto-generated catch block
-							e1.printStackTrace();
+							e1.printStackTrace(); // TODO logger
 						}
 						ex = e;
 						throw e;
@@ -117,9 +114,8 @@ enum CCMImpl implements CCM {
 							try {
 								to.abort();
 							} catch (Exception e1) {
-								// TODO Auto-generated catch block
-							e1.printStackTrace();
-						}
+								e1.printStackTrace(); // TODO logger
+							}
 							throw e;
 						} finally {
 							to.endTransaction();
@@ -129,9 +125,7 @@ enum CCMImpl implements CCM {
 			};
 			callables.add(call);
 		}
-		return exec.invokeAll(callables); // TODO report to eclipse
-		// invokeAll(callables) when callables is a Collection suggests to
-		// replace with invokeAll(tasks,timeout,unit) which has the same problem
+		return exec.invokeAll(callables);
 	}
 
 	// =========================================================================
@@ -251,33 +245,33 @@ enum CCMImpl implements CCM {
 	}
 
 	// =========================================================================
-	// Not implemented
+	// TODO Not implemented
 	// =========================================================================
 	@Override
 	public <K extends Comparable<K>, V> Record<K, V> update(Transaction tr,
 			K key, DataFile<K, V> file) {
-		throw new UnsupportedOperationException("Not supported yet."); // TODO
+		throw new UnsupportedOperationException("Not supported yet.");
 	}
 
 	@Override
 	public <K extends Comparable<K>, V> List<Record<K, V>> range(
 			Transaction tr, K key1, K key2, DataFile<K, V> file) {
-		throw new UnsupportedOperationException("Not supported yet."); // TODO
+		throw new UnsupportedOperationException("Not supported yet.");
 	}
 
 	@Override
 	public boolean waitTransaction(Transaction tr, long t) {
-		throw new UnsupportedOperationException("Not supported yet."); // TODO
+		throw new UnsupportedOperationException("Not supported yet.");
 	}
 
 	@Override
 	public void bulkLoad(Transaction tr, Path fileOfRecords) {
-		throw new UnsupportedOperationException("Not implemented"); // TODO
+		throw new UnsupportedOperationException("Not implemented");
 	}
 
 	@Override
 	public void bulkDelete(Transaction tr, Path fileOfKeys, Object newParam) {
-		throw new UnsupportedOperationException("Not implemented"); // TODO
+		throw new UnsupportedOperationException("Not implemented");
 	}
 
 	// =========================================================================

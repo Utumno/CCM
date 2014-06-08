@@ -97,9 +97,7 @@ public final class BufferManager {
 	public void unpinPage(int pageID) {
 		synchronized (POOL_LOCK) {
 			final Integer frameNumber = getFrameNum(pageID);
-			final int decreasePinCount = decreasePinCount(frameNumber, pageID);
-			// System.out.println("Unpinned frame " + frameNumber + " - count: "
-			// + decreasePinCount);
+			decreasePinCount(frameNumber, pageID);
 		}
 	}
 
@@ -108,6 +106,8 @@ public final class BufferManager {
 	 * the {@link #pinPerm} in {@link #decreasePinCount(int, Object)}.
 	 *
 	 * @throws IOException
+	 *             thrown in the case a permanent generation page must be
+	 *             cleaned which can only be done by rereading it from disk
 	 */
 	public void killPage(int pageID, DiskFile file) throws IOException {
 		synchronized (POOL_LOCK) {
@@ -268,7 +268,7 @@ public final class BufferManager {
 	 * negative pinCount
 	 *
 	 * @param frameNumber
-	 * @return
+	 * @return the current pin count of the page
 	 */
 	private int decreasePinCount(int frameNumber, int pageID) {
 		final Frame frame = getFrame(frameNumber);

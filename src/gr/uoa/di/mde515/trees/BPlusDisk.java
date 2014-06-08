@@ -343,7 +343,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 					key = nextKey;
 				}
 				tmpKey = nextKey;
-			} // if key not found return false
+			} // TODO if key not found return false else the key
 			--numOfKeys;
 			writeShort(NUM_KEYS_OFFSET, numOfKeys);
 			buf.setPageDirty(getPageId());
@@ -354,6 +354,9 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		 * its value with {@code value} and does not increase key count. Caller
 		 * must ensure that space exists in the page or an
 		 * IndexOutOfBoundsException is thrown.
+		 *
+		 * @throws IndexOutOfBoundsException
+		 *             if the Page is full
 		 */
 		void _put(K k, V v) {
 			for (short i = 0; i < numOfKeys; ++i) {

@@ -10,7 +10,7 @@ import java.util.List;
  * @param <K>
  *            the key type - the primary key in the data file
  * @param <T>
- *            the type of the pageId - int in this project - FIXME
+ *            the type of the pageId - int in this project
  */
 public interface Index<K extends Comparable<K>, T> {
 
@@ -18,8 +18,6 @@ public interface Index<K extends Comparable<K>, T> {
 	 * Locks the path from the root to the leaf where a key is to be inserted on
 	 * behalf of a given transaction - WIP
 	 *
-	 * @throws KeyExistsException
-	 *             if the key exists
 	 * @throws InterruptedException
 	 * @throws IOException
 	 */

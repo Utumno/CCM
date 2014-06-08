@@ -22,6 +22,7 @@ public class IndexJava<K extends Comparable<K>, T> implements Index<K, T> {
 		return sm.get(key);
 	}
 
+	@SuppressWarnings("unused")
 	private void lockPath(Transaction tr, K key, DBLock el, SortedMap<K, T> sm) {
 		throw new UnsupportedOperationException("Not implemented"); // TODO
 		// PageId<Node<K, T>> indexPage = bplus.getRootPageId();
