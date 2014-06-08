@@ -1,6 +1,5 @@
 package gr.uoa.di.mde515.engine.buffer;
 
-import gr.uoa.di.mde515.engine.Engine;
 import gr.uoa.di.mde515.index.Record;
 
 import java.nio.ByteBuffer;
@@ -14,19 +13,17 @@ import java.nio.ByteBuffer;
  * @param <V>
  *            the value type
  */
-public class RecordsPage<K extends Comparable<K>, V> extends Page {
+public abstract class RecordsPage<K extends Comparable<K>, V> extends Page {
 
 	private final Serializer<K> serKey;
 	private final Serializer<V> serVal;
 	private final short header_size;
-	private final int record_size;
-	private final short max_keys;
+	// protected for subclasses to define the max keys value
+	protected final int record_size;
 	// mutable state (+ whatever inherited from Page !)
 	protected volatile short numOfKeys; // policy for numOfKeys == 0
 
-	protected final short getMax_keys() {
-		return max_keys;
-	}
+	protected abstract short getMax_keys();
 
 	public RecordsPage(int pageid, ByteBuffer dat, Serializer<K> serKey,
 			Serializer<V> serVal, short header_size) {
@@ -35,8 +32,6 @@ public class RecordsPage<K extends Comparable<K>, V> extends Page {
 		this.serVal = serVal;
 		this.header_size = header_size;
 		record_size = serKey.getTypeSize() + serVal.getTypeSize();
-		max_keys = (short) ((Engine.PAGE_SIZE - header_size - serKey
-			.getTypeSize()) / record_size);
 	}
 
 	public RecordsPage(Page page, Serializer<K> serKey, Serializer<V> serVal,
@@ -46,8 +41,6 @@ public class RecordsPage<K extends Comparable<K>, V> extends Page {
 		this.serVal = serVal;
 		this.header_size = header_size;
 		record_size = serKey.getTypeSize() + serVal.getTypeSize();
-		max_keys = (short) ((Engine.PAGE_SIZE - header_size - serKey
-			.getTypeSize()) / record_size);
 	}
 
 	/**

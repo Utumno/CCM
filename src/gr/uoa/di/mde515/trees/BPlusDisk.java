@@ -217,6 +217,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		protected static final short NUM_KEYS_OFFSET = 1;
 		// FINALS
 		private final boolean isLeaf;
+		private final short max_keys; // TODO this belongs to the tree
 
 		/**
 		 * Instantiates a Node by loading a page from disk and sets its fields
@@ -228,6 +229,8 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		private Node(int id, Serializer<V> ser) throws IOException,
 				InterruptedException {
 			super(buf.allocFrame(id, file), serKey, ser, HEADER_SIZE);
+			max_keys = (short) ((Engine.PAGE_SIZE - HEADER_SIZE - serKey
+				.getTypeSize()) / record_size);
 			isLeaf = readByte(LEAF_OFFSET) == 1;
 			numOfKeys = readShort(NUM_KEYS_OFFSET);
 		}
@@ -237,6 +240,8 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				throws InterruptedException {
 			super(buf.allocFrameForNewPage(nodeId.decrementAndGet()), serKey,
 					ser, HEADER_SIZE);
+			max_keys = (short) ((Engine.PAGE_SIZE - HEADER_SIZE - serKey
+				.getTypeSize()) / record_size);
 			if (tr != null) { // if null we are creating the first root !
 				final int id = getPageId();
 				if (tr.lock(id, DBLock.E)) { // should always return true //
@@ -258,6 +263,11 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			boolean leaf = p.readByte(LEAF_OFFSET) == 1;
 			if (leaf) return new LeafNode(pageID);
 			return new InternalNode(pageID);
+		}
+
+		@Override
+		protected final short getMax_keys() {
+			return max_keys;
 		}
 
 		// =====================================================================
