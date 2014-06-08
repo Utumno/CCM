@@ -91,6 +91,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				throw new AssertionError("TODO error checking");
 		}
 
+		@SuppressWarnings("synthetic-access")
 		void pageWrite() {
 			pageWriteFreeList(freeList);
 			pageWriteNumOfPages(numOfPages);
@@ -157,21 +158,9 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	public int insert(Transaction tr, Record<K, V> record) throws IOException,
 			InterruptedException {
 		int pageID = getFreeListPageId();
-		Page p;
-		if (tr.lock(pageID, DBLock.E)) { // locks for the first time
-			p = buf.allocFrame(pageID, file);
-			// FIXME - race in pin ??? - add boolean pin param in allocFrame
-			buf.pinPage(pageID);
-		} else {
-			p = buf.allocFrame(pageID, file);
-		}
-		try {
-			writeIntoFrame(p, (Integer) record.getKey(),
-				(Integer) record.getValue());
-		} catch (IndexOutOfBoundsException e) {
-			System.out.println("PRINT " + pageID);
-			throw e;
-		}
+		Page p = alloc(tr, pageID);
+		writeIntoFrame(p, (Integer) record.getKey(),
+			(Integer) record.getValue());
 		checkReachLimitOfPage(p, tr);
 		return pageID;
 	}
@@ -180,14 +169,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	public void delete(Transaction tr, int pid, K key) throws IOException,
 			InterruptedException {
 		int newFreeSlotposition = 0;
-		Page deleteFromPage;
-		if (tr.lock(pid, DBLock.E)) {
-			deleteFromPage = buf.allocFrame(pid, file);
-			// FIXME - race in pin ??? - add boolean pin param in allocFrame
-			buf.pinPage(pid);
-		} else {
-			deleteFromPage = buf.allocFrame(pid, file);
-		}
+		Page deleteFromPage = alloc(tr, pid);
 		for (int i = PAGE_HEADER_LENGTH, j = 0; j < head.MAXIMUM_NUMBER_OF_SLOTS; i += head.RECORD_SIZE, ++j) {
 			if (key.compareTo((K) (Integer) deleteFromPage.readInt(i)) == 0) {
 				newFreeSlotposition = i;
@@ -233,16 +215,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 			// update the file header
 			if (head.getFreeList() != UNDEFINED) {
 				// get next free page
-				Page nextPage;
-				if (tr.lock(head.getFreeList(), DBLock.E)) {
-					// time
-					nextPage = buf.allocFrame(head.getFreeList(), file);
-					// FIXME - race in pin ??? - add boolean pin param in
-					// allocFrame
-					buf.pinPage(head.getFreeList());
-				} else {
-					nextPage = buf.allocFrame(head.getFreeList(), file);
-				}
+				Page nextPage = alloc(tr, head.getFreeList());
 				nextPage.writeInt(OFFSET_PREVIOUS_PAGE,
 					deleteFromPage.readInt(OFFSET_CURRENT_PAGE));
 				deleteFromPage.writeInt(OFFSET_NEXT_PAGE,
@@ -372,7 +345,8 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 
 	private void checkReachLimitOfPage(Page page, Transaction tr)
 			throws IOException, InterruptedException {
-		int current_number_of_slots = page.readInt(OFFSET_CURRENT_NUMBER_OF_SLOTS);
+		int current_number_of_slots = page
+			.readInt(OFFSET_CURRENT_NUMBER_OF_SLOTS);
 		if (current_number_of_slots == head.MAXIMUM_NUMBER_OF_SLOTS) {
 			int next_page = page.readInt(OFFSET_NEXT_PAGE);
 			System.out.println("The next header is " + next_page);
@@ -381,20 +355,25 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 			head.setFreeList(next_page);
 			if (next_page != UNDEFINED) {
 				System.out.println("The NEXT FRAME HERE");
-				Page p;
-				if (tr.lock(next_page, DBLock.E)) { // locks for the first time
-					p = buf.allocFrame(next_page, file);
-					// FIXME - race in pin ??? - add boolean pin param in
-					// allocFrame
-					buf.pinPage(next_page);
-				} else {
-					p = buf.allocFrame(next_page, file);
-				}
+				Page p = alloc(tr, next_page);
 				p = buf.allocFrame(next_page, file);
 				p.writeInt(OFFSET_PREVIOUS_PAGE, 0);
 				buf.setPageDirty(p.getPageId());
 				// buf.flushPage(next_page, file); // FIXME FLUSH ??
 			}
 		}
+	}
+
+	private Page alloc(Transaction tr, int pageID) throws IOException,
+			InterruptedException {
+		Page p;
+		if (tr.lock(pageID, DBLock.E)) { // locks for the first time
+			p = buf.allocFrame(pageID, file);
+			// FIXME - race in pin ??? - add boolean pin param in allocFrame
+			buf.pinPage(pageID);
+		} else {
+			p = buf.allocFrame(pageID, file);
+		}
+		return p;
 	}
 }

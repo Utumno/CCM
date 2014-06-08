@@ -46,7 +46,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @param <T>
  *            the type of the value of the records to be stored in the leaf
  *            nodes - when the tree is used as an Index this corresponds to the
- *            page id of the page (of the data file) the key is located
+ *            id of the page (of the data file) the key is located
  */
 public final class BPlusDisk<K extends Comparable<K>, T> {
 
@@ -256,14 +256,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				Node<?>
 				newNodeFromDiskOrBuffer(Transaction tr, DBLock lock, int pageID)
 						throws IOException, InterruptedException {
-			Page p;
-			if (tr.lock(pageID, lock)) {
-				p = buf.allocFrame(pageID, file);
-				// FIXME - race in pin ??? - add boolean pin param in allocFrame
-				buf.pinPage(pageID);
-			} else {
-				p = buf.allocFrame(pageID, file);
-			}
+			Page p = alloc(tr, lock, pageID);
 			boolean leaf = p.readByte(LEAF_OFFSET) == 1;
 			if (leaf) return new LeafNode(pageID);
 			return new InternalNode(pageID);
@@ -1047,5 +1040,18 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			merged, merge);
 		if (newInternalNode != null) // RECURSION
 			fixInternal(tr, parent, newInternalNode);
+	}
+
+	private Page alloc(Transaction tr, DBLock lock, int pageID)
+			throws IOException, InterruptedException {
+		Page p;
+		if (tr.lock(pageID, lock)) {
+			p = buf.allocFrame(pageID, file);
+			// FIXME - race in pin ??? - add boolean pin param in allocFrame
+			buf.pinPage(pageID);
+		} else {
+			p = buf.allocFrame(pageID, file);
+		}
+		return p;
 	}
 }

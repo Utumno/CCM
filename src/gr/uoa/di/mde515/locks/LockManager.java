@@ -48,6 +48,7 @@ public class LockManager {
 		return instance;
 	}
 
+	@SuppressWarnings("synthetic-access")
 	public void requestLock(Request request) {
 		LockStructure lockStruct = null;
 		synchronized (locks) {
@@ -91,6 +92,7 @@ public class LockManager {
 
 		private LockStructure() {}
 
+		@SuppressWarnings("synthetic-access")
 		synchronized void lock(Request req) {
 			final DBLock lock = req.lock;
 			final Transaction trans = req.tr;
@@ -108,6 +110,7 @@ public class LockManager {
 			granted.put(trans, req);
 		}
 
+		@SuppressWarnings("synthetic-access")
 		synchronized void add(Request request) {
 			requests.put(request.tr, request.lock);
 		}
@@ -116,6 +119,7 @@ public class LockManager {
 		 * Unlock a lock granted to Transaction {@code tr}. Return true when
 		 * this was the last request for this page.
 		 */
+		@SuppressWarnings("synthetic-access")
 		synchronized boolean unlock(Transaction tr) {
 			System.out.println(tr + " unlocking.");
 			for (Entry<Transaction, Request> transRequest : granted.entrySet()) {

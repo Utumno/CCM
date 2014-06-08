@@ -64,6 +64,7 @@ public class Main {
 					3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53,
 					61, 59, 67, 71, 73, 79, 83, 89, 97, 101, 103, 109, 113,
 					127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 107));
+				@SuppressWarnings("synthetic-access")
 				List<Integer> perm = permutation(primeNumbers);
 				System.out.println(perm);
 				for (Integer in : perm) {
