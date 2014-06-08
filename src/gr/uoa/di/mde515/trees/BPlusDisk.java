@@ -210,8 +210,6 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 	@SuppressWarnings("synthetic-access")
 	public abstract class Node<V> extends RecordsPage<K, V> {
 
-		// MUTABLE STATE
-		volatile short numOfKeys; // NEVER ZERO EXCEPT ON CONSTRUCTION
 		// CONSTANTS
 		private static final short LEAF_OFFSET = 0;
 		private static final short HEADER_SIZE = 3; // 1 isLeaf, 2 numOfKeys
@@ -290,12 +288,8 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				throws IOException, InterruptedException;
 
 		// =====================================================================
-		// Node methods
+		// Node methods - underflow, leaf, "next" pointer
 		// =====================================================================
-		final boolean overflow() { // TODO belongs to record page
-			return numOfKeys == getMax_keys(); // no more keys accepted
-		}
-
 		/**
 		 * Returns true if removing from this node WILL result in underflow. For
 		 * nodes whose max keys number is even this will occur when the current
@@ -378,34 +372,6 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			++numOfKeys;
 			writeShort(NUM_KEYS_OFFSET, numOfKeys);
 			buf.setPageDirty(getPageId());
-		}
-
-		/**
-		 * Returns the value with key {@code key} or {@code null} if no such key
-		 * exists.
-		 */
-		V _get(K k) {
-			for (short i = 0; i < numOfKeys; ++i) {
-				if (k.compareTo(readKey(i)) == 0) return readValue(i);
-			}
-			return null;
-		}
-
-		K _lastKey() {
-			return readKey(numOfKeys - 1);
-		}
-
-		K _firstKey() {
-			return readKey(0);
-		}
-
-		Record<K, V> _lastPair() {
-			return new Record<>(readKey(numOfKeys - 1),
-				readValue(numOfKeys - 1));
-		}
-
-		Record<K, V> _firstPair() {
-			return new Record<>(readKey(0), readValue(0));
 		}
 
 		void _copyTailAndRemoveIt(Node sibling, final int fromIndex) {

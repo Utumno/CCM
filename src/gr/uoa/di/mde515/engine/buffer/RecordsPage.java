@@ -1,6 +1,7 @@
 package gr.uoa.di.mde515.engine.buffer;
 
 import gr.uoa.di.mde515.engine.Engine;
+import gr.uoa.di.mde515.index.Record;
 
 import java.nio.ByteBuffer;
 
@@ -20,6 +21,8 @@ public class RecordsPage<K extends Comparable<K>, V> extends Page {
 	private final short header_size;
 	private final int record_size;
 	private final short max_keys;
+	// mutable state (+ whatever inherited from Page !)
+	protected volatile short numOfKeys; // policy for numOfKeys == 0
 
 	protected final short getMax_keys() {
 		return max_keys;
@@ -45,6 +48,44 @@ public class RecordsPage<K extends Comparable<K>, V> extends Page {
 		record_size = serKey.getTypeSize() + serVal.getTypeSize();
 		max_keys = (short) ((Engine.PAGE_SIZE - header_size - serKey
 			.getTypeSize()) / record_size);
+	}
+
+	/**
+	 * Returns the value with key {@code key} or {@code null} if no such key
+	 * exists. Searches serially. TODO: public ?
+	 */
+	public V _get(K k) { // NON FINAL TODO: binary search in sorted files
+		for (short i = 0; i < numOfKeys; ++i) {
+			if (k.compareTo(readKey(i)) == 0) return readValue(i);
+		}
+		return null;
+	}
+
+	// =========================================================================
+	// Final protected methods for a page containing records and a header
+	// =========================================================================
+	protected final boolean overflow() {
+		return numOfKeys == getMax_keys(); // no more keys accepted
+	}
+
+	protected final K _lastKey() {
+		if (numOfKeys == 0) return null;
+		return readKey(numOfKeys - 1);
+	}
+
+	protected final K _firstKey() {
+		if (numOfKeys == 0) return null;
+		return readKey(0);
+	}
+
+	protected final Record<K, V> _lastPair() {
+		if (numOfKeys == 0) return null;
+		return new Record<>(readKey(numOfKeys - 1), readValue(numOfKeys - 1));
+	}
+
+	protected final Record<K, V> _firstPair() {
+		if (numOfKeys == 0) return null;
+		return new Record<>(readKey(0), readValue(0));
 	}
 
 	// =========================================================================
