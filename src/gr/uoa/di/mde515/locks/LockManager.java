@@ -49,7 +49,7 @@ public class LockManager {
 	}
 
 	@SuppressWarnings("synthetic-access")
-	public void requestLock(Request request) {
+	public void requestLock(Request request) throws InterruptedException {
 		LockStructure lockStruct = null;
 		synchronized (locks) {
 			lockStruct = locks.get(request.pageId);
@@ -93,7 +93,7 @@ public class LockManager {
 		private LockStructure() {}
 
 		@SuppressWarnings("synthetic-access")
-		synchronized void lock(Request req) {
+		synchronized void lock(Request req) throws InterruptedException {
 			final DBLock lock = req.lock;
 			final Transaction trans = req.tr;
 			final Request grant = granted.get(trans);
@@ -101,10 +101,10 @@ public class LockManager {
 				&& grant.lock == lock) return; // maybe redundant checks ?
 			switch (lock) {
 			case E:
-				w.lock();
+				w.lockInterruptibly();
 				break;
 			case S:
-				r.lock();
+				r.lockInterruptibly();
 				break;
 			}
 			granted.put(trans, req);

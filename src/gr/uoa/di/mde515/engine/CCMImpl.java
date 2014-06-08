@@ -25,7 +25,8 @@ import java.util.concurrent.TimeUnit;
  * {@code NullPointerException} if the supplied transaction is {@code null} and
  * a {@link TransactionRequiredException} if the transaction supplied is not
  * valid. All exceptions from lower levels are wrapped in a
- * {@link TransactionFailedException}.
+ * {@link TransactionFailedException}, including the
+ * {@link InterruptedException}.
  */
 enum CCMImpl implements CCM {
 	INSTANCE;

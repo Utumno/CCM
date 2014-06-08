@@ -50,8 +50,9 @@ public final class Transaction {
 	// =========================================================================
 	/**
 	 * Tries to lock a page if not already locked. May block. Returns true if
-	 * the page was locked for the first time or false if the page was already
-	 * locked.
+	 * the page was locked for the first time by this transaction or false if
+	 * the page was already locked. Used to update the pin count on the page
+	 * (one pin per transaction).
 	 *
 	 * @param pageID
 	 *            the pageId to be locked
@@ -59,8 +60,11 @@ public final class Transaction {
 	 *            the type of lock
 	 * @return true if the page was locked for the first time by this
 	 *         transaction, false otherwise
+	 * @throws InterruptedException
+	 *             if the thread is interrupted while blocked waiting for the
+	 *             lock
 	 */
-	public boolean lock(int pageID, DBLock lock) {
+	public boolean lock(int pageID, DBLock lock) throws InterruptedException {
 		state = state.transition(State.ACTIVE);
 		for (Entry<DBLock, List<Integer>> entries : lockedDataPages.entrySet()) {
 			if (entries.getKey() != lock && entries.getValue().contains(pageID))

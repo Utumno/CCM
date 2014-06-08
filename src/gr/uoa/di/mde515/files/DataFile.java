@@ -39,6 +39,8 @@ public abstract class DataFile<K extends Comparable<K>, V> {
 	 *            the transaction that attempts to lock
 	 * @param e
 	 *            the type of lock requested
+	 * @throws InterruptedException
 	 */
-	public abstract void lockHeader(Transaction tr, DBLock e);
+	public abstract void lockHeader(Transaction tr, DBLock e)
+			throws InterruptedException;
 }

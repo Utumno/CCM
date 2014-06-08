@@ -273,7 +273,8 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	}
 
 	@Override
-	public void lockHeader(Transaction tr, DBLock e) {
+	public void lockHeader(Transaction tr, DBLock e)
+			throws InterruptedException {
 		tr.lock(0, e); // FIXME pin
 	}
 
