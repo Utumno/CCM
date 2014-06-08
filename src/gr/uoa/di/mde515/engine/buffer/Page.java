@@ -16,50 +16,47 @@ public class Page { // TODO abstract
 	}
 
 	public Page(Page allocFrame) {
-		this(allocFrame.pageid, allocFrame.getDat());
+		this(allocFrame.pageid, allocFrame.dat);
 	}
 
-	public int getPageId() {
+	public final int getPageId() {
 		return pageid;
-	}
-
-	ByteBuffer getDat() { // FIXME delete this
-		return dat;
 	}
 
 	// =========================================================================
 	// Read/Write
 	// =========================================================================
-	public byte readByte(int pos) {
-		return getDat().get(pos);
+	public final <V> V readType(int offset, Serializer<V> ser) {
+		return ser.readValue(dat, offset);
 	}
 
-	public int readInt(int pos) {
-		return getDat().getInt(pos);
+	public final byte readByte(int pos) {
+		return dat.get(pos);
 	}
 
-	public short readShort(int pos) {
-		return getDat().getShort(pos);
+	public final int readInt(int pos) {
+		return dat.getInt(pos);
+	}
+
+	public final short readShort(int pos) {
+		return dat.getShort(pos);
 	}
 
 	// TODO !!!! consider adding buff.setPageDity(this) to the write calls
-	public void writeShort(int pos, short value) {
-		getDat().putShort(pos, value);
-		// buff.setPageDirty(this); // buff is BufferManager<Integer> - I need
-		// BufferManager<T>
+	public final <V> void writeType(int offset, Serializer<V> ser, V value) {
+		ser.writeValue(dat, offset, value);
 	}
 
-	public void writeByte(int pos, byte value) {
-		getDat().put(pos, value);
+	public final void writeShort(int pos, short value) {
+		dat.putShort(pos, value);
 	}
 
-	public void writeInt(int pos, int value) {
-		try {
-			getDat().putInt(pos, value);
-		} catch (IndexOutOfBoundsException e) {
-			System.out.println("BOUND " + pos + " val " + value);
-			throw e;
-		}
+	public final void writeByte(int pos, byte value) {
+		dat.put(pos, value);
+	}
+
+	public final void writeInt(int pos, int value) {
+		dat.putInt(pos, value);
 	}
 
 	// =========================================================================

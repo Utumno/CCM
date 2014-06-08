@@ -5,7 +5,7 @@ import gr.uoa.di.mde515.engine.Engine;
 import java.nio.ByteBuffer;
 
 /**
- * Represents a sloted page. Each slot holds a key and a value, both of fixed
+ * Represents a slotted page. Each slot holds a key and a value, both of fixed
  * size. The page has a fixed size header.
  *
  * @param <K>
@@ -15,9 +15,6 @@ import java.nio.ByteBuffer;
  */
 public class RecordsPage<K extends Comparable<K>, V> extends Page {
 
-	// private static final BufferManager<Integer> buff = BufferManager
-	// .getInstance();
-	// FIXME immutable ?
 	private final Serializer<K> serKey;
 	private final Serializer<V> serVal;
 	private final short header_size;
@@ -54,21 +51,21 @@ public class RecordsPage<K extends Comparable<K>, V> extends Page {
 	// Read/Write
 	// =========================================================================
 	public K readKey(int slot) { // TODO protected
-		return serKey.readValue(getDat(), header_size + slot * record_size);
-		// TODO move ser up(avoid getDat())
+		return super.readType(header_size + slot * record_size, serKey);
 	}
 
 	public V readValue(int slot) { // TODO protected
-		return serVal.readValue(getDat(), header_size + slot * record_size
-			+ serKey.getTypeSize());
+		return super.readType(
+			header_size + slot * record_size + serKey.getTypeSize(), serVal);
 	}
 
 	protected void writeKey(int slot, K key) {
-		serKey.writeValue(getDat(), header_size + slot * record_size, key);
+		super.writeType(header_size + slot * record_size, serKey, key);
 	}
 
 	protected void writeValue(int slot, V value) {
-		serVal.writeValue(getDat(),
-			header_size + slot * record_size + serKey.getTypeSize(), value);
+		super.writeType(
+			header_size + slot * record_size + serKey.getTypeSize(), serVal,
+			value);
 	}
 }
