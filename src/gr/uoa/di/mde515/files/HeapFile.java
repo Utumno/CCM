@@ -80,7 +80,6 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				writeInt(OFFSET_LAST_FREE_HEADER, UNDEFINED);
 				writeShort(OFFSET_RECORD_SIZE, RECORD_SIZE);
 				writeInt(OFFSET_NUM_OF_PAGES, 0);
-				buf.setPageDirty(0);
 				buf.flushPage(0, file); // TODO - watch out: wild flush
 			}
 			MAXIMUM_NUMBER_OF_SLOTS = (short) ((PAGE_SIZE - PAGE_HEADER_LENGTH) / RECORD_SIZE);
@@ -92,7 +91,6 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		void pageWrite() {
 			pageWriteFreeList(freeList);
 			pageWriteNumOfPages(numOfPages);
-			buf.setPageDirty(0);
 		}
 
 		// =====================================================================
@@ -193,7 +191,6 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				deleteFromPage.writeInt(newFreeSlotposition + KEY_SIZE, 0);
 				deleteFromPage.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS,
 					used_slots - 1);
-				buf.setPageDirty(pid);
 			} else {
 				deleteFromPage.writeInt(newFreeSlotposition, UNDEFINED);
 				deleteFromPage.writeInt(newFreeSlotposition + KEY_SIZE,
@@ -203,7 +200,6 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 					newFreeSlotposition);
 				deleteFromPage.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS,
 					used_slots - 1);
-				buf.setPageDirty(pid);
 			}
 		} else {
 			deleteFromPage.writeInt(newFreeSlotposition, UNDEFINED);
@@ -212,7 +208,6 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 			deleteFromPage.writeInt(OFFSET_NEXT_FREE_SLOT, newFreeSlotposition);
 			deleteFromPage.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS,
 				used_slots - 1);
-			buf.setPageDirty(pid);
 			// update the file header
 			if (head.getFreeList() != UNDEFINED) {
 				// get next free page
@@ -222,18 +217,13 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				deleteFromPage.writeInt(OFFSET_NEXT_PAGE,
 					nextPage.readInt(OFFSET_CURRENT_PAGE));
 				deleteFromPage.writeInt(OFFSET_PREVIOUS_PAGE, 0);
-				buf.setPageDirty(nextPage.getPageId());
-				buf.setPageDirty(deleteFromPage.getPageId());
 				head.setFreeList(deleteFromPage.readInt(OFFSET_CURRENT_PAGE));
 				head.pageWrite();
-				buf.setPageDirty(0);
 			} else {
 				head.setFreeList(deleteFromPage.readInt(OFFSET_CURRENT_PAGE));
 				deleteFromPage.writeInt(OFFSET_NEXT_PAGE, 0);
 				deleteFromPage.writeInt(OFFSET_PREVIOUS_PAGE, 0);
-				buf.setPageDirty(deleteFromPage.getPageId());
 				head.pageWrite();
-				buf.setPageDirty(0);
 			}
 		}
 	}
@@ -291,7 +281,6 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				createPageInMemory(pageID);
 				head.setFreeList(pageID);
 				head.setNumOfPages(pageID);
-				buf.setPageDirty(0);
 				return pageID;
 			}
 			return freeList;
@@ -315,7 +304,6 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		p.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS, 0);
 		p.writeInt(OFFSET_NEXT_PAGE, UNDEFINED);
 		p.writeInt(OFFSET_PREVIOUS_PAGE, 0);
-		buf.setPageDirty(pageID);
 	}
 
 	private void writeIntoFrame(Page p, int key, int value) {
@@ -330,7 +318,6 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				.readInt(OFFSET_CURRENT_NUMBER_OF_SLOTS);
 			p.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS,
 				current_number_of_slots + 1);
-			buf.setPageDirty(p.getPageId());
 		} else {
 			// update the next slot
 			p.writeInt(OFFSET_NEXT_FREE_SLOT, nextFreeSlot);
@@ -341,7 +328,6 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				.readInt(OFFSET_CURRENT_NUMBER_OF_SLOTS);
 			p.writeInt(OFFSET_CURRENT_NUMBER_OF_SLOTS,
 				current_number_of_slots + 1);
-			buf.setPageDirty(p.getPageId());
 		}
 	}
 
@@ -360,7 +346,6 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				Page p = alloc(tr, next_page);
 				p = buf.allocFrame(next_page, file);
 				p.writeInt(OFFSET_PREVIOUS_PAGE, 0);
-				buf.setPageDirty(p.getPageId());
 				// buf.flushPage(next_page, file); // FIXME FLUSH ??
 			}
 		}

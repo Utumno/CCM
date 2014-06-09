@@ -4,9 +4,8 @@ import java.nio.ByteBuffer;
 
 public class Page { // TODO abstract
 
-	// private static final BufferManager<Integer> buff = BufferManager
-	// .getInstance();
-	// FIXME immutable ?
+	private static final BufferManager buf = BufferManager.getInstance();
+	// mutable state - oops private volatile boolean dirty; // TODO cache
 	private final int pageid;
 	private final ByteBuffer dat;
 
@@ -24,7 +23,7 @@ public class Page { // TODO abstract
 	}
 
 	// =========================================================================
-	// Read/Write
+	// Read
 	// =========================================================================
 	public final <V> V readType(int offset, Serializer<V> ser) {
 		return ser.readValue(dat, offset);
@@ -42,21 +41,29 @@ public class Page { // TODO abstract
 		return dat.getShort(pos);
 	}
 
-	// TODO !!!! consider adding buff.setPageDity(this) to the write calls
+	// =========================================================================
+	// Write
+	// =========================================================================
 	public final <V> void writeType(int offset, Serializer<V> ser, V value) {
 		ser.writeValue(dat, offset, value);
+		// if (!dirty) { // TODO cache - need to clean it too !
+		buf.setPageDirty(pageid);
+		// dirty = true;
 	}
 
 	public final void writeShort(int pos, short value) {
 		dat.putShort(pos, value);
+		buf.setPageDirty(pageid);
 	}
 
 	public final void writeByte(int pos, byte value) {
 		dat.put(pos, value);
+		buf.setPageDirty(pageid);
 	}
 
 	public final void writeInt(int pos, int value) {
 		dat.putInt(pos, value);
+		buf.setPageDirty(pageid);
 	}
 
 	// =========================================================================

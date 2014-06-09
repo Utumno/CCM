@@ -253,7 +253,6 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			writeByte(LEAF_OFFSET, (byte) ((leaf) ? 1 : 0));
 			numOfKeys = 0; // Unneeded
 			writeShort(NUM_KEYS_OFFSET, (short) 0);
-			buf.setPageDirty(getPageId());
 		}
 
 				Node<?>
@@ -325,7 +324,6 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 
 		final void setGreaterOrEqual(int integer) {
 			writeInt(Engine.PAGE_SIZE - 4, integer);
-			buf.setPageDirty(getPageId());
 		}
 
 		// =====================================================================
@@ -350,7 +348,6 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			} // TODO if key not found return false else the key
 			--numOfKeys;
 			writeShort(NUM_KEYS_OFFSET, numOfKeys);
-			buf.setPageDirty(getPageId());
 		}
 
 		/**
@@ -373,7 +370,6 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 					v = tmpValue;
 				} else if (k.compareTo(tmpKey) == 0) {
 					writeValue(i, v);
-					buf.setPageDirty(getPageId());
 					return; // replace the value and do NOT ++numOfKeys
 				}
 			}
@@ -381,7 +377,6 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			writeValue(numOfKeys, v);
 			++numOfKeys;
 			writeShort(NUM_KEYS_OFFSET, numOfKeys);
-			buf.setPageDirty(getPageId());
 		}
 
 		void _copyTailAndRemoveIt(Node sibling, final int fromIndex) {
@@ -393,7 +388,6 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			}
 			numOfKeys -= removals;
 			writeShort(NUM_KEYS_OFFSET, numOfKeys);
-			buf.setPageDirty(getPageId());
 		}
 
 		// TODO assert this.parent == parent - Move to subclasses node so they
@@ -557,7 +551,6 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			}
 			Record<K, Integer> _lastPair = _lastPair();
 			writeShort(NUM_KEYS_OFFSET, --numOfKeys); // discard _lastPair
-			buf.setPageDirty(getPageId());
 			setGreaterOrEqual(_lastPair.getValue());
 			return new Record<K, Node>(_lastPair.getKey(), sibling);
 		}
@@ -899,7 +892,6 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				sibling._put(rec.getKey(), rec.getValue());
 			}
 			writeShort(NUM_KEYS_OFFSET, numOfKeys);
-			buf.setPageDirty(getPageId());
 			return new Record<K, Node>(sibling._firstPair().getKey(), sibling);
 		}
 	}

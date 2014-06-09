@@ -60,7 +60,7 @@ public final class BufferManager {
 	// =========================================================================
 	// API
 	// =========================================================================
-	public void setPageDirty(int pageID) {
+	void setPageDirty(int pageID) {
 		synchronized (POOL_LOCK) {
 			getFrame(pageIdToFrameNumber.get(pageID)).setDirty(true);
 		}
