@@ -62,22 +62,23 @@ public abstract class RecordsPage<K extends Comparable<K>, V> extends Page {
 	}
 
 	protected final K _lastKey() {
-		if (numOfKeys == 0) return null;
+		if (numOfKeys == 0) throw new IndexOutOfBoundsException();
 		return readKey(numOfKeys - 1);
 	}
 
 	protected final K _firstKey() {
-		if (numOfKeys == 0) return null;
+		if (numOfKeys == 0) throw new IndexOutOfBoundsException();
 		return readKey(0);
 	}
 
 	protected final Record<K, V> _lastPair() {
-		if (numOfKeys == 0) return null;
+		if (numOfKeys == 0) throw new IndexOutOfBoundsException();
 		return new Record<>(readKey(numOfKeys - 1), readValue(numOfKeys - 1));
 	}
 
 	protected final Record<K, V> _firstPair() {
-		if (numOfKeys == 0) return null;
+		// FIXME workaround for the merge API to work - must be fixed
+		// if (numOfKeys == 0) throw new IndexOutOfBoundsException();
 		return new Record<>(readKey(0), readValue(0));
 	}
 

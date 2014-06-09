@@ -583,6 +583,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		public <L extends Node<?>> Record<K, InternalNode> removeInternal(
 				Transaction tr, Node<?> merged, Record<K, L> merge)
 				throws IOException, InterruptedException {
+			// runs on the parent of removed or modified node
 			K newKey = merge.getKey();
 			// merged and deleted (if a deletion occurred) parent are the same
 			if (newKey != null) {
@@ -784,7 +785,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			return null;
 		}
 
-		Record<K, LeafNode> deleteInLeaf(Transaction tr, K rec)
+		Record<K, LeafNode> removeFromLeaf(Transaction tr, K rec)
 				throws InterruptedException, IOException { // TODO why IO
 			// we are in leaf - if the leaf is root then it is the only node
 			if (root.equals(this)) {
@@ -800,13 +801,25 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			return null;
 		}
 
-		/** Must not be called on the root (if the root is leaf) */
+		/**
+		 * Must not be called on the root (if the root is leaf). Returns a Pair
+		 * of a key and a node. If the key is null the record is the node that
+		 * got deleted else the nodew need to be rekeyed. FIXME - when the node
+		 * deleted was this I was able to find its parent only because
+		 * {@link RecordsPage#_firstPair()} kept returning the first pair while
+		 * this was empty (numOfKeys == 0) - have to rethink RETURN value of
+		 * this
+		 *
+		 * @param tr
+		 * @return
+		 * @throws InterruptedException
+		 * @throws IOException
+		 */
 		Record<K, LeafNode> merge(Transaction tr) throws InterruptedException,
 				IOException {
 			if (root.equals(this))
 				throw new RuntimeException("Called merge on root");
 			System.out.println("------------------> IN MERGE LEAFNODE");
-			// TODO - the part below is common with internal node - refactor
 			@SuppressWarnings("unchecked")
 			// if this is not the root then the root must be internal node
 			InternalNode parent = parent(tr, DBLock.E, (InternalNode) root);
@@ -832,7 +845,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 					setGreaterOrEqual(right_sibling.greaterOrEqual());
 					return new Record<>(null, right_sibling);
 				}
-				// both null == we are root - impossible
+				// both siblings null == impossible
 				// DELETE OURSELVES so we don't have to update "next" pointer of
 				// our left left sibling
 				// WE ARE RIGHTMOST (right_sibling == null)
@@ -945,7 +958,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			throws IllegalArgumentException, InterruptedException, IOException {
 		if (leafNode._get(key) == null)
 			throw new IllegalArgumentException("Key " + key + " does not exist");
-		Record<K, LeafNode> merge = leafNode.deleteInLeaf(tr, key);
+		Record<K, LeafNode> merge = leafNode.removeFromLeaf(tr, key);
 		if (merge != null) { // leafNode split
 			fixInternal(tr, leafNode, merge); // all parents are NOT locked
 			// (SEE FIXME in merge())
@@ -960,6 +973,9 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		// would have not ever called fixInternal
 		final InternalNode das_root = (InternalNode) root;
 		// merged and deleted (if a deletion occurred) parent should be the same
+		// NOPE - bug: if the merged is the deleted deleted.parent() needs its
+		// first Pair which is null - WORKAROUND - return not null from
+		// if (merged.isEmpty()) throw new RuntimeException("BUG");
 		InternalNode parent = merged.parent(tr, DBLock.E, das_root);
 		if (root.equals(parent)) {
 			System.out.println("------------------> FIX ROOT");
