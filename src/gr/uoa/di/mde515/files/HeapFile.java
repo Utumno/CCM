@@ -4,6 +4,7 @@ import gr.uoa.di.mde515.engine.Engine;
 import gr.uoa.di.mde515.engine.Transaction;
 import gr.uoa.di.mde515.engine.buffer.BufferManager;
 import gr.uoa.di.mde515.engine.buffer.Page;
+import gr.uoa.di.mde515.engine.buffer.RecordsPage;
 import gr.uoa.di.mde515.engine.buffer.Serializer;
 import gr.uoa.di.mde515.index.Record;
 import gr.uoa.di.mde515.locks.DBLock;
@@ -22,7 +23,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	private static final int PAGE_SIZE = Engine.PAGE_SIZE;
 	// it the size of entry in the fileheader
 	private static final int KEY_SIZE = 4;
-	private static final int PAGE_HEADER_LENGTH = 20; // TODO move to header
+	private static final short PAGE_HEADER_LENGTH = 20; // TODO move to header
 	private static final int UNDEFINED = -1;
 	// PAGE HEADER OFFSETS
 	private static final int OFFSET_CURRENT_PAGE = 0;
@@ -126,6 +127,19 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		}
 	}
 
+	private final class HeapPage extends RecordsPage<K, V> {
+
+		public HeapPage(Page page) {
+			super(page, serKey, serVal, PAGE_HEADER_LENGTH);
+		}
+
+		@Override
+		@SuppressWarnings("synthetic-access")
+		protected short getMaxKeys() {
+			return head.MAXIMUM_NUMBER_OF_SLOTS;
+		}
+	}
+
 	// =========================================================================
 	// API
 	// =========================================================================
@@ -145,7 +159,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	public int insert(Transaction tr, Record<K, V> record) throws IOException,
 			InterruptedException {
 		int pageID = getFreeListPageId();
-		Page p = alloc(tr, pageID);
+		HeapPage p = new HeapPage(alloc(tr, pageID));
 		writeIntoFrame(p, (Integer) record.getKey(),
 			(Integer) record.getValue());
 		checkReachLimitOfPage(p, tr);
