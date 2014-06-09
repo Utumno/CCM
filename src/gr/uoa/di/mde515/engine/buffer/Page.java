@@ -2,19 +2,32 @@ package gr.uoa.di.mde515.engine.buffer;
 
 import java.nio.ByteBuffer;
 
-public class Page { // TODO abstract
+public class Page {
 
 	private static final BufferManager buf = BufferManager.getInstance();
 	// mutable state - oops private volatile boolean dirty; // TODO cache
 	private final int pageid;
 	private final ByteBuffer dat;
 
-	public Page(int pageid, ByteBuffer dat) {
+	/**
+	 * Used by the buffer manager
+	 *
+	 * @param pageid
+	 * @param dat
+	 */
+	Page(int pageid, ByteBuffer dat) {
 		this.pageid = pageid;
 		this.dat = dat;
 	}
 
-	public Page(Page allocFrame) {
+	/**
+	 * Used by subclasses - passing in a page returned by the
+	 * {@link BufferManager}.
+	 *
+	 * @param allocFrame
+	 *            the allocated page by the BM - mapped to aframe
+	 */
+	protected Page(Page allocFrame) {
 		this(allocFrame.pageid, allocFrame.dat);
 	}
 

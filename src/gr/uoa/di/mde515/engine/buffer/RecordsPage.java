@@ -2,8 +2,6 @@ package gr.uoa.di.mde515.engine.buffer;
 
 import gr.uoa.di.mde515.index.Record;
 
-import java.nio.ByteBuffer;
-
 /**
  * Represents a slotted page. Each slot holds a key and a value, both of fixed
  * size. The page has a fixed size header.
@@ -24,15 +22,6 @@ public abstract class RecordsPage<K extends Comparable<K>, V> extends Page {
 	protected volatile short numOfKeys; // policy for numOfKeys == 0
 
 	protected abstract short getMaxKeys();
-
-	public RecordsPage(int pageid, ByteBuffer dat, Serializer<K> serKey,
-			Serializer<V> serVal, short header_size) {
-		super(pageid, dat);
-		this.serKey = serKey;
-		this.serVal = serVal;
-		this.header_size = header_size;
-		record_size = serKey.getTypeSize() + serVal.getTypeSize();
-	}
 
 	public RecordsPage(Page page, Serializer<K> serKey, Serializer<V> serVal,
 			short header_size) {
