@@ -30,7 +30,8 @@ public class Main {
 			// ArrayList<Inserter<T>> arrayList = new ArrayList<>();
 			// ArrayList<Lookuper<T>> arrayList = new ArrayList<>();
 			// ArrayList<InserterDeleter<T>> arrayList = new ArrayList<>();
-			// for (int i = 0; i < 100; ++i)
+			for (int i = 0; i < 100; ++i)
+				eng.submit(inserterWithLookup(eng, new Record<>(i, i))).get();
 			// arrayList.add(new InserterDeleter<T>(eng, new Record<>(0, 0)));
 			// arrayList.add(new Lookuper<T>(eng, i));
 			// arrayList.add(new Inserter<T>(eng, new Record<>(i, i)));
