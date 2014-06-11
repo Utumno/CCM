@@ -12,9 +12,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public final class BufferManager {
+public enum BufferManager {
+	INSTANCE(200);
 
-	private static final int NUM_BUFFERS = 200;
 	/** the pool of frames - unmodifiable list */
 	private final List<Frame> pool;
 	/**
@@ -26,7 +26,6 @@ public final class BufferManager {
 	private final List<Integer> freeList = new ArrayList<>();
 	/** Contains the frames that need to remain pinned in memory */
 	private final Set<Integer> pinPerm = new HashSet<>();
-	private static final BufferManager instance = new BufferManager(NUM_BUFFERS);
 	/**
 	 * All actions on the state fields must be performed holding this lock. Also
 	 * all writes to byte buffers must be performed holding this lock (TODO
@@ -51,10 +50,10 @@ public final class BufferManager {
 
 	/**
 	 * The BufferManager follows the singleton pattern. So one BufferManager is
-	 * created. TODO proper generic factory !
+	 * created.
 	 */
 	public static BufferManager getInstance() {
-		return instance;
+		return INSTANCE;
 	}
 
 	// =========================================================================
