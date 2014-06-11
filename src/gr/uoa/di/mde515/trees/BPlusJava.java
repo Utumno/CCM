@@ -61,7 +61,7 @@ public final class BPlusJava<K extends Comparable<K>, V> implements
 			SortedMap<K, V> sm) {
 		Node<K, V> node = grantedPage;
 		if (node instanceof LeafNode) {
-			sm.putAll(((LeafNode) node).records);
+			sm.putAll(((LeafNode<K, V>) node).records);
 			return null; // locked the path to the key
 		}
 		InternalNode<K, V> in = (InternalNode<K, V>) node;
