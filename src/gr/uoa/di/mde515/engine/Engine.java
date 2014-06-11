@@ -19,12 +19,14 @@ import java.util.concurrent.Future;
 /**
  * Represents the DB external interface. It is a monofilestic engine but can be
  * extended to handle more files, by making the methods instead of the class
- * generic for added complexity. The pages of the files are stamped with an
- * integer id, which is negative for the pages of the index file. Should be an
- * interface implemented by enums (for singleton property) but with the addition
- * of a static factory (TODO: java 8 ?). <br/>
- * The current Heap file implementation expects Integers (there are casts that
- * will blow if not) FIXME - generify
+ * generic (for added complexity). The single file has a single (dense) index.
+ * The pages of the files are stamped with an integer id, which is negative for
+ * the pages of the index file. Should be an interface implemented by enums (for
+ * singleton property) but with the addition of a static factory (TODO: java 8
+ * ?). <br/>
+ * preAlpha<br/>
+ * FIXME: The current Heap file implementation expects Integers (there are casts
+ * that will blow if not) - generify
  *
  * @param <K>
  *            the key type of the records in the one and only one file. Must

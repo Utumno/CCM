@@ -53,12 +53,9 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 		final short MAXIMUM_NUMBER_OF_SLOTS;
 		// state fields
 		private int freeList = UNDEFINED;
-		private int fullList = UNDEFINED;
 		private int numOfPages;
 		// OFFSETS
 		private static final int OFFSET_FREE_LIST = 0;
-		private static final int OFFSET_FULL_LIST = 4;
-		private static final int OFFSET_LAST_FREE_HEADER = 8;
 		private static final int OFFSET_RECORD_SIZE = 12;
 		private static final int OFFSET_NUM_OF_PAGES = 14;
 
@@ -68,7 +65,6 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 			if (file.read() != -1) {
 				System.out.println("File already exists");
 				freeList = readInt(OFFSET_FREE_LIST);
-				fullList = readInt(OFFSET_FULL_LIST);
 				RECORD_SIZE = readShort(OFFSET_RECORD_SIZE);
 				numOfPages = readInt(OFFSET_NUM_OF_PAGES);
 			} else { // FILE EMPTY - CREATE THE HEADER
@@ -76,8 +72,6 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				RECORD_SIZE = (short) (serKey.getTypeSize() + serVal
 					.getTypeSize());
 				writeInt(OFFSET_FREE_LIST, UNDEFINED);
-				writeInt(OFFSET_FULL_LIST, UNDEFINED);
-				writeInt(OFFSET_LAST_FREE_HEADER, UNDEFINED);
 				writeShort(OFFSET_RECORD_SIZE, RECORD_SIZE);
 				writeInt(OFFSET_NUM_OF_PAGES, 0);
 				buf.flushPage(0, file); // TODO - watch out: wild flush
@@ -233,12 +227,8 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 			InterruptedException {
 		if (key == null)
 			throw new NullPointerException("Trying to get a null key");
-		Page allocFrame = buf.allocFrame(pid, file);
-		for (int i = PAGE_HEADER_LENGTH, j = 0; j < head.MAXIMUM_NUMBER_OF_SLOTS; i += head.RECORD_SIZE, ++j) {
-			if (key.compareTo((K) (Integer) allocFrame.readInt(i)) == 0)
-				return (V) (Integer) allocFrame.readInt(i + KEY_SIZE);
-		}
-		return null;
+		HeapPage allocFrame = new HeapPage(buf.allocFrame(pid, file));
+		return allocFrame._get(key);
 	}
 
 	@Override
@@ -344,7 +334,6 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 			if (next_page != UNDEFINED) {
 				System.out.println("The NEXT FRAME HERE");
 				Page p = alloc(tr, next_page);
-				p = buf.allocFrame(next_page, file);
 				p.writeInt(OFFSET_PREVIOUS_PAGE, 0);
 				// buf.flushPage(next_page, file); // FIXME FLUSH ??
 			}
@@ -354,6 +343,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	private Page alloc(Transaction tr, int pageID) throws IOException,
 			InterruptedException {
 		Page p;
+		// TODO DBLock.E parameter
 		if (tr.lock(pageID, DBLock.E)) { // locks for the first time
 			p = buf.allocFrame(pageID, file);
 			// FIXME - race in pin ??? - add boolean pin param in allocFrame

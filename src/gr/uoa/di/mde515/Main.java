@@ -25,6 +25,7 @@ public class Main {
 		try {
 			// I need to call get so the thread blocks - otherwise execution
 			// reaches the finally block and threads block (...)
+			// line below if ommited no IOOB in heap !
 			eng.submit(inserterWithLookup(eng, new Record<>(1000, 1000))).get();
 			eng.submit(inserterDeleter(eng)).get();
 			// ArrayList<Inserter<T>> arrayList = new ArrayList<>();
@@ -177,6 +178,7 @@ public class Main {
 								.getValue())));
 				if (rkv == null) {
 					insert(rec);
+					System.out.println("Inserted " + rec.getKey());
 				} else {
 					System.out.println("THE RECORD already exists. "
 						+ "NOT inserting");

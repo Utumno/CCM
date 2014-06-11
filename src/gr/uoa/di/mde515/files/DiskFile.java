@@ -9,13 +9,14 @@ import java.nio.ByteBuffer;
 
 public class DiskFile {
 
-	private static int PAGE_SIZE = Engine.PAGE_SIZE;
+	private final static int PAGE_SIZE = Engine.PAGE_SIZE;
 	private final RandomAccessFile file;
 
 	/**
 	 * The constructor creates the database file or opens it if already exists
 	 *
 	 * @param path
+	 *            TODO Path not String
 	 * @throws FileNotFoundException
 	 */
 	public DiskFile(String path) throws FileNotFoundException {

@@ -8,7 +8,9 @@ import gr.uoa.di.mde515.locks.DBLock;
 import java.io.IOException;
 import java.util.List;
 
-public abstract class DataFile<K extends Comparable<K>, V> {
+public abstract class DataFile<K extends Comparable<K>, V> { // TODO extend
+
+																// disk file ?
 
 	public static <L extends Comparable<L>, M> DataFile<L, M> init(
 			String filename, Serializer<L> serKey, Serializer<M> serVal)
