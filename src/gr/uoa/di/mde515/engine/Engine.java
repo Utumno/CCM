@@ -38,8 +38,9 @@ import java.util.concurrent.Future;
 public abstract class Engine<K extends Comparable<K>, V> {
 
 	public static final short PAGE_SIZE = 48;
+	// TODO fix this mess - proper factory - java 8 ?
 	private static volatile Engine<?, ?> instance;
-	private final static Object HACK = new Object(); // TODO fix this mess
+	private final static Object HACK = new Object();
 
 	// =========================================================================
 	// Engine API
@@ -74,13 +75,18 @@ public abstract class Engine<K extends Comparable<K>, V> {
 	public abstract <L> List<Future<L>> submitAll(
 			Collection<TransactionalOperation> tos) throws InterruptedException;
 
-	// TODO: proper factory
-	public static <K extends Comparable<K>, V> Engine<?, ?> newInstance(
+	public static <K extends Comparable<K>, V> Engine<K, V> newInstance(
 			Serializer<K> serKey, Serializer<V> serVal) {
-		if (instance == null) synchronized (HACK) {
-			if (instance == null) instance = new EngineImpl<>(serKey, serVal);
-		}
-		return instance;
+		if (instance == null)
+			synchronized (HACK) {
+				if (instance == null) {
+					final EngineImpl<K, V> engineImpl = new EngineImpl<>(
+						serKey, serVal);
+					instance = engineImpl;
+					return engineImpl;
+				}
+			}
+		throw new IllegalStateException("Engine already initialized");
 	}
 
 	public abstract void shutdown() throws InterruptedException, IOException;

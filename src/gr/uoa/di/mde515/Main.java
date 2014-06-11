@@ -19,9 +19,8 @@ public class Main {
 
 	public static void main(String[] args) throws InterruptedException,
 			IOException, ExecutionException {
-		final Engine<Integer, Integer> eng = (Engine<Integer, Integer>) Engine
-			.newInstance(IntegerSerializer.INSTANCE, IntegerSerializer.INSTANCE);
-		// FIXME unchecked and ugly
+		final Engine<Integer, Integer> eng = Engine.newInstance(
+			IntegerSerializer.INSTANCE, IntegerSerializer.INSTANCE);
 		try {
 			// I need to call get so the thread blocks - otherwise execution
 			// reaches the finally block and threads block (...)
