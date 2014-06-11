@@ -58,7 +58,7 @@ public final class BufferManager {
 	}
 
 	// =========================================================================
-	// API
+	// API - TODO - make pin/unpin private
 	// =========================================================================
 	void setPageDirty(int pageID) {
 		synchronized (POOL_LOCK) {
@@ -107,7 +107,7 @@ public final class BufferManager {
 	 *
 	 * @throws IOException
 	 *             thrown in the case a permanent generation page must be
-	 *             cleaned which can only be done by rereading it from disk
+	 *             cleaned, which can only be done by rereading it from disk
 	 */
 	public void killPage(int pageID, DiskFile file) throws IOException {
 		synchronized (POOL_LOCK) {

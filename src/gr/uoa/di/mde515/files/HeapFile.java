@@ -23,7 +23,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	private static final int PAGE_SIZE = Engine.PAGE_SIZE;
 	// it the size of entry in the fileheader
 	private static final int KEY_SIZE = 4;
-	private static final short PAGE_HEADER_LENGTH = 20; // TODO move to header
+	private static final short PAGE_HEADER_LENGTH = 20; // TODO move to page
 	private static final int UNDEFINED = -1;
 	// PAGE HEADER OFFSETS
 	private static final int OFFSET_CURRENT_PAGE = 0;
@@ -81,7 +81,6 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				throw new AssertionError("Page too small");
 		}
 
-		@SuppressWarnings("synthetic-access")
 		void pageWrite() {
 			pageWriteFreeList(freeList);
 			pageWriteNumOfPages(numOfPages);
