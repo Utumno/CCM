@@ -149,12 +149,12 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 
 	public void print(Transaction tr, DBLock lock) throws IOException,
 			InterruptedException {
-		List<Node> items = new ArrayList<>();
+		List<Node<?>> items = new ArrayList<>();
 		items.add(root);
 		while (!items.isEmpty()) {
-			List<Node> children = new ArrayList<>();
+			List<Node<?>> children = new ArrayList<>();
 			for (Node<?> node : items) {
-				final Collection<Node> print = node.print(tr, lock);
+				final Collection<Node<?>> print = node.print(tr, lock);
 				if (print != null) children.addAll(print);
 			}
 			System.out.println();
@@ -293,7 +293,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				InternalNode candidateParent) throws IOException,
 				InterruptedException;
 
-		abstract Collection<Node> print(Transaction tr, DBLock lock)
+		abstract Collection<Node<?>> print(Transaction tr, DBLock lock)
 				throws IOException, InterruptedException;
 
 		// =====================================================================
@@ -379,7 +379,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			writeShort(NUM_KEYS_OFFSET, numOfKeys);
 		}
 
-		void _copyTailAndRemoveIt(Node sibling, final int fromIndex) {
+		void _copyTailAndRemoveIt(Node<V> sibling, final int fromIndex) {
 			if (fromIndex < 0) throw new IndexOutOfBoundsException();
 			short removals = 0;
 			for (int i = fromIndex; i < numOfKeys; ++i) {
@@ -468,10 +468,10 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		}
 
 		@Override
-		Collection<Node> print(Transaction tr, DBLock lock) throws IOException,
-				InterruptedException {
+		Collection<Node<?>> print(Transaction tr, DBLock lock)
+				throws IOException, InterruptedException {
 			System.out.print(getPageId() + "::");
-			Collection<Node> values = new ArrayList<>();
+			Collection<Node<?>> values = new ArrayList<>();
 			for (short i = 0; i < numOfKeys; ++i) {
 				K key = readKey(i);
 				int val = readValue(i);
@@ -524,8 +524,8 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			// this node TODO make _child method
 		}
 
-		Record<K, Node> split(Transaction tr, Record<K, Node> insert)
-				throws InterruptedException {
+		<L extends Node<?>> Record<K, InternalNode> split(Transaction tr,
+				Record<K, L> insert) throws InterruptedException {
 			if (numOfKeys != getMaxKeys())
 				throw new RuntimeException("Splitting internal node - keys: "
 					+ numOfKeys);
@@ -552,11 +552,12 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			Record<K, Integer> _lastPair = _lastPair();
 			writeShort(NUM_KEYS_OFFSET, --numOfKeys); // discard _lastPair
 			setGreaterOrEqual(_lastPair.getValue());
-			return new Record<K, Node>(_lastPair.getKey(), sibling);
+			return new Record<>(_lastPair.getKey(), sibling);
 		}
 
-		Record<K, Node> insertInternal(Transaction tr, Node justSplit,
-				Record<K, Node> insert) throws InterruptedException {
+		<L extends Node<?>> Record<K, InternalNode> insertInternal(
+				Transaction tr, L justSplit, Record<K, L> insert)
+				throws InterruptedException {
 			final Node<?> newNode = insert.getValue();
 			K _keyOfAnchor = _keyWithValue(justSplit);
 			if (_keyOfAnchor != null) {
@@ -757,7 +758,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		}
 
 		@Override
-		Collection<Node> print(Transaction tr, DBLock lock) {
+		Collection<Node<?>> print(Transaction tr, DBLock lock) {
 			System.out.print(getPageId() + ":"/* + numOfKeys */+ ":");
 			for (short i = 0; i < numOfKeys; ++i) {
 				K key = readKey(i);
@@ -771,7 +772,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		// =====================================================================
 		// Class Methods
 		// =====================================================================
-		Record<K, Node> insertInLeaf(Transaction tr, Record<K, T> rec)
+		Record<K, LeafNode> insertInLeaf(Transaction tr, Record<K, T> rec)
 				throws InterruptedException {
 			if (overflow()) return split(tr, rec);
 			_put(rec.getKey(), rec.getValue());
@@ -871,7 +872,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			return new Record<>(keyNew, DAS);
 		}
 
-		Record<K, Node> split(Transaction tr, Record<K, T> rec)
+		Record<K, LeafNode> split(Transaction tr, Record<K, T> rec)
 				throws InterruptedException {
 			if (numOfKeys != getMaxKeys())
 				throw new RuntimeException("Splitting leaf - keys: "
@@ -892,15 +893,16 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 				sibling._put(rec.getKey(), rec.getValue());
 			}
 			writeShort(NUM_KEYS_OFFSET, numOfKeys);
-			return new Record<K, Node>(sibling._firstPair().getKey(), sibling);
+			return new Record<>(sibling._firstPair().getKey(), sibling);
 		}
 	}
 
 	// =========================================================================
 	// Helpers
 	// =========================================================================
-	private void insertInternal(Transaction tr, Node<?> justSplit,
-			Record<K, Node> insert) throws InterruptedException, IOException {
+	private <L extends Node<?>> void insertInternal(Transaction tr,
+			L justSplit, Record<K, L> insert) throws InterruptedException,
+			IOException {
 		if (root.equals(justSplit)) { // root must split (leaf or not)
 			System.out.println("------------------> SPLIT ROOT");
 			InternalNode newRoot = new InternalNode(tr);
@@ -909,18 +911,18 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 			setRoot(newRoot);
 			return;
 		}
-		// justSplit is not tree root so has a parent
 		@SuppressWarnings("unchecked")
-		// moreover root is not leaf so I cast it to InternalNode safely
+		// SW: justSplit is not tree root so has a parent - moreover root is not
+		// the only node so it is safe to cast it to InternalNode
 		InternalNode parent = justSplit.parent(tr, DBLock.E,
 			(InternalNode) root);
-		Record<K, Node> newInternalNode = parent.insertInternal(tr, justSplit,
-			insert);
+		Record<K, InternalNode> newInternalNode = parent.insertInternal(tr,
+			justSplit, insert);
 		if (newInternalNode != null) // RECURSION
 			insertInternal(tr, parent, newInternalNode);
 	}
 
-	private synchronized void setRoot(Node newRoot) {
+	private synchronized <L extends Node<?>> void setRoot(L newRoot) {
 		root = newRoot;
 	}
 
@@ -935,7 +937,7 @@ public final class BPlusDisk<K extends Comparable<K>, T> {
 		if (leafNode._get(rec.getKey()) != null)
 			throw new IllegalArgumentException("Key " + rec.getKey()
 				+ " exists");
-		Record<K, Node> insert = leafNode.insertInLeaf(tr, rec);
+		Record<K, LeafNode> insert = leafNode.insertInLeaf(tr, rec);
 		if (insert != null) { // got a key back, so leafNode split
 			insertInternal(tr, leafNode, insert); // all parents are locked
 		}
