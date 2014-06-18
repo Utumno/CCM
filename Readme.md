@@ -9,4 +9,4 @@ Features
 
 Comes as an eclipse (Kepler/Luna) project (java 1.7 execution environment) - run .settings/CCM_RUN.launch run configuration (should be autoadded).
 
-DISCLAIMER : pre alpha. Maybe I'll throw some more time on it but don't hold your breath. Issues welcome though :)
+DISCLAIMER : pre alpha. Subject to history rewriting. Maybe I'll throw some more time on it but don't hold your breath. Issues welcome though :)

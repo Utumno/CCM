@@ -27,6 +27,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 	private static final int UNDEFINED = -1;
 	// PAGE HEADER OFFSETS
 	private static final int OFFSET_CURRENT_PAGE = 0;
+	/** The next slot (FIXME OFFSET NOW) one can write */
 	private static final int OFFSET_NEXT_FREE_SLOT = 4;
 	private static final int OFFSET_CURRENT_NUMBER_OF_SLOTS = 8;
 	private static final int OFFSET_NEXT_PAGE = 12;
@@ -330,7 +331,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 			page.writeInt(OFFSET_NEXT_PAGE, UNDEFINED);
 			page.writeInt(OFFSET_PREVIOUS_PAGE, 0);
 			head.setFreeList(next_page);
-			if (next_page != UNDEFINED) {
+			if (next_page != UNDEFINED && next_page != 0) {
 				System.out.println("The NEXT FRAME HERE");
 				Page p = alloc(tr, next_page);
 				p.writeInt(OFFSET_PREVIOUS_PAGE, 0);
