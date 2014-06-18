@@ -214,7 +214,7 @@ public final class HeapFile<K extends Comparable<K>, V> extends DataFile<K, V> {
 				head.pageWrite();
 			} else {
 				head.setFreeList(deleteFromPage.readInt(OFFSET_CURRENT_PAGE));
-				deleteFromPage.writeInt(OFFSET_NEXT_PAGE, 0);
+				deleteFromPage.writeInt(OFFSET_NEXT_PAGE, UNDEFINED);
 				deleteFromPage.writeInt(OFFSET_PREVIOUS_PAGE, 0);
 				head.pageWrite();
 			}
